@@ -14,8 +14,9 @@ gem install ibm_db
 Contacts
 ========
 
-For any issues of help: https://github.com/ibmdb/ruby-ibmdb/issues
-Email id: opendev@us.ibm.com
+For any issues or help: https://github.com/ibmdb/ruby-ibmdb/issues
+
+e-mail id: opendev@us.ibm.com
 
 License
 =======
