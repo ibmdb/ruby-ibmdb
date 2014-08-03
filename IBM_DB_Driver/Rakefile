@@ -1,0 +1,64 @@
+# +----------------------------------------------------------------------+
+# |  Licensed Materials - Property of IBM                                |
+# |                                                                      |
+# | (C) Copyright IBM Corporation 2006, 2007.                            |
+# +----------------------------------------------------------------------+
+
+require 'rake'
+WIN = RUBY_PLATFORM =~ /mswin/
+
+desc 'Run all the tests'
+task :default => [ :test ]
+
+task :extconf => ['Makefile']
+file 'Makefile' => ['extconf.rb'] do
+  ruby 'extconf.rb'
+  ruby '-p -i.bak -e "$_.sub!(\'.so\',\'.so\')" Makefile' if WIN
+end
+
+if WIN
+  task :lib => 'ibm_db.so'
+  file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
+    sh 'nmake'
+  end
+else
+  task :lib => 'ibm_db.so'
+  file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
+    sh 'make'
+  end
+end
+
+task :test => [:lib, 'tests.rb', 'tests'] do
+  ruby 'tests.rb'
+end
+
+task :onlytests do
+  if WIN
+    if !File.exists? 'ibm_db.so'
+      task :lib => 'ibm_db.so'
+      file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
+        sh 'nmake'
+      end
+    else
+      task :lib => 'ibm_db.so'
+    end
+    ruby 'tests.rb'
+  else
+    if !File.exists? 'ibm_db.so'
+      task :lib => 'ibm_db.so'
+      file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
+        sh 'make'
+      end
+    else
+      task :lib => 'ibm_db.so'
+    end
+    ruby 'tests.rb'
+  end
+end
+
+task :clean do
+  sh 'nmake clean' if WIN and File.exists? 'Makefile'
+  sh 'make clean' if not WIN and File.exists? 'Makefile'
+  rm_rf ['Makefile','mkmf.log']
+  rm_rf ['ibm_db-i386-mswin32.def'] if WIN
+end

@@ -1,0 +1,15 @@
+source:
+    test_dir: tests 
+
+connection:
+    database: sample
+    user:     db2inst1
+    password: password
+    hostname: localhost
+    port:     60000
+
+trusted_connection:
+    auth_user: auth_user
+    auth_pass: auth_pass
+    tc_user:   tc_user
+    tc_pass:   tc_pass

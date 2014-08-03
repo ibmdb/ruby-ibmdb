@@ -1,0 +1,64 @@
+Ruby Driver for IBM Databases
+-----------------------------
+This Ruby driver provides a Ruby interface for IBM databases.  The
+driver has been developed and will be supported by IBM.  IBM welcomes
+appropriate external contributions.  The driver currently supports
+access to the IBM DB2 Database on Linux/Unix/Windows, IBM Cloudscape,
+Apache Derby Database, and remote connections to i5/OS (iSeries).
+Future database support will include native DB2 for
+i5/OS (iSeries), and DB2 UDB for zOS.
+
+Installation
+------------
+Please refer to the INSTALL file for complete details.
+
+Setup to utilize ibm_db
+-----------------------
+For Unix based systems:
+Depending on your shell, source the db2profile or db2cshrc.  Be sure
+to source the profile for the DB2 instance and not the profile under
+the DB2 product installation.  For example:
+  . /home/db2inst1/sqllib/db2profile
+                 or
+  source /home/db2inst1/db2chsrc
+In addtion to sourcing th DB2 environment, if you are compiling
+against the DB2 client libraries, set the following environment
+variables depending on your DB2 installation location.  For example:
+  export IBM_DB_INCLUDE=/opt/ibm/db2/V9.1/include
+  export IBM_DB_LIB=/opt/ibm/db2/V9.1/lib
+                 or
+  setenv IBM_DB_INCLUDE /opt/ibm/db2/V9.1/include
+  setenv IBM_DB_LIB /opt/ibm/db2/V9.1/lib
+
+List of Operating Systems tested
+--------------------------------
+Linux 32/64
+Windows 32
+AIX 32/64
+Remote i5/OS (iSeries)
+Remote z/OS (DB2 UDB for zOS)
+
+Supported Databases
+-------------------
+IBM DB2 Database on Linux/Unix/Windows
+IBM Cloudscape
+Apache Derby
+Remote connections to i5/OS (iSeries)
+Remote connections to z/OS (DB2 UDB for zOS)
+
+Future Supported Databases
+--------------------------
+Native DB2 for i5/OS (iSeries)
+Native DB2 UDB for zOS
+
+Unicode Support
+===============
+  - Available only with Ruby version 1.9 and above
+  - Data returned from the driver will be in UTF8 encoding format.
+  - The input data to the driver can be in any Ruby supported encoding format.
+
+Testing
+-------
+Tests displaying Ruby code examples are located in the tests
+directory.  These tests can be run by using the rake command.  Full
+details regarding test execution can be found in the INSTALL file.

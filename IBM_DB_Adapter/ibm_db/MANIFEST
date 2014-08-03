@@ -1,0 +1,14 @@
+CHANGES
+README
+LICENSE
+ext/extconf.rb
+ext/ibm_db.c
+ext/ruby_ibm_db.h
+lib/IBM_DB.rb
+lib/linux32/ibm_db.so
+lib/mswin32/ibm_db.so
+lib/active_record/connection_adapters/ibm_db_adapter.rb
+lib/active_record/vendor/db2-i5-zOS.yaml
+test/activerecord/native_ibm_db/connection.rb
+test/ibm_db_test.rb
+MANIFEST

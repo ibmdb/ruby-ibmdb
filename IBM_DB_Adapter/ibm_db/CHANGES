@@ -1,0 +1,225 @@
+Change Log
+==============
+2014/08/03 (IBM_DB adapter 2.5.18, driver 2.5.14) :
+  - Support for Rails 4.1.x
+  - Enhanced installation to pull IBM Data Server Driver automatically if not present
+
+2014/03/03 (IBM_DB adapter 2.5.17, driver 2.5.14) :
+  - Shipping binaries compatible with Ruby 2.0 for linux x86_64 systems (#29871)
+  - Fixed #29869
+  - Support microsecond timestamp.
+
+2014/02/26 (IBM_DB adapter 2.5.16, driver 2.5.14) :
+  - Yanked version 2.5.15. Hence using new version number
+
+2014/02/17 (IBM_DB adapter 2.5.15, driver 2.5.14) :
+  - Yanked version 2.5.14. Hence using new version number
+
+2014/02/11 (IBM_DB adapter 2.5.14, driver 2.5.14) :
+  - Support for Rails 4
+  - Support for ruby-2.0
+  
+2014/01/28 (IBM_DB adapter 2.5.12, driver 2.5.11) :
+  - Supporting usage of name ibmdb as adapter along with current name ibm_db to support requirements of cloud environments
+
+2012/12/07 (IBM_DB adapter 2.5.11, driver 2.5.11) :
+  - Fixed bug #29633 - Deletes cause too many handles to be consumed and not freed
+  - Support for Mac OS CLI library loading to check create and drop db functionality - #29625
+  - Fixed #29657 - @servertype of IBM_DBAdapter could end up being nil on DB2 for Z/OS version 9
+  
+2012/05/01 (IBM_DB adapter 2.5.10, driver 2.5.10) :
+  - Support for Rails-3.2
+  - Changes in installation process. Now user should set only one environment variable IBM_DB_HOME to DB2/IBM_Data_Server_Driver installation directory
+  - Fixed bug #29541 - Serialize data when corresponding field maps to CLOB type on Database
+  - Fixed bug #29561 - Fixed data truncation error when client and server codepages are different
+  - Updated IBM_DB specifics of AR test suite as per Rails-3.2.3
+  
+2012/01/03 (IBM_DB adapter 2.5.9, driver 2.5.9) :
+  - Support for Create and Drop database on DB2 LUW with DB2 client version V97fp4 and above
+  - Fixed bug #29482 - Fixed bigint being returned as string in the adapter
+  
+2011/09/18 (IBM_DB adapter 2.5.7, driver 2.5.7) :
+  - Support for Rails-3.1.0
+  - Fixed bug #29052 -> prepare results in empty error message
+  - Support for continuation of method IBM_DB.conn_error and IBM_DB.conn_errormsg - #29324
+  - Test suite update as for Rails-3.1.0
+
+2011/02/07 (IBM_DB adapter 2.5.6, driver 2.5.6) :
+  - Fixed Bug #28622, #28881
+  - Decimal datatypes will now be returned as BigDecimal type from the driver
+  - Changes to rollback any active transaction in the connection destructor method if connection is not explicitly closed
+  - Changes to have a single gem file for ruby 1.8 and ruby 1.9
+2010/07/15 (IBM_DB adapter 2.5.5, driver 2.5.5) :
+  - Support for datatype Graphic and Vargraphic in driver and adapter [27965]
+  - Support for Bigint datatype in adapter.
+  - Fixed bug [28295] --> IBM_DB, Unicode Version, fails with encoding error against Informix Server
+
+2010/05/12 (IBM_DB adapter 2.5.0, driver 2.5.0) :
+  - Support for Unicode with Ruby 1.9 [Data from the IBM_DB driver is returned in UTF8 format]
+  - Fixed bug [27954] --> Fixed Truncation of char for bit data containing a Null Terminator
+  - Removed handling of NilClass type data in quote method. Super class will handle appropriately.
+
+2010/01/21 (IBM_DB adapter 2.0.0, driver 2.0.0) :
+  - Support for usage of parameterized SQL queries
+  - Exposed constant VERSION in the driver [Feature Request: #27231]
+
+2009/08/21 (IBM_DB adapter 1.5.0, driver 1.5.0) :
+  - non-block enhancement in the ruby driver made for Ruby version 1.9. [support request #25023]
+  - New API's getErrormsg and getErrorstate for retrieving error messages/state added
+  - Re-defined raising of exception from driver. [Bug #26544]
+  - Made adapter changes as per the new API's exposed in the driver for retrieving error messages
+  - API's conn_errormsg and stmt_errormsg is been deprecated.
+
+2009/07/28 (IBM_DB adapter 1.1.1, driver 1.1.0) :
+  - Fixed bug [26705] --> Fixed the problem of primary key value starting with 100
+  - Support for Activerecord-2.3.3
+    - Added method primary_key, which returns the primary key column name of the specified table
+    - Test suite updated
+
+2009/06/17 (IBM_DB adapter 1.1.0, driver 1.1.0) :
+  - Support for Activerecord's Query Cache Mechanism
+  - rename_column support for DB2 on LUW version 9.7, DB2 on zOS 9 and enhanced rename_column support for Informix Dynamic Server
+  - Support for parameterized timestamp datatype feature of DB2 on LUW Version 9.7
+  - Enhanced support for Bigint datatype along with support for Bigserial datatype (with client version 9.7 and above) of IDS
+  - Callback method handle_lobs enhanced by making it to use prepared statements completely
+  - Handling of exceptions during fetch operations enabled
+
+2009/03/24 (IBM_DB adapter 1.0.5, driver 1.0.5) :
+  - Support for Ruby-1.9.1
+  - Support for SQLRowcount in driver
+  - Support for Activerecord-2.3.2 [test suite updated]
+  - Fixed bug [24663] --> Fixed pre-mature clearing of the sql array in handle_lobs
+  - Fixed bug [23115] --> Fixed truncation of a nested query during update
+  - Fixed wrong setting of SQLID for schema on zOS 8 dataserver when schema is explicitly specified.
+  
+2009/03/06 (IBM_DB adapter 1.0.2, driver 1.0.1) :
+  - Support for specifying connection timeout in adapter
+  - Fixed Bug [23317] --> Fixed assumption of id as the primary key while updation/insertion of lob fields
+  - Fixed Bug [23389] --> Provided proper exception handling.
+  - Fixed the insertion of incorrect value for lob objects in case of has_and_belongs_to_many associations.
+  
+2008/12/18 (IBM_DB adapter 1.0.1, driver 1.0.1) :
+  - Support for datatype decfloat
+  - Changes in installation process. Now user should set IBM_DB_INCLUDE env variable instead of IBM_DB_DIR
+  - Support for specifying the Authentication type to be used during connection in adapter
+  - Corrected the ignorance of a connection, when the connection is successful with a warning
+  - ActiveRecord-2.2.2 test suite changes for IBM_DB
+2008/11/06 (IBM_DB adapter 1.0.0, driver 0.10.0):
+  - Support for short-hand migration syntax for datatype char and double in create_table
+  - Support for short-hand migration syntax for datatypes xml, char and double in change_table
+  - Support for secure connections using SSL (SECURITY=SSL) feature of DB2 in Adapter
+      Note: - This is supported from client version V9.5fp2 and onwards
+  - Support for altering the nullability constraint of a column.
+  - Added correct mapping for datatype :double for DB2 and Informix (double precision)
+  - Method support_ddl_transactions? overridden to return true. Feature of Rails2.2 
+      IBM Dataservers support transactional migrations.
+  - Change in the style of accessing driver methods 
+      Changed from scope resolution operator to dot operator
+      IBM_DB::connect '<db_name>','<username>','<pwd>' to IBM_DB.connect '<db_name>','<username>','<pwd>'
+  - Fixed Bug [#22430] --> Fixed limit ignorance for type character [char]    
+  - ActiveRecord-2.1.2 test suite changes for IBM_DB   
+               
+2008/09/01 (IBM_DB adapter 0.10.0, driver 0.10.0):
+  - Added Trusted Context support in Driver
+  - Made changes for the correct Mapping of Informix DataTypes to Ruby DataTypes
+  - ActiveRecord-2.1.0 test suite changes appropriate for DB2/IDS is been updated
+   
+2008/06/24 (IBM_DB adapter 0.9.5, driver 0.9.5):
+  - Fixed Bug [#19222] --> Fixed fixture insertion of LOB columns for DB2 
+  - Fixed Bug [#19970] --> Fixed Table schema dumper also dump views
+  - Fixed Bug [#20053] --> Fixed CLOB data with special chars contains null characters upon retrieval
+  - Fixed Bug [#20762] --> IBM_DB adapter with Rails 2.1 fails on rake db:migrate
+  - Cleaned up fix for Bug [#19223] and [#19224], indexes are now dumped as array without schema qualified name.
+  - Support for Rails-2.0.2
+  - Support for Rails-2.1.0 
+      Rails-2.1.0 contains changes that generates Non-standard SQL in 2 noticed cases which won't work with SQL compliant databases like DB2
+       a. Handling Nullable columns in Table creation. [http://rails.lighthouseapp.com/projects/8994-ruby-on-rails/tickets/398-non-standard-sql-generated-in-column-definition-for-nullable-columns-in-create-table-ddl-rails-2-1#ticket-398-2]
+       	     A workaround for this problem is provided from within ibm_db adapter.
+       b. Handling has_and_belongs_to_many association. [http://rails.lighthouseapp.com/projects/8994/tickets/394-patch-fixed-non-standard-sql-generated-by-preloading-has_and_belongs_to_many-associations]. 
+       	     It is not possible to provide a workaround for this from within the ibm_db adapter. 
+             To workaround this problem please patch ActiveRecord-2.1.0 with the patch available at [http://rails.lighthouseapp.com/attachments/26975/association_preloading.diff]
+  
+2008/04/28 (IBM_DB adapter 0.9.4, driver 0.9.4):
+  - Fixed bug [#19679]--> invalid values being returned for blank or null in fetch_assoc
+  - Fixed bug [#19223] and [#19224]--> handling of composite and unique indexes incorrect
+  - Support for the Rails2.0 type of migrations for columns of type xml [t.xml :xml_col1,:xml_col2]
+   
+2008/03/10 (IBM_DB adapter 0.9.3, driver 0.9.3):
+  - Resolved the issue of truncation of output when stored procedure was called
+  
+2007/11/30 (IBM_DB adapter 0.9.2, driver 0.9.1):
+  - Lifted index length limitation (18 chars) and fixed multiple index creation
+  - Fixed [#13294] limit/offset breaks subselect in db2 adapter
+  - Fixed error handling for metadata retrieval (tables, columns, indexes)
+
+2007/11/07 (IBM_DB adapter 0.9.1, driver 0.9.1):
+  - Fixed ibm_db driver VC80 runtime issue on Windows
+
+2007/09/28 (IBM_DB adapter 0.9.0, driver 0.9.0):
+  - Fixed ibm_db gem 0.8.5 incompatibility with DB2 CLI 9.1 FP3 and below
+
+2007/09/13 (IBM_DB adapter 0.8.5, driver 0.8.5):
+  - Fixed Ruby driver crash on Windows Vista [#13357]
+
+2007/07/05 (IBM_DB adapter 0.8.0, driver 0.7.0):
+  - Support for Informix Dynamic Server 11.10
+  - New driver method get_last_serial_value to retrieve last inserted serial
+    value for Informix Dynamic Server
+
+2007/06/19 (IBM_DB adapter 0.7.5, driver 0.6.0):
+  - Driver code (ibm_db.c) remains at the same level: 0.6.0 (no changes)
+  - Fixed client attributes initialization on connection setup [11264]
+  - Fixed rake db:schema:dump native data types limits incompatible with table create
+
+2007/06/01 (IBM_DB adapter 0.7.0, driver 0.6.0):
+  - Driver code (ibm_db.c) remains at the same level: 0.6.0 (no changes)
+  - Fixed remaining failure on {:null => true} option for XML data type [#10877]
+  - Fixed handling of {:id => false} option during table creation in DB2 for zOS
+  - Fixed handle_lobs failures in table creation for has_many/belongs_to [#10701]
+  - Fixe db2-i5-zOS.yaml content (removed inadvertent tab) [#11234]
+
+2007/05/10 (IBM_DB adapter 0.6.5, driver 0.6.0):
+  - Driver code (ibm_db.c) remains at the same level: 0.6.0 (no changes)
+  - Fixed regression for reconnect after being inactive (connection recycle)
+  - Fixed rake db:schema:load failures on boolean data type [#10683]
+  - Fixed XML default option (:null => true for XML data type) [#10754]
+  - Fixed DB2 for zOS version 9 handling of column changes for DEFAULT NULL
+
+2007/04/30 (0.6.0):
+  - Support for remote connections to DB2 Universal Database on z/OS version 9
+  - Support for result set pagination via ActiveRecord add_limit_offset! method 
+    for DB2 Universal Database on z/OS and i5/OS
+  - Defect fixes
+  - Improved documentation 
+
+2007/04/20 (0.4.6):
+  - Fixed XML columns creation default value (NOT NULL)
+  - Fixed border case for IS NULL in where clauses
+  - Improved documentation (connection attributes)
+
+2007/04/20 (0.4.5):
+  - Fixed reconnect problems: driver (IBM_DB::active) and adapter (active)
+  - Client connection attribute rename (app_user to replace user)
+  - Improved support for ROWID data type (DB2 for zOS version 8 and 9)
+
+2007/03/21 (0.4.0):
+  - Support added for remote connectivity to DB2 zOS version 8
+  - Support added for remote connectivity to DB2 i5 v5r3 and v5r4
+  - Improved migration support (added change_column method)
+  - Support for setting and retrieving values for client attributes (user, 
+    account, application, workstation)
+
+2006/10/31 (0.2.0):
+  - Significant performance improvements
+  - Improved stored procedure support at driver level
+  - Added support for Large Object data types (LOBs) greater than 32K (BLOB, CLOB, XML) in size
+  - Added XML data type support for native storage of XML documents
+  - Significant quality improvements, through many bug fixes in the driver and adapter
+  - Improved migration support (added add_column and remove_column methods)
+
+2006/06/07 (0.1.0):
+
+  - Fixed compatibility issue with other adapters
+  - If a schema is omitted in database.yml, the username is now used as default schema
+  - Introduced descriptive CLI error messages when a connection or an execute statement fails
+  - Introduced check against schema in method 'indexes'

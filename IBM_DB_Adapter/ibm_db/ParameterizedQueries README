@@ -1,0 +1,39 @@
++-------------------------------------------+-------------------------------------------+
+| README for Parameterized Queries Support in Ruby-on-Rails/ Activerecord applications  |
++-------------------------------------------+-------------------------------------------+
+
+Enabling Usage of Parameterized Queries with Ruby-on-Rails / Activerecord applications
+======================================================================================
+	To enable usage of parameterized SQL queries with Ruby-on-Rails/ActiveRecord applications, in your connection configuration (database.yml), set "parameterized" to true. By default "parameterized" is false (if not specified). A sample database.yml file showing development section with parameterized queries enabled looks as below
+
+development:
+  adapter:     ibm_db
+  username:    db2inst1
+  password:    secret
+  database:    devdb
+  #schema:      db2inst1
+  #host:        localhost
+  #port:        50000
+  #account:     my_account
+  #app_user:    my_app_user
+  #application: my_application
+  #workstation: my_workstation
+  parameterized: true
+
+Similarly for the other sections (test/production) of the database.yml file set "parameterized" to true to enable usage of parameterized SQL queries
+
+Supported Activerecord Versions
+===============================
+  Activerecord-2.3.3, Activerecord-2.3.4, Activerecord-2.3.5
+  
+Supported Operating Systems and Databases
+=========================================
+Refer the main README
+
+Feedback
+========
+  Your feedback is very much appreciated and expected through Rubyforge:
+   - rubyibm project:     http://rubyforge.org/projects/rubyibm/
+   - rubyibm forum:       http://rubyforge.org/forum/?group_id=2361
+   - rubyibm bug reports: http://rubyforge.org/tracker/?group_id=2361
+   - IBM_DB developers:   rubyibm-developers@rubyforge.org
