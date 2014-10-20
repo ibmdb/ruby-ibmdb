@@ -307,7 +307,7 @@ module ActiveRecord
           when /for bit data/i
             :binary
           when /smallint/i
-            :boolean
+            :integer
           when /int|serial/i
             :integer
           when /decimal|numeric|decfloat/i
@@ -1532,7 +1532,7 @@ module ActiveRecord
           # IBM data servers don't have a native boolean type.
           # A boolean can be represented  by a smallint,
           # adopting the convention that False is 0 and True is 1
-          :boolean     => { :name => "smallint"},
+          :boolean     => { :name => "char(1)"},
           :xml         => { :name => "xml"},
           :decimal     => { :name => "decimal" },
           :rowid       => { :name => "rowid" }, # rowid is a supported datatype on z/OS and i/5
