@@ -5,6 +5,7 @@ require 'rubygems/package'
 require 'zlib'
 require 'fileutils'
 
+
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
@@ -227,16 +228,32 @@ step 3: - Retry gem install
 EOL
 end
 
+if(RUBY_VERSION =~ /2./)
+	require 'rbconfig'
+end
+
 alias :libpathflag0 :libpathflag
 def libpathflag(libpath)
-  ldflags =  case Config::CONFIG["arch"]
-    when /solaris2/
+if(RUBY_VERSION =~ /2./)
+  ldflags =  case RbConfig::CONFIG["arch"]
+  when /solaris2/
       libpath[0..-2].map {|path| " -R#{path}"}.join
     when /linux/
       libpath[0..-2].map {|path| " -R#{path} "}.join
     else
       ""
   end
+else
+	ldflags =  case Config::CONFIG["arch"]
+	when /solaris2/
+      libpath[0..-2].map {|path| " -R#{path}"}.join
+    when /linux/
+      libpath[0..-2].map {|path| " -R#{path} "}.join
+    else
+      ""
+  end
+end  
+    
   #libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib #{ldflags}' "
   libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib' "
 end
