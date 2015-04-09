@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "2.5.25"
+#define MODULE_RELEASE "2.5.26"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -688,8 +688,12 @@ VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock
 #ifdef RUBY_API_VERSION_MAJOR 
 	if( RUBY_API_VERSION_MAJOR >=2 && RUBY_API_VERSION_MINOR >=2) 
 	{
+#ifdef _WIN32
 		void *(*f)(void*) = (void *(*)(void*))func;
-		rb_thread_call_without_gvl(f, data1, ubf, data2);
+		return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+#else
+		rb_thread_call_without_gvl(func, data1, ubf, data2);
+#endif	
 	}
 	else	
 	{

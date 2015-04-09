@@ -9,7 +9,7 @@ require 'fileutils'
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006 - 2012                            |
+# | (C) Copyright IBM Corporation 2006 - 2015                            |
 # +----------------------------------------------------------------------+
 
 TAR_LONGLINK = '././@LongLink'

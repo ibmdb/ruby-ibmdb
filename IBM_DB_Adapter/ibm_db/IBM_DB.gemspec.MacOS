@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006- 2015                             |
+# | (C) Copyright IBM Corporation 2006 - 2015                            |
 # +----------------------------------------------------------------------+
 
 require 'rubygems'
@@ -33,7 +33,7 @@ SPEC = Gem::Specification.new do |spec|
                  item.include?(".gem") ||
                  item.include?("ibm_db_mswin32.rb")
                end
-
+=begin
   if RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw/
     spec.platform = Gem::Platform::CURRENT
   else
@@ -50,7 +50,9 @@ SPEC = Gem::Specification.new do |spec|
       spec.extensions << 'ext/extconf.rb'
     end
   end
+=end
 
+  spec.platform = Gem::Platform::CURRENT
   spec.test_file = 'test/ibm_db_test.rb'
   spec.has_rdoc = true
   spec.extra_rdoc_files = ["CHANGES", "README", "MANIFEST"]

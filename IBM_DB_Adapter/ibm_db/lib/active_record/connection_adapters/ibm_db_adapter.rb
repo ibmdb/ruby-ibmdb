@@ -1902,8 +1902,12 @@ module ActiveRecord
               if !(column_name =~ /db2_generated_rowid_for_lobs/i)
                 # Pushes into the array the *IBM_DBColumn* object, created by passing to the initializer
                 # +column_name+, +default_value+, +column_type+ and +column_nullable+.
-                cast_type = lookup_cast_type(column_type)
-                columns << IBM_DBColumn.new(column_name, column_default_value, cast_type, column_type, column_nullable)
+                if(@arelVersion >=  6 )				
+					cast_type = lookup_cast_type(column_type)				
+					columns << IBM_DBColumn.new(column_name, column_default_value, cast_type, column_type, column_nullable)
+				else
+					columns << IBM_DBColumn.new(column_name, column_default_value, column_type, column_nullable)
+				end
               end
             end
           rescue StandardError => fetch_error # Handle driver fetch errors

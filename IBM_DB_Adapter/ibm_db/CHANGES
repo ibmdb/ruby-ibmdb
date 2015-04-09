@@ -1,8 +1,11 @@
 Change Log
 ==============
+2015/04/08 (IBM_DB adapter 2.5.26, driver 2.5.26)
+  - Fixed bug#22 - Error 'undefined method lookup_cast_type encountered' with rails version lesser than 4.2
+
 2015/03/24 (IBM_DB adapter 2.5.25, driver 2.5.25)
   - Support for Rails 4.2.x
-  - Support for Ruby  2.2.x
+  - Support for Ruby  2.2.x on Windows and Linux platform
 
 2014/08/03 (IBM_DB adapter 2.5.18, driver 2.5.14) :
   - Support for Rails 4.1.x
