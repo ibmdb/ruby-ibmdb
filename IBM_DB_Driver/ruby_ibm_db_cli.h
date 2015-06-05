@@ -2,9 +2,9 @@
   +----------------------------------------------------------------------+
   |  Licensed Materials - Property of IBM                                |
   |                                                                      |
-  | (C) Copyright IBM Corporation 2009, 2010, 2012                       |
+  | (C) Copyright IBM Corporation 2009 - 2015                            |
   +----------------------------------------------------------------------+
-  | Authors: Praveen Devarao                                             |
+  | Authors: Praveen Devarao, Arvind Gupta                               |
   +----------------------------------------------------------------------+
 */
 
@@ -89,7 +89,6 @@ typedef struct _conn_handle_struct {
   SQLSMALLINT  ruby_error_msg_len;
 
   SQLINTEGER   sqlcode;
-
 } conn_handle;
 
 typedef union {
@@ -151,6 +150,7 @@ typedef struct _stmt_handle_struct {
   SQLPOINTER   ruby_stmt_err_state;
   SQLSMALLINT  ruby_stmt_err_msg_len;
   SQLINTEGER   sqlcode;
+  int		   rc;
 } stmt_handle;
 
 /* 
@@ -180,6 +180,7 @@ typedef struct _ibm_db_end_tran_args_struct {
   SQLHANDLE      *hdbc;
   SQLSMALLINT    handleType;
   SQLSMALLINT    completionType;
+  int 			 rc;
 } end_tran_args;
 
 /* 
@@ -192,6 +193,7 @@ typedef struct _ibm_db_describeparam_args_struct {
   SQLUINTEGER   sql_precision;
   SQLSMALLINT   sql_scale;
   SQLSMALLINT   sql_nullable;
+  int 			rc;
 } describeparam_args;
 
 /* 
@@ -232,6 +234,7 @@ typedef struct _ibm_db_metadata_args_struct {
   SQLSMALLINT   table_type_len;
   int           scope;       /*Used in SQLSpecialColumns To determine the scope of the unique row identifier*/
   int           unique;      /*Used in SQLStatistics to determine if only unique indexes are to be fetched or all*/
+  int 			rc;
 
 } metadata_args;
 
@@ -246,6 +249,7 @@ typedef struct _ibm_db_exec_direct_args_struct {
   SQLCHAR       *stmt_string;
 #endif
   long          stmt_string_len;
+  int 			rc;
 } exec_cum_prepare_args;
 
 /* 
@@ -265,6 +269,7 @@ typedef struct _ibm_db_create_drop_db_args_struct {
   long          dbName_string_len;
   long          codeSet_string_len;
   long          mode_string_len;
+  int 			rc;
 } create_drop_db_args;
 
 /* 
@@ -281,7 +286,7 @@ typedef struct _ibm_db_param_and_put_data_struct {
 typedef struct _ibm_db_next_result_args_struct {
   SQLHSTMT      *new_hstmt;
   stmt_handle   *stmt_res;
-
+  int 			rc;
 } next_result_args;
 
 /* 
@@ -290,6 +295,7 @@ typedef struct _ibm_db_next_result_args_struct {
 typedef struct _ibm_db_row_col_count_struct {
   stmt_handle    *stmt_res;
   SQLSMALLINT    count;
+  int 			 rc;
 } row_col_count_args;
 
 /* 
@@ -298,6 +304,7 @@ typedef struct _ibm_db_row_col_count_struct {
 typedef struct _ibm_db_row_count_struct {
   stmt_handle    *stmt_res;
   SQLINTEGER     count;
+  int 			 rc;
 } sql_row_count_args;
 
 /* 
@@ -308,6 +315,7 @@ typedef struct _ibm_db_col_attr_struct {
   SQLSMALLINT    col_num;
   SQLSMALLINT    FieldIdentifier;
   SQLINTEGER     num_attr;
+  int 			 rc;
 } col_attr_args;
 
 /* 
@@ -416,6 +424,7 @@ typedef struct _ibm_db_get_info_struct {
   SQLPOINTER    infoValue;
   SQLSMALLINT   buff_length;
   SQLSMALLINT   *out_length;
+  VALUE 		return_value;
 } get_info_args;
 
 /* 
@@ -430,6 +439,7 @@ typedef struct _ibm_db_get_diagRec_struct {
   SQLINTEGER        *NativeErrorPtr;
   SQLSMALLINT       buff_length;
   SQLSMALLINT       *text_length_ptr;
+  int  				return_code;
 } get_diagRec_args;
 
 /* 
@@ -438,6 +448,7 @@ typedef struct _ibm_db_get_diagRec_struct {
 typedef struct _ibm_db_free_stmt_struct {
   stmt_handle   *stmt_res;
   SQLUSMALLINT  option;
+  int			rc;
 } free_stmt_args;
 
 int _ruby_ibm_db_SQLConnect_helper(connect_args *data);

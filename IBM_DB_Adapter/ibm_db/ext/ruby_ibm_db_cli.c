@@ -2,9 +2,9 @@
   +----------------------------------------------------------------------+
   |  Licensed Materials - Property of IBM                                |
   |                                                                      |
-  | (C) Copyright IBM Corporation 2009, 2010, 2012                       |
+  | (C) Copyright IBM Corporation 2009 - 2015                            |
   +----------------------------------------------------------------------+
-  | Authors: Praveen Devarao                                             |
+  | Authors: Praveen Devarao, Arvind Gupta                               |
   +----------------------------------------------------------------------+
 */
 
@@ -20,6 +20,8 @@
     rb_thread_blocking_region method, which inturn will release the GVL while these operations are being performed. 
     With this the executing thread will become unblocking allowing concurrent threads perform operations simultaneously.
 */
+
+#include "ruby.h"
 
 #include "ruby_ibm_db_cli.h"
 
@@ -60,7 +62,7 @@ int _ruby_ibm_db_SQLDisconnect_helper(SQLHANDLE *hdbc) {
    Connection level Unblock function. This function is called when a thread interruput is issued while executing a
    connection level SQL call
 */
-void _ruby_ibm_db_Connection_level_UBF(void *data) {
+void _ruby_ibm_db_Connection_level_UBF(void *data) {	
     return;
 }
 
@@ -68,7 +70,10 @@ void _ruby_ibm_db_Connection_level_UBF(void *data) {
     This function will commit and end the inprogress transaction by issuing a SQLCommit
 */
 int _ruby_ibm_db_SQLEndTran(end_tran_args *endtran_args) {
-  return SQLEndTran( endtran_args->handleType, *(endtran_args->hdbc), endtran_args->completionType );  
+  int rc = 0;
+  rc = SQLEndTran( endtran_args->handleType, *(endtran_args->hdbc), endtran_args->completionType );  
+  endtran_args->rc = rc;
+  return rc;
 }
 
 /*
@@ -82,7 +87,7 @@ int _ruby_ibm_db_SQLDescribeParam_helper(describeparam_args *data) {
                 &(data->sql_precision), &(data->sql_scale), &(data->sql_nullable) );
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -117,7 +122,6 @@ int _ruby_ibm_db_SQLDescribeCol_helper(describecol_args *data) {
 */
 int _ruby_ibm_db_SQLBindCol_helper(bind_col_args *data) {
   int rc = 0;
-
   data->stmt_res->is_executing = 1;
 
   rc = SQLBindCol( (SQLHSTMT) data->stmt_res->hstmt, (SQLUSMALLINT)(data->col_num),
@@ -125,7 +129,6 @@ int _ruby_ibm_db_SQLBindCol_helper(bind_col_args *data) {
           data->out_length );
 
   data->stmt_res->is_executing = 0;
-
   return rc;
 }
 
@@ -148,7 +151,7 @@ int _ruby_ibm_db_SQLColumnPrivileges_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc=rc;
   return rc;
 
 }
@@ -172,7 +175,7 @@ int _ruby_ibm_db_SQLColumns_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -193,7 +196,7 @@ int _ruby_ibm_db_SQLPrimaryKeys_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -216,7 +219,7 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -238,7 +241,7 @@ int _ruby_ibm_db_SQLProcedureColumns_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -260,7 +263,7 @@ int _ruby_ibm_db_SQLProcedures_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -284,7 +287,7 @@ int _ruby_ibm_db_SQLSpecialColumns_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -305,7 +308,7 @@ int _ruby_ibm_db_SQLStatistics_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc= rc;
   return rc;
 }
 
@@ -327,7 +330,7 @@ int _ruby_ibm_db_SQLTablePrivileges_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -349,7 +352,7 @@ int _ruby_ibm_db_SQLTables_helper(metadata_args *data) {
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -362,13 +365,13 @@ int _ruby_ibm_db_SQLExecDirect_helper(exec_cum_prepare_args *data) {
   data->stmt_res->is_executing = 1;
 
 #ifndef UNICODE_SUPPORT_VERSION
-  rc = SQLExecDirect( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );
+  rc = SQLExecDirect( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );  
 #else
   rc = SQLExecDirectW( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );
 #endif
 
   data->stmt_res->is_executing = 0;
-
+  data->rc=rc;
   return rc;
 }
 
@@ -422,7 +425,8 @@ int _ruby_ibm_db_SQLCreateDB_helper(create_drop_db_args *data) {
   rc = (*sqlcreatedb)( (SQLHSTMT) data->conn_res->hdbc, data->dbName, (SQLINTEGER)data->dbName_string_len, 
                             data->codeSet, (SQLINTEGER)data->codeSet_string_len,
 							data->mode, (SQLINTEGER)data->mode_string_len );
-  DLCLOSE( cliLib );
+  data->rc =rc;							
+  DLCLOSE( cliLib );  
   return rc;
 }
 
@@ -506,10 +510,10 @@ int _ruby_ibm_db_SQLFreeStmt_helper(free_stmt_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-  SQLFreeStmt((SQLHSTMT)data->stmt_res->hstmt, data->option );
+  rc = SQLFreeStmt((SQLHSTMT)data->stmt_res->hstmt, data->option );
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -555,7 +559,7 @@ int _ruby_ibm_db_SQLColAttributes_helper(col_attr_args *data) {
                      data->FieldIdentifier, NULL, 0, NULL, &(data->num_attr) );
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -639,7 +643,7 @@ int _ruby_ibm_db_SQLNextResult_helper(next_result_args *data) {
   rc = SQLNextResult( (SQLHSTMT) data->stmt_res->hstmt, (SQLHSTMT) *(data->new_hstmt) );
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -685,7 +689,7 @@ int _ruby_ibm_db_SQLNumResultCols_helper(row_col_count_args *data) {
   rc = SQLNumResultCols( (SQLHSTMT) data->stmt_res->hstmt, (SQLSMALLINT*) &(data->count) );
 
   data->stmt_res->is_executing = 0;
-
+  data->rc = rc;
   return rc;
 }
 
@@ -735,8 +739,10 @@ int _ruby_ibm_db_SQLGetInfo_helper(get_info_args *data) {
 */
 int _ruby_ibm_db_SQLGetDiagRec_helper(get_diagRec_args *data) {
 #ifdef UNICODE_SUPPORT_VERSION
-  return SQLGetDiagRecW( data->hType, data->handle, data->recNum, data->SQLState, data->NativeErrorPtr,
+  int rc= SQLGetDiagRecW( data->hType, data->handle, data->recNum, data->SQLState, data->NativeErrorPtr,
                               data->msgText, data->buff_length, data->text_length_ptr );
+  data->return_code=rc;
+  return rc;  
 #else
   return SQLGetDiagRec(data->hType, data->handle, data->recNum, data->SQLState, data->NativeErrorPtr,
                               data->msgText, data->buff_length, data->text_length_ptr );

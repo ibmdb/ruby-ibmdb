@@ -1,5 +1,9 @@
 Change Log
 ==============
+2015/06/08 (IBM_DB adapter 2.5.27, driver 2.5.27)
+  - Support for Ruby  2.2.x on Windows and Linux platform
+  - Fixed bug#28 Create table fails on db:migrate task in ActiveRecord 4.2.1 if database adapter not support foreign_keys.
+
 2015/04/08 (IBM_DB adapter 2.5.26, driver 2.5.26)
   - Fixed bug#22 - Error 'undefined method lookup_cast_type encountered' with rails version lesser than 4.2
 

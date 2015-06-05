@@ -422,6 +422,7 @@ module ActiveRecord
         @temporary = temporary
         @options = options
         @name = name
+        @foreign_keys = {}
       end
 
       def native

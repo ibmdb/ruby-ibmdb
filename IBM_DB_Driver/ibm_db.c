@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "2.5.25"
+#define MODULE_RELEASE "2.5.27"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -57,6 +57,7 @@ typedef struct _stmt_bind_data_array {
   SQLSMALLINT   num;
   int           bind_params;
   VALUE         *error;
+  VALUE         return_value;
 }stmt_bind_array;
 
 /*
@@ -69,7 +70,9 @@ typedef struct _ibm_db_connect_helper_args_struct {
   VALUE         *options;
   VALUE         *error;
   int           literal_replacement;
-  VALUE         hKey;
+  VALUE         hKey;  
+  conn_handle *conn_res;
+  VALUE         entry;
 } connect_helper_args;
 
 /*
@@ -79,6 +82,7 @@ typedef struct _ibm_db_result_args_struct {
   stmt_handle  *stmt_res;
   VALUE        column;
   VALUE        *error;
+  VALUE 	   return_value;
 } ibm_db_result_args;
 
 /*
@@ -90,6 +94,7 @@ typedef struct _ibm_db_fetch_helper_struct {
   int          arg_count;
   int          funcType;
   VALUE        *error;
+  VALUE 	   return_value;
 } ibm_db_fetch_helper_args;
 
 void ruby_init_ibm_db();
@@ -159,7 +164,6 @@ static VALUE id_id2name;
 
     utf8_enc  =  rb_enc_find("UTF-8");
     rbString  =  rb_external_str_new(str, strlen(str));
-
     return rb_str_export_to_enc(rbString, utf8_enc);
   }
 
@@ -171,7 +175,6 @@ static VALUE id_id2name;
     } else {
       utf16_enc = rb_enc_find("UTF-16LE");
     }
-
     return rb_external_str_new_with_enc((char *)str, len, utf16_enc);
   }
 
@@ -179,7 +182,7 @@ static VALUE id_id2name;
     VALUE rbString;
 
     rbString = _ruby_ibm_db_export_sqlwchar_to_utf16_rstr( str, len ); /*Construct the Ruby string from SQLWCHAR(which is in utf16)*/
-
+	
     return _ruby_ibm_db_export_str_to_utf8(rbString); /*Convert the string to utf8 encoding*/
   }
 
@@ -187,7 +190,7 @@ static VALUE id_id2name;
     rb_encoding *utf8_enc;
 
     utf8_enc  =  rb_enc_find("UTF-8");
-
+	
     return rb_external_str_new_with_enc((char *)str, len, utf8_enc);
   }
 #endif
@@ -195,6 +198,7 @@ static VALUE id_id2name;
 /*  Every user visible function must have an entry in Init_ibm_db
 */
 void Init_ibm_db(void) {
+	
   mDB = rb_define_module("IBM_DB");
 
   rb_define_module_function(mDB, "connect", ibm_db_connect, -1);
@@ -260,7 +264,7 @@ void Init_ibm_db(void) {
   rb_define_module_function(mDB, "server_info", ibm_db_server_info, -1);
   rb_define_module_function(mDB, "client_info", ibm_db_client_info, -1);
   rb_define_module_function(mDB, "active", ibm_db_active, -1);
-
+  
   RUBY_FE(connect)
   RUBY_FE(commit)
   RUBY_FE(pconnect)
@@ -326,7 +330,7 @@ void Init_ibm_db(void) {
   id_keys     =  rb_intern("keys");
   id_new      =  rb_intern("new");
   id_id2name  =  rb_intern("id2name");
-
+  
 };
 /*  */
 
@@ -341,7 +345,7 @@ static void ruby_ibm_db_load_necessary_libs() {
 }
 
 #ifdef _WIN32
-static void ruby_ibm_db_check_sqlcreatedb(HINSTANCE cliLib) {
+static void ruby_ibm_db_check_sqlcreatedb(HINSTANCE cliLib) {	
    FARPROC sqlcreatedb;
    sqlcreatedb =  DLSYM( cliLib, "SQLCreateDbW" );
 #else
@@ -397,6 +401,7 @@ static void ruby_ibm_db_init_globals(struct _ibm_db_globals *ibm_db_globals)
   memset(ibm_db_globals->__ruby_stmt_err_msg, '\0', DB2_MAX_ERR_MSG_LEN);
   memset(ibm_db_globals->__ruby_conn_err_state, '\0', SQL_SQLSTATE_SIZE + 1);
   memset(ibm_db_globals->__ruby_stmt_err_state, '\0', SQL_SQLSTATE_SIZE + 1);
+  
 }
 /*  */
 
@@ -481,11 +486,12 @@ static void _ruby_ibm_db_mark_conn_struct(conn_handle *handle)
 /*  static void _ruby_ibm_db_free_conn_struct */
 static void _ruby_ibm_db_free_conn_struct(conn_handle *handle)
 {
+  	
   int rc;
   end_tran_args *end_X_args;
 
   if ( handle != NULL ) {
-    /* Disconnect from DB. If stmt is allocated, it is freed automatically*/
+    //Disconnect from DB. If stmt is allocated, it is freed automatically
     if ( handle->handle_active ) {
       if( handle->transaction_active == 1 && handle->auto_commit == 0 ) {
         handle->transaction_active = 0;
@@ -494,14 +500,14 @@ static void _ruby_ibm_db_free_conn_struct(conn_handle *handle)
 
         end_X_args->hdbc            =  &(handle->hdbc);
         end_X_args->handleType      =  SQL_HANDLE_DBC;
-        end_X_args->completionType  =  SQL_ROLLBACK; /*Note we are rolling back the transaction*/
+        end_X_args->completionType  =  SQL_ROLLBACK; //Note we are rolling back the transaction
 
         _ruby_ibm_db_SQLEndTran( end_X_args );
 
         ruby_xfree( end_X_args );
 
       }
-      rc = _ruby_ibm_db_SQLDisconnect_helper( &(handle->hdbc) );
+	  rc = _ruby_ibm_db_SQLDisconnect_helper( &(handle->hdbc) );
       rc = SQLFreeHandle(SQL_HANDLE_DBC, handle->hdbc );
       rc = SQLFreeHandle(SQL_HANDLE_ENV, handle->henv );
     }
@@ -516,14 +522,15 @@ static void _ruby_ibm_db_free_conn_struct(conn_handle *handle)
       handle->ruby_error_state  =  NULL;
     }
 
-    /*if ( handle->flag_pconnect ) {
-        ruby_xfree( handle );
-    } else {
-      ruby_xfree( handle );
-    }*/
+    //if ( handle->flag_pconnect ) {
+    //    ruby_xfree( handle );
+    //} else {
+    //  ruby_xfree( handle );
+    //}
     ruby_xfree( handle );
     handle = NULL;
   }
+  
 }
 /*  */
 
@@ -563,20 +570,18 @@ static void _ruby_ibm_db_free_result_struct(stmt_handle* handle)
 {
   int i;
   param_node *curr_ptr = NULL, *prev_ptr = NULL;
+  
 
   if ( handle != NULL ) {
     /* Free param cache list */
     curr_ptr = handle->head_cache_list;
     prev_ptr = handle->head_cache_list;
-
     while ( curr_ptr != NULL ) {
       curr_ptr = curr_ptr->next;
-
       if ( prev_ptr->varname != NULL ) {
         ruby_xfree( prev_ptr->varname );
         prev_ptr->varname = NULL;
       }
-
       if ( prev_ptr->svalue != NULL ) {
         ruby_xfree( prev_ptr->svalue );
         prev_ptr->svalue = NULL;
@@ -588,7 +593,6 @@ static void _ruby_ibm_db_free_result_struct(stmt_handle* handle)
     handle->head_cache_list = NULL;
     handle->num_params      = 0;
     handle->current_node    = NULL;
-
     /* free row data cache */
     if ( handle->row_data ) {
       for (i=0; i<handle->num_columns;i++) {
@@ -620,7 +624,6 @@ static void _ruby_ibm_db_free_result_struct(stmt_handle* handle)
       ruby_xfree( handle->row_data );
       handle->row_data = NULL;
     }
-
     /* free column info cache */
     if ( handle->column_info ) {
       for (i=0; i<handle->num_columns; i++) {
@@ -682,22 +685,28 @@ static void _ruby_ibm_db_mark_stmt_struct(stmt_handle *handle)
 }
 
 
-//VALUE ibm_Ruby_Thread_Call(void *(*func)(void *), void *data1, rb_unblock_function_t *ubf, void *data2)
 VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock_function_t *ubf, void *data2)
-  {	
-#ifdef RUBY_API_VERSION_MAJOR 
-	if( RUBY_API_VERSION_MAJOR >=2 && RUBY_API_VERSION_MINOR >=2) 
-	{
-		void *(*f)(void*) = (void *(*)(void*))func;
-		rb_thread_call_without_gvl(f, data1, ubf, data2);
-	}
-	else	
-	{
-		return rb_thread_blocking_region(func, data1, ubf, data2);	
-	}
-#else 	
-		return rb_thread_blocking_region(func, data1, ubf, data2);	
-#endif	
+{
+	#ifdef RUBY_API_VERSION_MAJOR 
+		if( RUBY_API_VERSION_MAJOR >=2 && RUBY_API_VERSION_MINOR >=2) 
+		{
+			
+			#ifdef _WIN32
+				void *(*f)(void*) = (void *(*)(void*))func;
+				return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+			#elif __APPLE__
+				return rb_thread_call_without_gvl(func, data1, ubf, data2);                	   
+			#else
+				rb_thread_call_without_gvl(func, data1, ubf, data2);
+	#endif	
+		}		
+		else	
+		{
+			rb_thread_call_without_gvl(func, data1, ubf, data2);
+		}
+	#else
+		rb_thread_call_without_gvl(func, data1, ubf, data2);
+	#endif	
   }
   
 
@@ -708,7 +717,6 @@ static void _ruby_ibm_db_free_stmt_handle_and_resources(stmt_handle *handle)
 {
   int rc;
   if ( handle != NULL ) {
-
     if( !handle->is_freed ) {
       rc = SQLFreeHandle( SQL_HANDLE_STMT, handle->hstmt );
 
@@ -718,7 +726,6 @@ static void _ruby_ibm_db_free_stmt_handle_and_resources(stmt_handle *handle)
         ruby_xfree( handle->ruby_stmt_err_msg );
         handle->ruby_stmt_err_msg = NULL;
       }
-
       if( handle->ruby_stmt_err_state != NULL ) {
         ruby_xfree( handle->ruby_stmt_err_state );
         handle->ruby_stmt_err_state = NULL;
@@ -732,12 +739,12 @@ static void _ruby_ibm_db_free_stmt_handle_and_resources(stmt_handle *handle)
 
 /*  static _ruby_ibm_db_free_stmt_struct */
 static void _ruby_ibm_db_free_stmt_struct(stmt_handle *handle)
-{
+{		
   if ( handle != NULL ) {
     _ruby_ibm_db_free_stmt_handle_and_resources( handle );
     ruby_xfree( handle );
-    handle = NULL;
-  }
+    handle = NULL;	
+  }  
 }
 
 /*  */
@@ -766,6 +773,7 @@ VALUE ibm_db_row_object(int argc, VALUE *argv, VALUE self)
 */
 void ruby_init_ibm_db()
 {
+	
 #ifndef _WIN32
   /* Declare variables for DB2 instance settings */
   char * tmp_name      =  NULL;
@@ -774,9 +782,9 @@ void ruby_init_ibm_db()
 
   ibm_db_globals = ALLOC(struct _ibm_db_globals);
   memset(ibm_db_globals, '\0', sizeof(struct _ibm_db_globals));
-
+	
   ruby_ibm_db_init_globals(ibm_db_globals);
-
+  
   /* Specifies that binary data shall be converted to a hexadecimal encoding and returned as an ASCII string */
   rb_define_const(mDB, "BINARY", INT2NUM(1));
   /* Specifies that binary data shall be converted to a hexadecimal encoding and returned as an ASCII string */
@@ -887,7 +895,7 @@ void ruby_init_ibm_db()
 #endif
 
   persistent_list = rb_hash_new();
-
+  
   le_conn_struct   =  rb_define_class_under(mDB, "Connection", rb_cObject);
   le_pconn_struct  =  rb_define_class_under(mDB, "PConnection", rb_cObject);
   le_stmt_struct   =  rb_define_class_under(mDB, "Statement", rb_cObject);
@@ -932,6 +940,7 @@ void ruby_init_ibm_db()
   ruby_ibm_db_load_necessary_libs();
 
   ruby_ibm_db_check_if_cli_func_supported();
+  
 }
 /*  */
 
@@ -1016,10 +1025,10 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
 
   if( release_gil == 1 ){
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //return_code  = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLGetDiagRec_helper, get_DiagRec_args,
-	  return_code  = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLGetDiagRec_helper, get_DiagRec_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLGetDiagRec_helper, get_DiagRec_args,
                                 (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	  return_code  =get_DiagRec_args->return_code; 						
     #else
       return_code  =  _ruby_ibm_db_SQLGetDiagRec_helper( get_DiagRec_args );
     #endif
@@ -1287,6 +1296,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
   if( sqlstate != NULL ) {
     ruby_xfree( sqlstate );
   }
+  
 }
 /*  */
 
@@ -1590,6 +1600,7 @@ static int _ruby_ibm_db_parse_options ( VALUE options, int type, void *handle, V
   if( ret_val == Qfalse ){
     return SQL_ERROR;
   }
+  
   return SQL_SUCCESS;
 }
 /*  */
@@ -1622,6 +1633,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
     _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, (SQLHSTMT)stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
     ruby_xfree( result_cols_args );
     result_cols_args = NULL;
+	stmt_res->rc = -1;
     return -1;
   }
   stmt_res->num_columns = result_cols_args->count;
@@ -1662,6 +1674,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
       result_cols_args       =  NULL;
       describecolargs        =  NULL;
       stmt_res->column_info  =  NULL;
+	  stmt_res->rc = -1;
       return -1;
     }
     if ( describecolargs->name_length <= 0 ) {
@@ -1694,6 +1707,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
         result_cols_args       =  NULL;
         describecolargs        =  NULL;
         stmt_res->column_info  =  NULL;
+		stmt_res->rc = -1;
         return -1;
       }
     } else {
@@ -1716,6 +1730,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
     ruby_xfree( result_cols_args );
     result_cols_args = NULL;
   }
+  stmt_res->rc = 0;
   return 0;
 }
 /*  */
@@ -1738,7 +1753,7 @@ static int _ruby_ibm_db_bind_column_helper(stmt_handle *stmt_res)
   memset(bindCol_args,'\0',sizeof(struct _ibm_db_bind_col_struct));
 
   bindCol_args->stmt_res  =  stmt_res;
-
+  
   for (i=0; i<stmt_res->num_columns; i++) {
     column_type =  stmt_res->column_info[i].type;
     row_data    =  &stmt_res->row_data[i].data;
@@ -1784,7 +1799,6 @@ static int _ruby_ibm_db_bind_column_helper(stmt_handle *stmt_res)
         bindCol_args->out_length      =  (SQLLEN *) (&stmt_res->row_data[i].out_length);
 
         rc = _ruby_ibm_db_SQLBindCol_helper( bindCol_args );
-
         if ( rc == SQL_ERROR ) {
           _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, (SQLHSTMT)stmt_res->hstmt, SQL_HANDLE_STMT,
                     rc, 1, NULL, NULL, -1, 1, 0 );
@@ -1945,7 +1959,7 @@ static int _ruby_ibm_db_bind_column_helper(stmt_handle *stmt_res)
         bindCol_args->buff_length     =  4;
         bindCol_args->TargetValuePtr  =  &stmt_res->column_info[i].lob_loc;
         bindCol_args->out_length      =  &stmt_res->column_info[i].loc_ind;
-
+	
         rc = _ruby_ibm_db_SQLBindCol_helper( bindCol_args );
 
         if ( rc == SQL_ERROR ) {
@@ -1967,12 +1981,12 @@ static int _ruby_ibm_db_bind_column_helper(stmt_handle *stmt_res)
     bindCol_args->TargetValuePtr  =  NULL;
     bindCol_args->out_length      =  NULL;
   }
-
   /*Free Any Memory Allocated*/
   if ( bindCol_args != NULL ) {
     ruby_xfree( bindCol_args );
     bindCol_args = NULL;
   }
+  
   return rc;
 }
 /*  */
@@ -2017,6 +2031,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
   get_handle_attr_args   *get_handleAttr_args =  NULL;
 
   conn_alive = 1;
+  
 
   handleAttr_args = ALLOC( set_handle_attr_args );
   memset(handleAttr_args,'\0',sizeof(struct _ibm_db_set_handle_attr_struct));
@@ -2024,8 +2039,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
   do {
     /* Check if we already have a connection for this userID & database combination */
     if ( isPersistent ) {
-
-      if ( !NIL_P(entry = rb_hash_aref(persistent_list, data->hKey)) ) {
+      if ( !NIL_P(entry = rb_hash_aref(persistent_list, data->hKey)) ) {		  
         Data_Get_Struct(entry, conn_handle, conn_res);
 #ifndef PASE /* i5/OS server mode is persistant */
         /* Need to reinitialize connection? */
@@ -2037,9 +2051,9 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         get_handleAttr_args->valuePtr     =  (SQLPOINTER)&conn_alive;
         get_handleAttr_args->buff_length  =  0;
         get_handleAttr_args->out_length   =  NULL;
-
+		
         rc = _ruby_ibm_db_SQLGetConnectAttr_helper( get_handleAttr_args );
-
+		
         ruby_xfree( get_handleAttr_args );
         get_handleAttr_args = NULL;
 
@@ -2053,12 +2067,10 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
     } else {
       /* Need to check for max pconnections? */
     }
-
     if ( conn_res == NULL ) {
       conn_res = ALLOC(conn_handle);
       memset(conn_res, '\0', sizeof(conn_handle));
     }
-
     /* handle not active as of yet */
     conn_res->handle_active = 0;
 
@@ -2094,10 +2106,8 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         return Qnil;
         break;
       }
-
       handleAttr_args->handle      =  &( conn_res->henv );
       handleAttr_args->strLength   =  0;
-
 #ifndef PASE /* i5/OS server mode */
       handleAttr_args->attribute   =  SQL_ATTR_ODBC_VERSION;
       handleAttr_args->valuePtr    =  (void *) SQL_OV_ODBC3;
@@ -2106,7 +2116,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       handleAttr_args->attribute   =  SQL_ATTR_SERVER_MODE;
       handleAttr_args->valuePtr    =  &attr;
 #endif /* PASE */
-
       rc = _ruby_ibm_db_SQLSetEnvAttr_helper( handleAttr_args );
 
       if (rc != SQL_SUCCESS) {
@@ -2134,7 +2143,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         break;
       }
     }
-
     if (! reused) {
       /* Alloc CONNECT Handle */
       rc = SQLAllocHandle( SQL_HANDLE_DBC, conn_res->henv, &(conn_res->hdbc) );
@@ -2162,7 +2170,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         break;
       }
     }
-
     handleAttr_args->handle      =  &(conn_res->hdbc);
     handleAttr_args->strLength   =  SQL_NTS;
     handleAttr_args->attribute   =  SQL_ATTR_AUTOCOMMIT;
@@ -2174,13 +2181,11 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
     handleAttr_args->valuePtr =  (SQLPOINTER)(conn_res->auto_commit);
 
     rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
-
 #else
     conn_res->auto_commit     =  SQL_AUTOCOMMIT_ON;
     handleAttr_args->valuePtr =  (SQLPOINTER)(&conn_res->auto_commit);
 
     rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
-
     if (!IBM_DB_G(i5_allow_commit)) {
       if (!rc) {
         SQLINTEGER nocommitpase      =  SQL_TXN_NO_COMMIT;
@@ -2193,7 +2198,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       }
     }
 #endif
-
     conn_res->c_bin_mode     =  IBM_DB_G(bin_mode);
     conn_res->c_case_mode    =  CASE_NATURAL;
     conn_res->c_cursor_type  =  SQL_SCROLL_FORWARD_ONLY;
@@ -2207,7 +2211,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
     conn_res->errorType              =  1;
 
     conn_res->transaction_active     =  0; /*No transaction is active*/
-
     /* Set Options */
     if ( !NIL_P(*options) ) {
       rc = _ruby_ibm_db_parse_options( *options, SQL_HANDLE_DBC, conn_res, error );
@@ -2220,12 +2223,10 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         return Qnil;
       }
     }
-
     if (! reused) {
       conn_args->hdbc = &(conn_res->hdbc);
 
       rc = _ruby_ibm_db_SQLConnect_helper( conn_args );
-
       if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
         SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc );
@@ -2240,38 +2241,33 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         } else {
 #ifdef UNICODE_SUPPORT_VERSION
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Connection failed: <error message could not be retrieved>");
-#else
+#else	
           *error = rb_str_new2("Connection failed: <error message could not be retrieved>");
 #endif
         }
         ruby_xfree( handleAttr_args );
-        handleAttr_args = NULL;
-        _ruby_ibm_db_free_conn_struct( conn_res );
+        handleAttr_args = NULL;		
+        _ruby_ibm_db_free_conn_struct( conn_res );		
         return Qnil;
-      }
-
+      }      
       /* Get the AUTOCOMMIT state from the CLI driver as cli driver could have changed autocommit status based on it's precedence  */
       get_handleAttr_args = ALLOC( get_handle_attr_args );
       memset(get_handleAttr_args,'\0',sizeof(struct _ibm_db_get_handle_attr_struct));
-
+	  
       get_handleAttr_args->handle       =  &( conn_res->hdbc );
       get_handleAttr_args->attribute    =  SQL_ATTR_AUTOCOMMIT;
-      get_handleAttr_args->valuePtr     =  (SQLPOINTER)(&conn_res->auto_commit);
+      get_handleAttr_args->valuePtr     =  (SQLPOINTER)(&conn_res->auto_commit);	  
       get_handleAttr_args->buff_length  =  0;
-      get_handleAttr_args->out_length   =  NULL;
-
-      rc = _ruby_ibm_db_SQLGetConnectAttr_helper( get_handleAttr_args );
-
+      get_handleAttr_args->out_length   =  NULL;	  
+      rc = _ruby_ibm_db_SQLGetConnectAttr_helper( get_handleAttr_args );	  
       ruby_xfree( get_handleAttr_args );
       get_handleAttr_args = NULL;
-
       if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
-        rc = _ruby_ibm_db_SQLDisconnect_helper( &(conn_res->hdbc)  );
+		rc = _ruby_ibm_db_SQLDisconnect_helper( &(conn_res->hdbc)  );        
         SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc );
-        SQLFreeHandle( SQL_HANDLE_ENV, conn_res->henv );
-        if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {
-
+        SQLFreeHandle( SQL_HANDLE_ENV, conn_res->henv );		
+        if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {			
 #ifdef UNICODE_SUPPORT_VERSION
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Failed to retrieve autocommit status during connection: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(conn_res->ruby_error_msg, conn_res->ruby_error_msg_len));
@@ -2291,7 +2287,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         return Qnil;
 
       }
-
 #ifdef CLI_DBC_SERVER_TYPE_DB2LUW
 #ifdef SQL_ATTR_DECFLOAT_ROUNDING_MODE
                                                                                          
@@ -2303,7 +2298,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
 
 #endif
 #endif
-
       /* Get the server name */
 #ifdef UNICODE_SUPPORT_VERSION
       server = ALLOC_N(SQLWCHAR, 2048);
@@ -2314,20 +2308,18 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       server = ALLOC_N(SQLCHAR, 2048);
       memset(server, 0, sizeof(server));
 #endif
-
       getInfo_args = ALLOC( get_info_args );
       memset(getInfo_args,'\0',sizeof(struct _ibm_db_get_info_struct));
-
       getInfo_args->conn_res     =  conn_res;
       getInfo_args->out_length   =  &out_length;
       getInfo_args->infoType     =  SQL_DBMS_NAME;
       getInfo_args->infoValue    =  (SQLPOINTER)server;
+	  
 #ifdef UNICODE_SUPPORT_VERSION
       getInfo_args->buff_length  =  2048 * sizeof(SQLWCHAR);
 #else
       getInfo_args->buff_length  =  2048;
 #endif
-
       rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
 
 #ifndef UNICODE_SUPPORT_VERSION
@@ -2346,12 +2338,10 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         is_informix = 1;
       }
 #endif
-
       ruby_xfree( getInfo_args );
       ruby_xfree( server );
       getInfo_args = NULL;
       server       = NULL;
-
       rc = SQL_SUCCESS; /*Setting rc to SQL_SUCCESS, because the below block may or may not be executed*/
 
     /* Set SQL_ATTR_REPLACE_QUOTED_LITERALS connection attribute to
@@ -2368,7 +2358,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         handleAttr_args->strLength   =  SQL_IS_INTEGER;
         handleAttr_args->attribute   =  SQL_ATTR_REPLACE_QUOTED_LITERALS;
         handleAttr_args->valuePtr    =  (SQLPOINTER)(enable_numeric_literals);
-
         rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
         if (rc != SQL_SUCCESS) {
           handleAttr_args->attribute =  SQL_ATTR_REPLACE_QUOTED_LITERALS_OLDVALUE;
@@ -2382,7 +2371,6 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         handleAttr_args->strLength   =  SQL_IS_INTEGER;
         handleAttr_args->attribute   =  SQL_ATTR_REPLACE_QUOTED_LITERALS;
         handleAttr_args->valuePtr    =  (SQLPOINTER)(&enable_numeric_literals);
-
         rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
         if (rc != SQL_SUCCESS) {
           handleAttr_args->attribute =  SQL_ATTR_REPLACE_QUOTED_LITERALS_OLDVALUE;
@@ -2396,46 +2384,52 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
     }
     conn_res->handle_active = 1;
   } while (0);
-
   if( handleAttr_args != NULL ) {
     ruby_xfree( handleAttr_args );
     handleAttr_args = NULL;
   }
-
-  if (data->hKey != Qnil) {
-    if (! reused && rc == SQL_SUCCESS) {
+  if (data->hKey != Qnil) 
+  {
+	  //data->conn_res = conn_res;	  
+	if (! reused && rc == SQL_SUCCESS) 
+	{
       /* If we created a new persistent connection, add it to the persistent_list */
       entry = Data_Wrap_Struct(le_pconn_struct,
-                _ruby_ibm_db_mark_pconn_struct, _ruby_ibm_db_free_pconn_struct,
+                _ruby_ibm_db_mark_pconn_struct, _ruby_ibm_db_free_pconn_struct,				
                 conn_res);
+	  //data->entry = entry;
       rb_hash_aset(persistent_list, data->hKey, entry);
     }
+	data->entry = entry;
   }
-
   if ( rc < SQL_SUCCESS ) {
     if (conn_res != NULL && conn_res->handle_active) {
       rc = SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc);
       rc = SQLFreeHandle(SQL_HANDLE_ENV, conn_res->henv );
     }
-
     /* free memory */
     if (conn_res != NULL) {
       conn_res->handle_active = 0;
       _ruby_ibm_db_free_conn_struct(conn_res);
     }
-
     return Qfalse;
   } else if (!NIL_P(entry)) {
-    return entry;
+	  //data->conn_res = conn_res; 
+      return entry;	
   } else if (isPersistent) {
-        return Data_Wrap_Struct(le_pconn_struct,
+	  //data->conn_res = conn_res;
+      entry = Data_Wrap_Struct(le_pconn_struct,
             _ruby_ibm_db_mark_pconn_struct, _ruby_ibm_db_free_pconn_struct,
             conn_res);
+	   data->entry = entry;
   } else {
-        return Data_Wrap_Struct(le_conn_struct,
-            _ruby_ibm_db_mark_conn_struct, _ruby_ibm_db_free_conn_struct,
-            conn_res);
+		data->conn_res = conn_res;		
+		/* return Data_Wrap_Struct(le_conn_struct,
+_ruby_ibm_db_mark_conn_struct, _ruby_ibm_db_free_conn_struct,
+conn_res);
+		*/
   }
+  
 }
 
 /*  */
@@ -2446,7 +2440,8 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
 {
   connect_args        *conn_args    =  NULL;
   connect_helper_args *helper_args  =  NULL;
-
+  conn_handle *conn_res = NULL;
+  
   VALUE r_db, r_uid, r_passwd, options,return_value;
   VALUE r_literal_replacement = Qnil;
 
@@ -2455,36 +2450,37 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
 #endif
 
   VALUE error = Qnil;
-
+     
+  
   rb_scan_args(argc, argv, "32", &r_db, &r_uid, &r_passwd, &options, &r_literal_replacement );
 
   /* Allocate the mwmory for necessary components */
 
   conn_args = ALLOC( connect_args );
   memset(conn_args,'\0',sizeof(struct _ibm_db_connect_args_struct));
-
+  
 #ifndef UNICODE_SUPPORT_VERSION
   conn_args->database      =  (SQLCHAR *)   RSTRING_PTR( r_db );
   conn_args->database_len  =  (SQLSMALLINT) RSTRING_LEN( r_db );
 
   conn_args->uid           =  (SQLCHAR *)   RSTRING_PTR( r_uid );
   conn_args->uid_len       =  (SQLSMALLINT) RSTRING_LEN( r_uid );
-
+  
   conn_args->password      =  (SQLCHAR *)   RSTRING_PTR( r_passwd );
   conn_args->password_len  =  (SQLSMALLINT) RSTRING_LEN( r_passwd );
+  
 #else
   r_db_utf16               =  _ruby_ibm_db_export_str_to_utf16( r_db );
   r_db_ascii               =  _ruby_ibm_db_export_str_to_ascii( r_db );
   r_uid_utf16              =  _ruby_ibm_db_export_str_to_utf16( r_uid );
   r_passwd_utf16           =  _ruby_ibm_db_export_str_to_utf16( r_passwd );
-
+  
   conn_args->database      =  (SQLWCHAR *)  RSTRING_PTR( r_db_utf16 );
   conn_args->database_len  =  (SQLSMALLINT) RSTRING_LEN( r_db_utf16 )/sizeof(SQLWCHAR);
   /*RSTRING returns the number of bytes, while CLI expects number of SQLWCHAR(2 bytes) elements, hence dividing the len by 2*/
 
   conn_args->uid           =  (SQLWCHAR *)  RSTRING_PTR( r_uid_utf16 );
-  conn_args->uid_len       =  (SQLSMALLINT) RSTRING_LEN( r_uid_utf16 )/sizeof(SQLWCHAR);
-
+  conn_args->uid_len       =  (SQLSMALLINT) RSTRING_LEN( r_uid_utf16 )/sizeof(SQLWCHAR);  
   conn_args->password      =  (SQLWCHAR *)  RSTRING_PTR( r_passwd_utf16 );
   conn_args->password_len  =  (SQLSMALLINT) RSTRING_LEN( r_passwd_utf16 )/sizeof(SQLWCHAR);
 #endif
@@ -2499,15 +2495,17 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   } else {
     conn_args->ctlg_conn = 1;
   }
+  
 
-  helper_args = ALLOC( connect_helper_args );
+  helper_args = ALLOC( connect_helper_args );  
   memset(helper_args,'\0',sizeof(struct _ibm_db_connect_helper_args_struct));
+   
 
   helper_args->conn_args              =  conn_args;
   helper_args->isPersistent           =  isPersistent;
   helper_args->options                =  &options;
   helper_args->error                  =  &error;
-
+  
   if( isPersistent ) { 
   /*If making a persistent connection calculate the hash key to cache the connection in persistence list*/
 #ifndef UNICODE_SUPPORT_VERSION
@@ -2522,43 +2520,67 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   } else {
     helper_args->hKey = Qnil;
   }
-
   if( !NIL_P(r_literal_replacement) ) {
     helper_args->literal_replacement  =  NUM2INT(r_literal_replacement);
   } else {
     helper_args->literal_replacement  =  SET_QUOTED_LITERAL_REPLACEMENT_ON; /*QUOTED LITERAL replacemnt is ON by default*/
   }
-
   /* Call the function where the actual logic is being run*/
   #ifdef UNICODE_SUPPORT_VERSION
-    //return_value = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_connect_helper2, helper_args,
-	return_value = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_connect_helper2, helper_args,
-                             (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	
+	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_connect_helper2, helper_args, (void *)_ruby_ibm_db_Connection_level_UBF, NULL);	
+	
+				
+    conn_res = helper_args->conn_res;
+	
+	if(helper_args->isPersistent)
+	{
+		if(helper_args-> entry == NULL)
+		{
+			return_value = Qnil;
+		}
+		else
+		{
+			return_value = helper_args->entry;
+		}
+	}
+	else
+	{
+		if( conn_res == NULL )
+		{
+			return_value = Qnil;
+		}
+		else
+		{
+			return_value = Data_Wrap_Struct(le_conn_struct, _ruby_ibm_db_mark_conn_struct, _ruby_ibm_db_free_conn_struct, conn_res);
+		}		
+	}			 
   #else
     return_value = _ruby_ibm_db_connect_helper2( helper_args );
   #endif
-
   /* Free the memory allocated */
   if(conn_args != NULL) {
     /* Memory to structure elements of helper_args is not allocated explicitly hence it is automatically freed by Ruby.
        Dont try to explicitly free it, else a double free exception is thrown and the application will crash
        with memory dump.
     */
-    helper_args->conn_args = NULL;
-    ruby_xfree( conn_args );
-    conn_args = NULL;
+    helper_args->conn_args = NULL;	
+    ruby_xfree( conn_args );	
+    conn_args = NULL;		
   }
-
   if ( helper_args != NULL ) {
-    ruby_xfree( helper_args );
-    helper_args = NULL;
+    ruby_xfree( helper_args );	
+    helper_args = NULL;	
   }
-
   if( return_value == Qnil ){
-    rb_throw( RSTRING_PTR(error), Qnil );
-  }
+    rb_throw( RSTRING_PTR(error), Qnil );	
+  }  
   return return_value;
 }
+
+
+
+
 /*Check for feasibility of moving to other file*/
 typedef struct _rounding_mode_struct {
   stmt_handle  *stmt_res;
@@ -2710,7 +2732,7 @@ static int _ruby_ibm_db_set_decfloat_rounding_mode_client( set_handle_attr_args 
     rnd_mode->stmt_res = stmt_res;
 
     _ruby_ibm_db_set_decfloat_rounding_mode_client_helper(rnd_mode, conn_res);
-
+	
     _ruby_ibm_db_free_stmt_struct( rnd_mode->stmt_res );
     rnd_mode->stmt_res = NULL;
     stmt_res           = NULL;
@@ -2805,6 +2827,7 @@ static void _ruby_ibm_db_clear_conn_err_cache()
  */
 VALUE ibm_db_connect(int argc, VALUE *argv, VALUE self)
 {
+	
   _ruby_ibm_db_clear_conn_err_cache();
 
   return _ruby_ibm_db_connect_helper( argc, argv, 0 );
@@ -2869,13 +2892,14 @@ VALUE ibm_db_connect(int argc, VALUE *argv, VALUE self)
 VALUE ibm_db_pconnect(int argc, VALUE *argv, VALUE self)
 {
   _ruby_ibm_db_clear_conn_err_cache();
-
   return _ruby_ibm_db_connect_helper( argc, argv, 1);
+  
 }
 /*
  * CreateDB helper
  */
 VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet, VALUE mode, int createNX) {
+
   
   VALUE return_value    =  Qfalse;
 #ifdef UNICODE_SUPPORT_VERSION
@@ -2891,13 +2915,13 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
 
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
-
+		
 	if( 0 == createDbSupported ) {
       rb_warn("Create Database not supported: This function is only supported from DB2 Client v97fp4 version and onwards");
 	  return Qfalse;
     }
-
-    if (!conn_res->handle_active) {
+	
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -2949,10 +2973,10 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
 
 	_ruby_ibm_db_clear_conn_err_cache();
 
-#ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLCreateDB_helper, create_db_args,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLCreateDB_helper, create_db_args,
+#ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLCreateDB_helper, create_db_args,
                        (void *)_ruby_ibm_db_Connection_level_UBF, NULL );
+		rc = create_db_args->rc;
 #else
         rc = _ruby_ibm_db_SQLCreateDB_helper( create_db_args );
 #endif
@@ -3052,8 +3076,8 @@ VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
       rb_warn("Drop Database not supported: This function is only supported from DB2 Client v97fp4 version and onwards");
 	  return Qfalse;
     }
-
-    if (!conn_res->handle_active) {
+	
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -3079,10 +3103,10 @@ VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
 
 	_ruby_ibm_db_clear_conn_err_cache();
 
-#ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDropDB_helper, drop_db_args,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDropDB_helper, drop_db_args,
+#ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDropDB_helper, drop_db_args,
                        (void *)_ruby_ibm_db_Connection_level_UBF, NULL );
+		rc = drop_db_args->rc;
 #else
         rc = _ruby_ibm_db_SQLDropDB_helper( drop_db_args );
 #endif
@@ -3284,12 +3308,11 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
 
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
-
-    if (!conn_res->handle_active) {
+		
+    if (!conn_res || !conn_res->handle_active) {		
       rb_warn("Connection is not active");
       return Qfalse;
     }
-
     /* If value in handle is different from value passed in */
     if (argc == 2) {
       autocommit = FIX2INT(value);
@@ -3300,16 +3323,13 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
         handleAttr_args->handle      =  &( conn_res->hdbc );
         handleAttr_args->strLength   =  SQL_IS_INTEGER;
         handleAttr_args->attribute   =  SQL_ATTR_AUTOCOMMIT;
-        
 
 #ifndef PASE
         handleAttr_args->valuePtr = (SQLPOINTER)autocommit;
 #else
         handleAttr_args->valuePtr = (SQLPOINTER)&autocommit;
 #endif
-
         rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
-
         if ( rc == SQL_ERROR ) {
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
         } else {
@@ -3319,7 +3339,7 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
            * Hence set flag_transaction  to 0 indicating no transaction is in progress */ 
           if( autocommit == SQL_AUTOCOMMIT_ON ) {
             conn_res->transaction_active = 0;
-          } 
+          }
         }
       }
       ruby_xfree( handleAttr_args );
@@ -3329,12 +3349,10 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
       ret_val = INT2NUM(conn_res->auto_commit);
     }
   }
-
   if ( handleAttr_args != NULL ) {
     ruby_xfree( handleAttr_args );
     handleAttr_args  =  NULL;
   }
-
   return ret_val;
 }
 /*  */
@@ -3430,6 +3448,7 @@ static void _ruby_ibm_db_add_param_cache( stmt_handle *stmt_res, int param_no, c
 */
 VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long param_type, long data_type, 
                             long precision, long scale, long size, stmt_handle *stmt_res, describeparam_args *data) {
+
   int   rc            =  0;
   VALUE return_value  =  Qtrue;
 #ifdef UNICODE_SUPPORT_VERSION
@@ -3442,10 +3461,11 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
     case 3:
       param_type = SQL_PARAM_INPUT;
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc  = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
-		rc  = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
+      #ifdef UNICODE_SUPPORT_VERSION        
+	  
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
+		rc = data->rc;
       #else
         rc  =  _ruby_ibm_db_SQLDescribeParam_helper( data );
       #endif
@@ -3463,10 +3483,10 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 4:
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
+		rc = data->rc;
       #else
         rc = _ruby_ibm_db_SQLDescribeParam_helper( data );
       #endif
@@ -3484,10 +3504,10 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 5:
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = data->rc;
       #else
         rc = _ruby_ibm_db_SQLDescribeParam_helper( data );
       #endif
@@ -3506,10 +3526,10 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 6:
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = data->rc;
       #else
         rc = _ruby_ibm_db_SQLDescribeParam_helper( data );
       #endif
@@ -3685,6 +3705,7 @@ VALUE ibm_db_bind_param(int argc, VALUE *argv, VALUE self)
     ruby_xfree( desc_param_args );
     desc_param_args = NULL;
   }
+  
   return return_value;
 }
 /*  */
@@ -3724,7 +3745,8 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
     /* Check to see if it's a persistent connection; if so, just return true */
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+	
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -3739,10 +3761,10 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
         end_X_args->handleType      =  SQL_HANDLE_DBC;
         end_X_args->completionType  =  SQL_ROLLBACK;        /*Remeber you are rolling back the transaction*/
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                          (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+		  rc = end_X_args->rc;
         #else
           rc = _ruby_ibm_db_SQLEndTran( end_X_args );
         #endif
@@ -3759,18 +3781,16 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
       }
 
       #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLDisconnect_helper, &(conn_res->hdbc),
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDisconnect_helper, &(conn_res->hdbc),
-                       (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	    rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDisconnect_helper, &(conn_res->hdbc),
+                       (void *)_ruby_ibm_db_Connection_level_UBF, NULL);		
       #else
-        rc = _ruby_ibm_db_SQLDisconnect_helper( &(conn_res->hdbc) );
+		rc = _ruby_ibm_db_SQLDisconnect_helper( &(conn_res->hdbc) );        
       #endif
 
       if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
         return_value = Qfalse;
       } else {
-
         rc = SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc);
         if ( rc == SQL_ERROR ) {
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
@@ -3794,6 +3814,7 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
   } else {
     return_value   = Qfalse;
   }
+  
   return return_value;
 }
 /*  */
@@ -3936,10 +3957,10 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
           }
           col_privileges_args->stmt_res  =  stmt_res;
 
-          #ifdef UNICODE_SUPPORT_VERSION
-            //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLColumnPrivileges_helper, col_privileges_args,
-			rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumnPrivileges_helper, col_privileges_args,
+          #ifdef UNICODE_SUPPORT_VERSION            
+			ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumnPrivileges_helper, col_privileges_args,
                            (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+			rc = col_privileges_args->rc;
           #else
             rc = _ruby_ibm_db_SQLColumnPrivileges_helper( col_privileges_args );
           #endif
@@ -3948,7 +3969,6 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
 
             _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, (SQLHSTMT)stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                       NULL, NULL, -1, 1, 1 );
-
             _ruby_ibm_db_free_stmt_struct( stmt_res );
             stmt_res = NULL;
 
@@ -4062,7 +4082,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if ( !conn_res->handle_active ) {
+    if ( !conn_res || !conn_res->handle_active ) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -4117,10 +4137,10 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLColumns_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumns_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		  rc = col_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLColumns_helper( col_metadata_args );
         #endif
@@ -4129,7 +4149,6 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, (SQLHSTMT)stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                       NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -4203,6 +4222,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
  */
 VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 {
+	
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
@@ -4284,10 +4304,10 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLForeignKeys_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLForeignKeys_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLForeignKeys_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		  rc = col_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLForeignKeys_helper( col_metadata_args );
         #endif
@@ -4296,7 +4316,6 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -4441,10 +4460,10 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLPrimaryKeys_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrimaryKeys_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrimaryKeys_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		  rc = col_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLPrimaryKeys_helper( col_metadata_args );
         #endif
@@ -4453,7 +4472,6 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -4578,7 +4596,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -4633,10 +4651,10 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLProcedureColumns_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedureColumns_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedureColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
+		  rc = col_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLProcedureColumns_helper( col_metadata_args );
         #endif
@@ -4645,7 +4663,6 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -4746,7 +4763,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -4791,10 +4808,10 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
         }
         proc_metadata_args->stmt_res     =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLProcedures_helper, proc_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedures_helper, proc_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedures_helper, proc_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
+		  rc = proc_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLProcedures_helper( proc_metadata_args );
         #endif
@@ -4803,7 +4820,6 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -4921,7 +4937,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -4969,10 +4985,10 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res       =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLSpecialColumns_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLSpecialColumns_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLSpecialColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
+		  rc = col_metadata_args->rc;				 
         #else
           rc = _ruby_ibm_db_SQLSpecialColumns_helper( col_metadata_args );
         #endif
@@ -4981,7 +4997,6 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -5081,6 +5096,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
  */
 VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
 {
+	
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
@@ -5117,7 +5133,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -5165,10 +5181,10 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res      =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLStatistics_helper, col_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLStatistics_helper, col_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLStatistics_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		   rc = col_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLStatistics_helper( col_metadata_args );
         #endif
@@ -5177,7 +5193,6 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -5325,10 +5340,10 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
 
         table_privileges_args->stmt_res       =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLTablePrivileges_helper, table_privileges_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTablePrivileges_helper, table_privileges_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTablePrivileges_helper, table_privileges_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		  rc = table_privileges_args->rc;
         #else
           rc = _ruby_ibm_db_SQLTablePrivileges_helper( table_privileges_args );
         #endif
@@ -5337,7 +5352,6 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                   NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -5443,7 +5457,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return_value = Qfalse;
     } else {
@@ -5500,10 +5514,10 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 
         table_metadata_args->stmt_res      =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION
-          //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLTables_helper, table_metadata_args,
-		  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTables_helper, table_metadata_args,
+        #ifdef UNICODE_SUPPORT_VERSION          
+		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTables_helper, table_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		  rc = table_metadata_args->rc;
         #else
           rc = _ruby_ibm_db_SQLTables_helper( table_metadata_args );
         #endif
@@ -5512,7 +5526,6 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, 
                     NULL, NULL, -1, 1, 1 );
-
           _ruby_ibm_db_free_stmt_struct( stmt_res );
           stmt_res = NULL;
 
@@ -5571,7 +5584,7 @@ VALUE ibm_db_commit(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -5583,10 +5596,10 @@ VALUE ibm_db_commit(int argc, VALUE *argv, VALUE self)
     end_X_args->handleType      =  SQL_HANDLE_DBC;
     end_X_args->completionType  =  SQL_COMMIT;        /*Remeber you are Commiting the transaction*/
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                      (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	  rc = end_X_args->rc;
     #else
       rc = _ruby_ibm_db_SQLEndTran( end_X_args );
     #endif
@@ -5605,7 +5618,6 @@ VALUE ibm_db_commit(int argc, VALUE *argv, VALUE self)
       return Qtrue;
     }
   }
-
   return Qfalse;
 }
 /*  */
@@ -5664,10 +5676,10 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
     prepare_args->stmt_res    =  stmt_res;
 
     /* Prepare the stmt. The cursor type requested has already been set in _ruby_ibm_db_assign_options */
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLPrepare_helper, prepare_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrepare_helper, prepare_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrepare_helper, prepare_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  rc = prepare_args->rc;
     #else
       rc = _ruby_ibm_db_SQLPrepare_helper( prepare_args );
     #endif
@@ -5747,15 +5759,17 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
   /* This function basically is a wrap of the _ruby_ibm_db_do_prepare and _ruby_ibm_db_execute_stmt */
   /* After completing statement execution, it returns the statement resource */
   rb_scan_args(argc, argv, "21", &connection, &stmt, &options);
+  
 
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
-
-    if (!conn_res->handle_active) {
+		
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
-
+	
+	
     if (!NIL_P(stmt)) {
       exec_direct_args = ALLOC( exec_cum_prepare_args );
       memset(exec_direct_args,'\0',sizeof(struct _ibm_db_exec_direct_args_struct));
@@ -5772,11 +5786,11 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
       rb_warn("Supplied parameter is invalid");
       return Qfalse;
     }
-
+	
     _ruby_ibm_db_clear_stmt_err_cache();
 
     stmt_res = _ibm_db_new_stmt_struct(conn_res);
-
+	
     /* Allocates the stmt handle */
     /* returns the stat_handle back to the calling function */
     rc = SQLAllocHandle(SQL_HANDLE_STMT, conn_res->hdbc, &(stmt_res->hstmt));
@@ -5803,19 +5817,19 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
 
       exec_direct_args->stmt_res    =  stmt_res;
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLExecDirect_helper, exec_direct_args,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLExecDirect_helper, exec_direct_args,
+	  
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLExecDirect_helper, exec_direct_args,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = exec_direct_args->rc;
       #else
         rc = _ruby_ibm_db_SQLExecDirect_helper( exec_direct_args );
       #endif
-
+		
       if ( rc == SQL_ERROR ) {
 
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, stmt_res->hstmt, 
                   SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 1 );
-
         _ruby_ibm_db_free_stmt_struct( stmt_res );
         stmt_res = NULL;
 
@@ -5832,7 +5846,6 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
     ruby_xfree( exec_direct_args );
     exec_direct_args = NULL;
   }
-
   return return_value;
 }
 /*  */
@@ -5879,10 +5892,10 @@ VALUE ibm_db_free_result(int argc, VALUE *argv, VALUE self)
       freeStmt_args->stmt_res  =  stmt_res;
       freeStmt_args->option    =  SQL_CLOSE;
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLFreeStmt_helper, freeStmt_args, 
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLFreeStmt_helper, freeStmt_args, 
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLFreeStmt_helper, freeStmt_args, 
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = freeStmt_args->rc;
       #else
         rc = _ruby_ibm_db_SQLFreeStmt_helper( freeStmt_args );
       #endif
@@ -5981,7 +5994,7 @@ VALUE ibm_db_prepare(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -6483,6 +6496,7 @@ static int _ruby_ibm_db_bind_param_list(stmt_handle *stmt_res, VALUE *error ) {
 static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int bind_cmp_list, 
                                         int bind_params, VALUE *error )
 {
+	
   int rc            =  SQL_SUCCESS;
   param_node *curr  =  NULL;  /* To traverse the list */
 
@@ -6645,6 +6659,7 @@ void var_assign(char *name, VALUE value) {
   ruby_xfree( statement );
   statement = NULL;
 #endif
+
 }
 
 /* 
@@ -6752,6 +6767,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       *error = rb_str_new2("Execute Failed due to: <error message could not be retrieved>");
 #endif
     }
+	bind_array->return_value = Qnil;
     return Qnil;
   }
 
@@ -6774,15 +6790,18 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
 #else
         *error = rb_str_new2("Param is not an array");
 #endif
+        bind_array->return_value = Qnil;
         return Qnil;
       }
 
       ret_value  =  _ruby_ibm_db_desc_and_bind_param_list(bind_array, error );
 
       if(ret_value == Qnil ) {
+		bind_array->return_value = Qnil;
         return Qnil;
       }
       if(ret_value == Qfalse) {
+		bind_array->return_value = Qfalse;
         return Qfalse;
       }
 
@@ -6796,6 +6815,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
 #else
         *error = rb_str_new2("Number of params passed are more than bound parameters");
 #endif
+		bind_array->return_value = Qnil;
         return Qnil;
       } else if ( num < stmt_res->num_params ) {
         /* Fewer parameters than we expected */
@@ -6804,6 +6824,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
 #else
         *error = rb_str_new2("Number of params passed are less than bound parameters");
 #endif
+		bind_array->return_value = Qnil;
         return Qnil;
       }
 
@@ -6814,6 +6835,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
 #else
         *error = rb_str_new2("Parameters not bound");
 #endif
+		bind_array->return_value = Qnil;
         return Qnil;
       } else {
         /* The 1 denotes that you work with the whole list */
@@ -6822,6 +6844,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
         rc  =  _ruby_ibm_db_execute_helper2(stmt_res, NULL, 1, 0, error );
 
         if ( rc == SQL_ERROR ) {
+		  bind_array->return_value = Qnil;
           return Qnil;
         }
       }
@@ -6849,6 +6872,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       *error = rb_str_new2("Statement Execute Failed: <error message could not be retrieved>");
 #endif
     }
+	bind_array->return_value = Qnil;
     return Qnil;
   }
 
@@ -6888,7 +6912,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
           ruby_xfree( put_param_data_args );
           put_param_data_args = NULL;
         }
-
+		bind_array->return_value = Qnil;
         return Qnil;
       }
 	  rc = _ruby_ibm_db_SQLParamData_helper( put_param_data_args );
@@ -6917,11 +6941,12 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
         *error = rb_str_new2("Sending data failed: <error message could not be retrieved>");
 #endif
       }
-
+	  bind_array->return_value = Qnil;
       return Qnil;
     }
   }
 
+  bind_array->return_value = Qtrue;
   return Qtrue;
 }
 /*
@@ -6985,10 +7010,10 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
     bind_array->num               =  0;
     bind_array->error             =  &error;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //ret_value = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_execute_helper, bind_array,
-	  ret_value = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_execute_helper, bind_array,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_execute_helper, bind_array,
                             (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  ret_value = bind_array->return_value;
     #else
       ret_value = _ruby_ibm_db_execute_helper( bind_array );
     #endif
@@ -7151,7 +7176,7 @@ VALUE ibm_db_conn_errormsg(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qnil;
     }
@@ -7305,7 +7330,7 @@ VALUE ibm_db_conn_error(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qnil;
     }
@@ -7471,7 +7496,7 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
     if( resType == DB_CONN ) {   /*Resource Type is connection*/
       Data_Get_Struct(conn_or_stmt, conn_handle, conn_res);
 
-      if ( !conn_res->handle_active ) {
+      if (!conn_res || !conn_res->handle_active ) {
         rb_warn("Connection is not active");
         return Qnil;
       }
@@ -7771,10 +7796,10 @@ VALUE ibm_db_next_result(int argc, VALUE *argv, VALUE self)
       nextresultparams->stmt_res  =  stmt_res;
       nextresultparams->new_hstmt =  &new_hstmt;
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLNextResult_helper, nextresultparams,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNextResult_helper, nextresultparams,
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNextResult_helper, nextresultparams,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = nextresultparams->rc;
       #else
         rc = _ruby_ibm_db_SQLNextResult_helper( nextresultparams );
       #endif
@@ -7807,7 +7832,7 @@ VALUE ibm_db_next_result(int argc, VALUE *argv, VALUE self)
         new_stmt_res->hstmt           =  new_hstmt;
         new_stmt_res->hdbc            =  stmt_res->hdbc;
         new_stmt_res->is_freed        =  0;
-
+		
         ret_value = Data_Wrap_Struct(le_stmt_struct,
             _ruby_ibm_db_mark_stmt_struct, _ruby_ibm_db_free_stmt_struct,
             new_stmt_res);
@@ -7823,6 +7848,7 @@ VALUE ibm_db_next_result(int argc, VALUE *argv, VALUE self)
     ruby_xfree( nextresultparams );
     nextresultparams = NULL;
   }
+  
   return ret_value;
 }
 /*  */
@@ -7871,10 +7897,10 @@ VALUE ibm_db_num_fields(int argc, VALUE *argv, VALUE self)
     result_cols_args->stmt_res  =  stmt_res;
     result_cols_args->count     =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLNumResultCols_helper, result_cols_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNumResultCols_helper, result_cols_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNumResultCols_helper, result_cols_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  rc = result_cols_args->rc;
     #else
       rc = _ruby_ibm_db_SQLNumResultCols_helper( result_cols_args );
     #endif
@@ -7903,7 +7929,6 @@ VALUE ibm_db_num_fields(int argc, VALUE *argv, VALUE self)
     ruby_xfree( result_cols_args );
     result_cols_args = NULL;
   }
-
   return ret_val;
 }
 /*  */
@@ -7965,10 +7990,10 @@ VALUE ibm_db_num_rows(int argc, VALUE *argv, VALUE self)
     row_count_args->stmt_res  =  stmt_res;
     row_count_args->count     =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLRowCount_helper, row_count_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLRowCount_helper, row_count_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLRowCount_helper, row_count_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  rc = row_count_args->rc;
     #else
       rc = _ruby_ibm_db_SQLRowCount_helper( row_count_args );
     #endif
@@ -8022,10 +8047,10 @@ static int _ruby_ibm_db_get_column_by_name(stmt_handle *stmt_res, VALUE column, 
   if ( stmt_res->column_info == NULL ) {
     if ( release_gil == 1 ) {
 
-      #ifdef UNICODE_SUPPORT_VERSION
-        //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_get_result_set_info, stmt_res,
-		rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_get_result_set_info, stmt_res,
+      #ifdef UNICODE_SUPPORT_VERSION        
+		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_get_result_set_info, stmt_res,
                       (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+		rc = stmt_res->rc;
       #else
         rc = _ruby_ibm_db_get_result_set_info( stmt_res );
       #endif
@@ -8186,10 +8211,10 @@ VALUE ibm_db_field_display_size(int argc, VALUE *argv, VALUE self)
     colattr_args->col_num         =  col+1;
     colattr_args->FieldIdentifier =  SQL_DESC_DISPLAY_SIZE;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  rc = colattr_args->rc;
     #else
       rc = _ruby_ibm_db_SQLColAttributes_helper( colattr_args );
     #endif
@@ -8507,10 +8532,10 @@ VALUE ibm_db_field_width(int argc, VALUE *argv, VALUE self)
     colattr_args->col_num          =  col+1;
     colattr_args->FieldIdentifier  =  SQL_DESC_LENGTH;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	  rc = colattr_args->rc;
     #else
       rc = _ruby_ibm_db_SQLColAttributes_helper( colattr_args );
     #endif
@@ -8528,7 +8553,6 @@ VALUE ibm_db_field_width(int argc, VALUE *argv, VALUE self)
     ruby_xfree( colattr_args );
     colattr_args = NULL;
   }
-
   return ret_val;
 }
 /*  */
@@ -8598,36 +8622,30 @@ VALUE ibm_db_rollback(int argc, VALUE *argv, VALUE self)
   end_tran_args *end_X_args = NULL;
 
   rb_scan_args(argc, argv, "1", &connection);
-
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
-
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
-
     end_X_args = ALLOC( end_tran_args );
     memset(end_X_args,'\0',sizeof(struct _ibm_db_end_tran_args_struct));
 
     end_X_args->hdbc            =  &(conn_res->hdbc);
     end_X_args->handleType      =  SQL_HANDLE_DBC;
     end_X_args->completionType  =  SQL_ROLLBACK;    /*Remeber you are Rollingback the transaction*/
-
     #ifdef UNICODE_SUPPORT_VERSION
-      //rc = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
-	  rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                      (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	  rc = end_X_args->rc;
     #else
       rc = _ruby_ibm_db_SQLEndTran( end_X_args );
     #endif
-
     /*Free the memory allocated*/
     if(end_X_args != NULL) {
       ruby_xfree( end_X_args );
       end_X_args = NULL;
     }
-
     if ( rc == SQL_ERROR ) {
       _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
       return Qfalse;
@@ -8636,7 +8654,6 @@ VALUE ibm_db_rollback(int argc, VALUE *argv, VALUE self)
       return Qtrue;
     }
   }
-
   return Qfalse;
 }
 /*  */
@@ -8706,7 +8723,6 @@ static RETCODE _ruby_ibm_db_get_data(stmt_handle *stmt_res, int col_num, short c
     ruby_xfree( getData_args );
     getData_args = NULL;
   }
-
   return rc;
 }
 /*  */
@@ -8838,6 +8854,8 @@ int isNullLOB(VALUE *return_value,int i,stmt_handle *stmt_res,int op)
   In all other cases the value returned will be either Qfalse (meaning SQL_NO_DATA), VALUE or Qnil (meaning the value is nil)
 */
 static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
+	
+	
   long          col_num;
   RETCODE       rc;
   SQLPOINTER    out_ptr;
@@ -8850,6 +8868,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
   VALUE         return_value   =  Qnil;
   stmt_handle   *stmt_res      =  data->stmt_res;
   VALUE         column         =  data->column;
+  VALUE 		ret_value;
 
   if(TYPE(column) == T_STRING) {
     col_num = _ruby_ibm_db_get_column_by_name(stmt_res, column, 0);
@@ -8876,6 +8895,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
 #endif
       }
+	  data->return_value = Qnil;
       return Qnil;
     }
   }
@@ -8886,6 +8906,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 #else
     *(data->error) = rb_str_new2("Column ordinal out of range" );
 #endif
+    data->return_value = Qnil;
     return Qnil;
   }
 
@@ -8929,6 +8950,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
       if ( out_ptr == NULL ) {
         rb_warn( "Failed to Allocate Memory while trying to retrieve the result" );
+		data->return_value = Qnil;
         return Qnil;
       }
 
@@ -8939,10 +8961,12 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 #endif
 
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
       if (out_length == SQL_NULL_DATA) {
         ruby_xfree( out_ptr );
+		data->return_value = Qnil;
         return Qnil;
       } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -8952,6 +8976,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 #endif
         ruby_xfree( out_ptr );
         out_ptr = NULL;
+		data->return_value = return_value;
         return return_value;
       }
       break;
@@ -8974,22 +8999,26 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
   
       if ( out_ptr == NULL ) {
         rb_warn( "Failed to Allocate Memory while trying to retrieve the result" );
+		data->return_value = Qnil;
         return Qnil;
       }
 
       rc = _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_CHAR, out_ptr, in_length, &out_length);
 
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
       if (out_length == SQL_NULL_DATA) {
         ruby_xfree( out_ptr );
+		data->return_value = Qnil;
         return Qnil;
       } else {
         return_value = rb_str_new2((char*)out_ptr);
         ruby_xfree( out_ptr );
         out_ptr = NULL;
+		data->return_value = return_value;
         return return_value;
       }
       break; 
@@ -8997,12 +9026,16 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
     case SQL_INTEGER:
       rc = _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_LONG, &long_val, sizeof(long_val), &out_length);
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
       if (out_length == SQL_NULL_DATA) {
+		data->return_value = Qnil;
         return Qnil;
       } else {
-        return INT2NUM(long_val);
+		VALUE ret_value = INT2NUM(long_val);
+		data->return_value = ret_value;
+        return ret_value;
       }
       break;
 
@@ -9011,12 +9044,16 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
     case SQL_DOUBLE:
       rc = _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_DOUBLE, &double_val, sizeof(double_val), &out_length);
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
       if (out_length == SQL_NULL_DATA) {
+		data->return_value = Qnil;
         return Qnil;
       } else {
-        return rb_float_new(double_val);
+		VALUE ret_value = rb_float_new(double_val);
+		data->return_value = ret_value;
+        return ret_value;
       }
       break;
 
@@ -9025,10 +9062,12 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
       rc = _ruby_ibm_db_get_length(stmt_res, col_num+1, &in_length);
 
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
       if (in_length == SQL_NULL_DATA) {
+		data->return_value = Qnil;
         return Qnil;
       }
 
@@ -9042,6 +9081,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
       if ( out_ptr == NULL ) {
         rb_warn( "Failed to Allocate Memory for LOB Data" );
+		data->return_value = Qnil;
         return Qnil;
       }
 
@@ -9052,6 +9092,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 #endif
 
       if (rc == SQL_ERROR) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
@@ -9063,7 +9104,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
       ruby_xfree( out_ptr );
       out_ptr = NULL;
-
+      data->return_value = return_value;
       return return_value;
       break;
 
@@ -9077,16 +9118,20 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
       rc = _ruby_ibm_db_get_length( stmt_res, col_num+1, &in_length );
 
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
       if (in_length == SQL_NULL_DATA) {
+		data->return_value = Qnil;
         return Qnil;
       }
 
       switch (stmt_res->s_bin_mode) {
-        case PASSTHRU:
-          return rb_str_new("",0);
+        case PASSTHRU:		  
+		  ret_value = rb_str_new("",0);
+		  data->return_value = ret_value;
+          return ret_value;
           break;
           /* returns here */
         case CONVERT:
@@ -9100,18 +9145,20 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
           if ( out_ptr == NULL ) {
             rb_warn( "Failed to Allocate Memory for LOB Data" );
+			data->return_value = Qnil;
             return Qnil;
           }
 
           rc = _ruby_ibm_db_get_data2(stmt_res, col_num+1, lob_bind_type, out_ptr, in_length, in_length, &out_length);
 
           if (rc == SQL_ERROR) {
+			data->return_value = Qfalse;
             return Qfalse;
           }
           return_value = rb_str_new((char*)out_ptr,out_length);
           ruby_xfree( out_ptr );
           out_ptr = NULL;
-
+		  data->return_value = return_value;
           return return_value;
         default:
           break;
@@ -9122,10 +9169,12 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
       rc      =  _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_BINARY, NULL, 0, (SQLINTEGER *)&in_length);
 
       if ( rc == SQL_ERROR ) {
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
       if (in_length == SQL_NULL_DATA) {
+		data->return_value = Qnil;
         return Qnil;
       }
 
@@ -9134,6 +9183,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
       if ( out_ptr == NULL ) {
         rb_warn( "Failed to Allocate Memory for LOB Data" );
+		data->return_value = Qnil;
         return Qnil;
       }
 
@@ -9142,6 +9192,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
       if (rc == SQL_ERROR) {
         ruby_xfree( out_ptr );
         out_ptr  =  NULL;
+		data->return_value = Qfalse;
         return Qfalse;
       }
 
@@ -9153,13 +9204,14 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 
       ruby_xfree( out_ptr );
       out_ptr  =  NULL;
-
+      data->return_value = return_value;
       return return_value;
 
     default:
       break;
   }
 
+  data->return_value = Qfalse;
   return Qfalse;
 }
 /* }}} */
@@ -9204,10 +9256,10 @@ VALUE ibm_db_result(int argc, VALUE *argv, VALUE self)
   if ( !NIL_P( stmt ) ) {
     Data_Get_Struct(stmt, stmt_handle, result_args->stmt_res);
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //ret_val = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_result_helper, result_args,
-	  ret_val = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_result_helper, result_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_result_helper, result_args,
                           (void *)_ruby_ibm_db_Statement_level_UBF, result_args->stmt_res );
+	  ret_val = result_args->return_value;
     #else
       ret_val = _ruby_ibm_db_result_helper( result_args );
     #endif
@@ -9283,6 +9335,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
 #endif
       }
+	  data->return_value = Qnil;
       return Qnil;
     }
   }
@@ -9307,6 +9360,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         *(data->error) = rb_str_new2("Column binding cannot be done: <error message could not be retrieved>");
 #endif
       }
+	  data->return_value = Qnil;
       return Qnil;
     }
   }
@@ -9356,6 +9410,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 #else
     *(data->error) = rb_str_new2("Requested row number must be a positive value");
 #endif
+    data->return_value = Qnil;
     return Qnil;
   } else {
     /*row_number is NULL or 0; just fetch next row*/
@@ -9374,6 +9429,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
   }
 
   if (rc == SQL_NO_DATA_FOUND) {
+	data->return_value = Qfalse;
     return Qfalse;
   } else if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO) {
     _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
@@ -9393,6 +9449,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
       *(data->error) = rb_str_new2("Fetch Failure: <error message could not be retrieved>");
 #endif
     }
+	data->return_value = Qnil;
     return Qnil;
   }
   /* copy the data over return_value */
@@ -9480,6 +9537,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
           out_ptr    =  (SQLPOINTER)ALLOC_N(char, tmp_length+1);
           if ( out_ptr == NULL ) {
             rb_warn( "Failed to allocate Memory");
+			data->return_value = Qnil;
             return Qnil;
           }
           memset(out_ptr,'\0',tmp_length+1);
@@ -9488,6 +9546,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
           if ( rc == SQL_ERROR ) {
             ruby_xfree( out_ptr );
             out_ptr = NULL;
+			data->return_value = Qfalse;
             return Qfalse;
           }
           if (out_length == SQL_NULL_DATA) {
@@ -9532,6 +9591,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 
           if(tmpStr == NULL ){
            rb_warn( "Failed to Allocate Memory for Decimal Data" );
+		   data->return_value = Qnil;
            return Qnil; 
           }
 
@@ -9670,6 +9730,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
                   ruby_xfree( out_ptr );
                   out_ptr = NULL;
                   out_length = 0;
+				  data->return_value = Qfalse;
                   return Qfalse;
                 }
 
@@ -9721,6 +9782,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
               *(data->error) = rb_str_new2("Failed to Determine XML Size: <error message could not be retrieved>");
 #endif
             }
+			data->return_value = Qnil;
             return Qnil;
           }
 
@@ -9740,6 +9802,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 
             if ( out_ptr == NULL ) {
               rb_warn( "Failed to Allocate Memory for XML Data" );
+			  data->return_value = Qnil;
               return Qnil;
             }
 
@@ -9747,6 +9810,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
             if (rc == SQL_ERROR) {
               ruby_xfree( out_ptr );
               out_ptr = NULL;
+			  data->return_value = Qfalse;
               return Qfalse;
             }
 
@@ -9808,6 +9872,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 
             if ( out_ptr == NULL ) {
               rb_warn( "Failed to Allocate Memory for LOB Data" );
+			  data->return_value = Qnil;
               return Qnil;
             }
 
@@ -9820,6 +9885,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
               ruby_xfree( out_ptr );
               out_ptr =  NULL;
               out_length = 0;
+			  data->return_value = Qfalse;
               return Qfalse;
             }
 
@@ -9854,6 +9920,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
     }
   }
 
+  data->return_value = return_value;
   return return_value;
 }
 /*
@@ -9892,6 +9959,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
 #endif
       }
+	  data->return_value = Qnil;
       return Qnil;
     }
   } 
@@ -9928,6 +9996,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
 #else
     *(data->error) = rb_str_new2("Requested row number must be a positive value");
 #endif
+    data->return_value = Qnil;
     return Qnil;
   } else {
       /*row_number is NULL or 0; just fetch next row*/
@@ -9948,7 +10017,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
       ret_val = Qfalse;
     }
   }
-
+  data->return_value = ret_val;
   return ret_val;
 }
 /*  */
@@ -10008,10 +10077,10 @@ VALUE ibm_db_fetch_row(int argc, VALUE *argv, VALUE self)
   helper_args->arg_count   =  argc;
   helper_args->error       =  &error;
 
-  #ifdef UNICODE_SUPPORT_VERSION
-    //ret_val = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
-	ret_val = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
+  #ifdef UNICODE_SUPPORT_VERSION    
+	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	ret_val = helper_args->return_value;
   #else
     ret_val = _ruby_ibm_db_fetch_row_helper( helper_args );
   #endif
@@ -10177,14 +10246,15 @@ VALUE ibm_db_fetch_assoc(int argc, VALUE *argv, VALUE self) {
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION
-    //ret_val = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-	ret_val = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
+  #ifdef UNICODE_SUPPORT_VERSION    
+	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	ret_val = helper_args->return_value;
+						
   #else
     ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
   #endif
-
+   
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {
     ruby_xfree( helper_args );
@@ -10265,10 +10335,10 @@ VALUE ibm_db_fetch_object(int argc, VALUE *argv, VALUE self)
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION
-    //row_res->hash = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-	row_res->hash = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
+  #ifdef UNICODE_SUPPORT_VERSION    
+	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                               (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	row_res->hash = helper_args->return_value;
   #else
     row_res->hash = _ruby_ibm_db_bind_fetch_helper( helper_args );
   #endif
@@ -10291,7 +10361,7 @@ VALUE ibm_db_fetch_object(int argc, VALUE *argv, VALUE self)
     ruby_xfree( row_res );
     row_res = NULL;
     return Qfalse;
-  }
+  }  
 }
 /*  */
 
@@ -10348,10 +10418,11 @@ VALUE ibm_db_fetch_array(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_INDEX;
 
-  #ifdef UNICODE_SUPPORT_VERSION
-    //ret_val = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-	ret_val = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
+  #ifdef UNICODE_SUPPORT_VERSION    
+	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+    ret_val = helper_args->return_value;
+						
   #else
     ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
   #endif
@@ -10425,10 +10496,10 @@ VALUE ibm_db_fetch_both(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_BOTH;
 
-  #ifdef UNICODE_SUPPORT_VERSION
-    //ret_val = rb_thread_call_without_gvl ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-	ret_val = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
+  #ifdef UNICODE_SUPPORT_VERSION    
+	 ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+	ret_val = helper_args->return_value;
   #else
     ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
   #endif
@@ -10519,7 +10590,7 @@ VALUE ibm_db_set_option(int argc, VALUE *argv, VALUE self)
 /*
    Retrieves the server information by calling the SQLGetInfo_helper function and wraps it up into server_info object
 */
-static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
+static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {	
   conn_handle *conn_res = NULL;
 
   int         rc          =  0;
@@ -10554,6 +10625,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 
@@ -10572,9 +10644,9 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   memset(buffer11, '\0', sizeof(buffer11));
   rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
-
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10583,7 +10655,6 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     rb_iv_set(return_value, "@DBMS_VER", rb_str_new2(buffer11));
 #endif
   }
-
 #ifndef PASE    /* i5/OS DB_CODEPAGE handled natively */
   /* DB_CODEPAGE */
   bufferint32 = 0;
@@ -10597,6 +10668,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@DB_CODEPAGE", INT2NUM(bufferint32));
@@ -10614,6 +10686,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10635,6 +10708,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10655,6 +10729,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10676,10 +10751,10 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE keywordsStr, keywordsArray;
-
 #ifdef UNICODE_SUPPORT_VERSION
     keywordsStr   =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer3k, out_length);
     keywordsArray =  rb_str_split(keywordsStr, RSTRING_PTR(_ruby_ibm_db_export_char_to_utf8_rstr(",")) );
@@ -10687,7 +10762,6 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     keywordsStr   = rb_str_new2( buffer3k );
     keywordsArray = rb_str_split(keywordsStr, ",");
 #endif
-
     rb_iv_set(return_value, "@KEYWORDS", keywordsArray);
   }
 
@@ -10702,6 +10776,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE dft_isolation = Qnil;
@@ -10740,10 +10815,8 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
       dft_isolation = rb_str_new2("NC");
 #endif
     }
-
     rb_iv_set(return_value, "@DFT_ISOLATION", dft_isolation);
   }
-
 #ifndef PASE    /* i5/OS ISOLATION_OPTION handled natively */
   /* ISOLATION_OPTION */
   getInfo_args->infoType     =  SQL_TXN_ISOLATION_OPTION;
@@ -10753,15 +10826,14 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   bitmask = 0;
   rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
-
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE array;
 
     array = rb_ary_new();
-
     if( bitmask & SQL_TXN_READ_UNCOMMITTED ) {
 #ifdef UNICODE_SUPPORT_VERSION
      rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("UR"));
@@ -10797,7 +10869,6 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
       rb_ary_push(array, rb_str_new2("NC"));
 #endif
     }
-
     rb_iv_set(return_value, "@ISOLATION_OPTION", array);
   }
 #endif /* PASE */
@@ -10810,9 +10881,9 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   bufferint32 = 0;
   rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
-
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE conformance = Qnil;
@@ -10859,9 +10930,9 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   memset(buffer11, '\0', sizeof(buffer11));
   rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
-
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10874,7 +10945,6 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
       rb_iv_set(return_value, "@PROCEDURES", Qfalse);
     }
   }
-
   /* IDENTIFIER_QUOTE_CHAR */
   getInfo_args->infoType     =  SQL_IDENTIFIER_QUOTE_CHAR;
   getInfo_args->infoValue    =  (SQLPOINTER)buffer11;
@@ -10886,6 +10956,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10906,6 +10977,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -10925,11 +10997,10 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
   getInfo_args->buff_length  =  sizeof( bufferint16 );
   out_length                 =  0;
   bufferint16                =  0;
-
   rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
-
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_COL_NAME_LEN", INT2NUM(bufferint16));
@@ -10946,11 +11017,11 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_ROW_SIZE", INT2NUM(bufferint32));
   }
-
 #ifndef PASE    /* i5/OS MAX_IDENTIFIER_LEN handled natively */
   /* MAX_IDENTIFIER_LEN */
   getInfo_args->infoType     =  SQL_MAX_IDENTIFIER_LEN;
@@ -10963,6 +11034,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_IDENTIFIER_LEN", INT2NUM(bufferint16));
@@ -10979,6 +11051,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_INDEX_SIZE", INT2NUM(bufferint32));
@@ -10995,6 +11068,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_PROC_NAME_LEN", INT2NUM(bufferint16));
@@ -11012,6 +11086,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_SCHEMA_NAME_LEN", INT2NUM(bufferint16));
@@ -11028,6 +11103,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_STATEMENT_LEN", INT2NUM(bufferint32));
@@ -11044,6 +11120,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@MAX_TABLE_NAME_LEN", INT2NUM(bufferint16));
@@ -11060,6 +11137,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE rv = Qnil;
@@ -11076,6 +11154,8 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     rb_iv_set(return_value, "@NON_NULLABLE_COLUMNS", rv);
   }
 
+  getInfo_args->return_value=return_value;
+  
   return return_value;
 }
 /*  */
@@ -11159,28 +11239,34 @@ VALUE ibm_db_server_info(int argc, VALUE *argv, VALUE self)
   get_info_args *getInfo_args  =  NULL;
 
   rb_scan_args(argc, argv, "1", &connection);
+  
+  
+  if(NIL_P(&connection))
+	{
+	}
+	if(&connection == NULL)
+	{
+	}
 
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
-
-    if (!conn_res->handle_active) {
+	
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
-
     getInfo_args = ALLOC( get_info_args );
     memset(getInfo_args,'\0',sizeof(struct _ibm_db_get_info_struct));
-
+	
     getInfo_args->conn_res     =  conn_res;
     getInfo_args->out_length   =  NULL;
     getInfo_args->infoType     =  0;
     getInfo_args->infoValue    =  NULL;
     getInfo_args->buff_length  =  0;
-
     #ifdef UNICODE_SUPPORT_VERSION
-      //return_value  = rb_thread_call_without_gvl ( (void *)ibm_db_server_info_helper, getInfo_args,
-	  return_value  = ibm_Ruby_Thread_Call ( (void *)ibm_db_server_info_helper, getInfo_args,
+	  ibm_Ruby_Thread_Call ( (void *)ibm_db_server_info_helper, getInfo_args,
                                  (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	  return_value  = getInfo_args->return_value;
     #else
       return_value = ibm_db_server_info_helper( getInfo_args );
     #endif
@@ -11228,6 +11314,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -11248,6 +11335,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -11268,6 +11356,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -11288,6 +11377,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -11309,6 +11399,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
 #ifdef UNICODE_SUPPORT_VERSION
@@ -11330,6 +11421,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     VALUE conformance = Qnil;
@@ -11373,6 +11465,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@APPL_CODEPAGE", INT2NUM(bufferint32));
@@ -11389,12 +11482,14 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 0 );
+	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
     rb_iv_set(return_value, "@CONN_CODEPAGE", INT2NUM(bufferint32));
   }
 #endif /* PASE */
 
+  getInfo_args->return_value = return_value;
   return return_value;
 }
 /*  */
@@ -11451,7 +11546,7 @@ VALUE ibm_db_client_info(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(connection)) {
     Data_Get_Struct(connection, conn_handle, conn_res);
 
-    if (!conn_res->handle_active) {
+    if (!conn_res || !conn_res->handle_active) {
       rb_warn("Connection is not active");
       return Qfalse;
     }
@@ -11465,10 +11560,11 @@ VALUE ibm_db_client_info(int argc, VALUE *argv, VALUE self)
     getInfo_args->infoValue    =  NULL;
     getInfo_args->buff_length  =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION
-      //return_value = rb_thread_call_without_gvl ( (void *)ibm_db_client_info_helper, getInfo_args,
-	  return_value = ibm_Ruby_Thread_Call ( (void *)ibm_db_client_info_helper, getInfo_args,
+    #ifdef UNICODE_SUPPORT_VERSION      
+	  ibm_Ruby_Thread_Call ( (void *)ibm_db_client_info_helper, getInfo_args,
                                (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
+	  return_value = getInfo_args->return_value;
+							   
     #else
       return_value = ibm_db_client_info_helper( getInfo_args );
     #endif
@@ -11601,15 +11697,16 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
 
   rb_scan_args(argc, argv, "3", &conn_or_stmt, &option, &r_type);
 
+  
   if (!NIL_P(r_type)) type = NUM2LONG(r_type);
+  
 
   if (!NIL_P(conn_or_stmt)) {
     /* Checking to see if we are getting a connection option (1) or a statement option (non - 1) */
     if (type == 1) {
       Data_Get_Struct(conn_or_stmt, conn_handle, conn_res);
-
       /* Check to ensure the connection resource given is active */
-      if (!conn_res->handle_active) {
+      if (!conn_res || !conn_res->handle_active) {
         rb_warn("Connection is not active");
         return Qfalse;
       }
@@ -11624,7 +11721,6 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
         value = (SQLCHAR *)ALLOC_N(SQLCHAR, ACCTSTR_LEN + 1);
         memset(value,'\0', ACCTSTR_LEN + 1);
 #endif
-
         get_handleAttr_args = ALLOC( get_handle_attr_args );
         memset(get_handleAttr_args,'\0',sizeof(struct _ibm_db_get_handle_attr_struct));
 
@@ -11637,12 +11733,10 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
         get_handleAttr_args->buff_length =  (ACCTSTR_LEN+1);
 #endif
         get_handleAttr_args->out_length  =  &out_length;
-
         rc = _ruby_ibm_db_SQLGetConnectAttr_helper( get_handleAttr_args );
 
         ruby_xfree( get_handleAttr_args );
         get_handleAttr_args = NULL;
-
         if (rc == SQL_ERROR) {
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
           ret_val = Qfalse;
@@ -11663,7 +11757,6 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
     /* At this point we know we are to retreive a statement option */
     } else {
       Data_Get_Struct(conn_or_stmt, stmt_handle, stmt_res);
-
       /* Check that the option given is not null */
       if (!NIL_P(option)) {
         op_integer=(SQLINTEGER)FIX2INT(option);
@@ -11677,17 +11770,14 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
           get_handleAttr_args->valuePtr    =  &value_int;
           get_handleAttr_args->buff_length =  SQL_IS_INTEGER;
           get_handleAttr_args->out_length  =  NULL;
-
           rc = _ruby_ibm_db_SQLGetStmtAttr_helper( get_handleAttr_args );
 
           ruby_xfree( get_handleAttr_args );
           get_handleAttr_args = NULL;
-
           if (rc == SQL_ERROR) {
             _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 1 );
             return Qfalse;
           }
-
           return INT2NUM(value_int);
         } else {
           rb_warn("Invalid option specified");
@@ -11702,7 +11792,7 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
   } else {
     rb_warn("Supplied resource handle is invalid");
     return Qfalse;
-  }
+  }  
 }
 
 
