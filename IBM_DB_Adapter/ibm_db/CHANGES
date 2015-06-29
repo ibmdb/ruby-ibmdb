@@ -1,5 +1,10 @@
 Change Log
 ==============
+2015/06/29 (IBM_DB adapter 2.6.0, driver 2.6.0)
+  - Enhanced installation for Windows to pull IBM Data Server Driver automatically on first use  if not present
+  - Enhanced installation for Mac OS to pull IBM Data Server Driver automatically if not present
+  - Removed support for Ruby 1.9.3
+  
 2015/06/08 (IBM_DB adapter 2.5.27, driver 2.5.27)
   - Support for Ruby  2.2.x on Windows and Linux platform
   - Fixed bug#28 Create table fails on db:migrate task in ActiveRecord 4.2.1 if database adapter not support foreign_keys.

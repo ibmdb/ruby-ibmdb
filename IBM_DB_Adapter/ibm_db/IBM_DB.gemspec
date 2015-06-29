@@ -10,7 +10,7 @@ require 'pathname'
 SPEC = Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '2.5.27'
+  spec.version  = '2.6.0'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec
@@ -18,7 +18,7 @@ SPEC = Gem::Specification.new do |spec|
   spec.email = 'opendev@us.ibm.com'
   spec.homepage = 'https://github.com/ibmdb/ruby-ibmdb'
   spec.rubyforge_project = 'rubyibm'
-  spec.required_ruby_version = '>= 1.8.6'
+  spec.required_ruby_version = '>= 2.0.0'
   spec.add_dependency('activerecord', '>= 1.15.1')
   spec.requirements << 'ActiveRecord, at least 1.15.1'
 
@@ -36,6 +36,7 @@ SPEC = Gem::Specification.new do |spec|
 
   if RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw/
     spec.platform = Gem::Platform::CURRENT
+	spec.add_dependency('archive-zip', '>= 0.7.0')
   else
     spec.files = candidates.delete_if { |item| item.include?("lib/mswin32") }
     puts ".. Check for the pre-built IBM_DB driver for this platform: #{RUBY_PLATFORM}"
@@ -47,7 +48,12 @@ SPEC = Gem::Specification.new do |spec|
       puts ".. ibm_db driver was found:   #{drv_lib.realpath}"
     else
       puts ".. ibm_db driver binary was not found. The driver native extension to be built during install."
-      spec.extensions << 'ext/extconf.rb'
+	  if(RUBY_PLATFORM =~ /darwin/i)
+	    spec.platform = Gem::Platform::CURRENT
+		spec.extensions << 'ext/extconf_MacOS.rb'
+	  else
+		spec.extensions << 'ext/extconf.rb'
+	  end
     end
   end
 
