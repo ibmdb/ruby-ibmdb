@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "2.6.0"
+#define MODULE_RELEASE "2.6.1"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

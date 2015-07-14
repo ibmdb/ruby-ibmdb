@@ -1,5 +1,8 @@
 Change Log
 ==============
+2015/07/14 (IBM_DB adapter 2.6.1, driver 2.6.1)
+  - Foreign key support
+  
 2015/06/29 (IBM_DB adapter 2.6.0, driver 2.6.0)
   - Enhanced installation for Windows to pull IBM Data Server Driver automatically on first use  if not present
   - Enhanced installation for Mac OS to pull IBM Data Server Driver automatically if not present

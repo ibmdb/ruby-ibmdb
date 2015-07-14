@@ -11,6 +11,7 @@
 
 require 'active_record/connection_adapters/abstract_adapter'
 require 'arel/visitors/bind_visitor'
+require 'active_support/core_ext/string/strip'
 
 module ActiveRecord
   class Relation
@@ -755,9 +756,10 @@ module ActiveRecord
       end
 
       def supports_foreign_keys?
-        false
+        true
       end
-
+	  	  			  
+	  
       # This Adapter supports DDL transactions.
       # This means CREATE TABLE and other DDL statements can be carried out as a transaction. 
       # That is the statements executed can be ROLLED BACK in case of any error during the process.
@@ -1934,6 +1936,53 @@ module ActiveRecord
         # Returns the columns array
         return columns
       end
+	  	  
+	  def foreign_keys(table_name)        
+        #fetch the foreign keys of the table using function foreign_keys        
+		#PKCOLUMN_NAME:: fk_row[3] Name of the column containing the primary key.		
+		#FKTABLE_NAME:: fk_row[6] Name of the table containing the foreign key.
+		#FKCOLUMN_NAME:: fk_row[7] Name of the column containing the foreign key.		
+		#FK_NAME:: fk_row[11] The name of the foreign key.
+							
+        stmt = IBM_DB.foreignkeys( @connection, nil, 
+                                   @servertype.set_case(@schema), 
+                                   @servertype.set_case(table_name))		
+		foreignKeys = []		
+		
+        if(stmt)
+          begin
+            while ( fk_row = IBM_DB.fetch_array(stmt) )			  
+              options = {
+				column: fk_row[3],
+				name: fk_row[11],
+				primary_key: fk_row[7],				
+			  }			  			  			  
+			  foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[6], options)			  			  
+            end			
+
+          rescue StandardError => fetch_error # Handle driver fetch errors
+            error_msg = IBM_DB.getErrormsg(stmt, IBM_DB::DB_STMT )
+            if error_msg && !error_msg.empty?
+              raise "Failed to retrieve foreign key metadata during fetch: #{error_msg}"
+            else
+              error_msg = "An unexpected error occurred during retrieval of foreign key metadata"
+              error_msg = error_msg + ": #{fetch_error.message}" if !fetch_error.message.empty?
+              raise error_msg
+            end
+          ensure  # Free resources associated with the statement
+            IBM_DB.free_stmt(stmt) if stmt
+          end
+        else  # Handle driver execution errors
+          error_msg = IBM_DB.getErrormsg(@connection, IBM_DB::DB_CONN )
+          if error_msg && !error_msg.empty?
+            raise "Failed to retrieve foreign key metadata due to error: #{error_msg}"
+          else
+            raise StandardError.new('An unexpected error occurred during foreign key retrieval')		
+          end		  
+        end
+	   #Returns the foreignKeys array
+	   return foreignKeys
+	end
 
       # Renames a table.
       # ==== Example
