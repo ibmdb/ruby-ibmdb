@@ -282,9 +282,10 @@ module ActiveRecord
   module ConnectionAdapters
     module SchemaStatements
       def create_table_definition(name, temporary, options,as = nil)
-        TableDefinition.new self, name, temporary, options
+        IBM_TableDefinition.new self, name, temporary, options
       end
     end
+
     class IBM_DBColumn < Column
 
       # Casts value (which is a String) to an appropriate instance
@@ -342,7 +343,7 @@ module ActiveRecord
       end # method simplified_type
     end #class IBM_DBColumn
 
-    class Table
+    class IBM_Table < Table
       
       #Method to parse the passed arguments and create the ColumnDefinition object of the specified type
       def ibm_parse_column_attributes_args(type, *args)
@@ -408,7 +409,7 @@ module ActiveRecord
       alias_method :character, :char
     end
 
-    class TableDefinition
+    class IBM_TableDefinition < TableDefinition
 
       def initialize(base, name=nil, temporary=nil, options=nil)
         if(self.respond_to?(:indexes))
