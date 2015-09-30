@@ -1,0 +1,18 @@
+david_address:
+  id: 1
+
+david_address_extra:
+  id: 2
+
+mary_address:
+  id: 3
+
+mary_address_extra:
+  id: 4
+
+bob_address:
+  id: 5
+
+bob_address_extra:
+  id: 6 
+  

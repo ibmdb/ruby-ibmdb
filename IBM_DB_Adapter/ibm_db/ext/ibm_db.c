@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "2.6.1"
+#define MODULE_RELEASE "3.0.0"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -4226,6 +4226,8 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
+  VALUE r_is_fk_table 		=  Qfalse;
+  
 #ifdef UNICODE_SUPPORT_VERSION
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
@@ -4241,8 +4243,8 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 
   int rc;
 
-  rb_scan_args(argc, argv, "4", &connection, 
-    &r_qualifier, &r_owner, &r_table_name);
+  rb_scan_args(argc, argv, "41", &connection, 
+    &r_qualifier, &r_owner, &r_table_name, &r_is_fk_table);
 
   col_metadata_args = ALLOC( metadata_args );
   memset(col_metadata_args,'\0',sizeof(struct _ibm_db_metadata_args_struct));
@@ -4253,6 +4255,9 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
   col_metadata_args->qualifier_len    =  0;
   col_metadata_args->owner_len        =  0;
   col_metadata_args->table_name_len   =  0;
+  if(!NIL_P(r_is_fk_table)){		
+		col_metadata_args->table_type       =  (SQLWCHAR*) "FK_TABLE";
+	}
 
   if (connection) {
     Data_Get_Struct(connection, conn_handle, conn_res);

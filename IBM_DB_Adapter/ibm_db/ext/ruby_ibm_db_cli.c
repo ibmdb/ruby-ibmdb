@@ -208,6 +208,20 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
+  if(!NIL_P(data->table_type))
+  {
+#ifndef UNICODE_SUPPORT_VERSION
+  rc = SQLForeignKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
+                data->owner, data->owner_len, NULL , SQL_NTS, NULL, SQL_NTS,
+                NULL, SQL_NTS, data->table_name, data->table_name_len );
+#else
+  rc = SQLForeignKeysW( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
+                data->owner, data->owner_len, NULL , SQL_NTS, NULL, SQL_NTS,
+                NULL, SQL_NTS, data->table_name, data->table_name_len );
+#endif
+  }
+  else
+  {
 #ifndef UNICODE_SUPPORT_VERSION
   rc = SQLForeignKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
                 data->owner, data->owner_len, data->table_name , data->table_name_len, NULL, SQL_NTS,
@@ -217,6 +231,7 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
                 data->owner, data->owner_len, data->table_name , data->table_name_len, NULL, SQL_NTS,
                 NULL, SQL_NTS, NULL, SQL_NTS );
 #endif
+	}
 
   data->stmt_res->is_executing = 0;
   data->rc = rc;

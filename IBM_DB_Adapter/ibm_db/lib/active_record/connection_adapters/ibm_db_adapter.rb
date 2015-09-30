@@ -65,7 +65,7 @@ module ActiveRecord
     # the insert or update, and then proceeds to update that record with 
     # the actual large object through a prepared statement (param binding).
     after_save :handle_lobs
-    def handle_lobs()
+    def handle_lobs()	  
       if self.class.connection.kind_of?(ConnectionAdapters::IBM_DBAdapter)
         # Checks that the insert or update had at least a BLOB, CLOB or XML field
         self.class.connection.sql.each do |clob_sql|
@@ -78,9 +78,8 @@ module ActiveRecord
             values = []
             params = []
             # Selects only binary, text and xml columns
-            self.class.columns.select{|col| col.type == :binary || 
-                                            col.type == :text || 
-                                            col.type == :xml}.each do |col|
+			self.class.columns.select{|col| col.sql_type.to_s =~ /blob|binary|clob|text|xml/i 
+											}.each do |col|		
               # Adds the selected columns to the query
               if counter == 0
                 update_query << "#{col.name}"
@@ -92,14 +91,14 @@ module ActiveRecord
               # (except for a CLOB field where '' can be a value)
               if self[col.name].nil? || 
                  self[col.name] == {} || 
-                 self[col.name] == [] ||
-                (self[col.name] == '' && col.type != :text)
+                 self[col.name] == [] ||                
+				(self[col.name] == '' && !(col.sql_type.to_s =~ /text|clob/i))				
                 params << 'NULL'
               else
-                if self.class.serialized_attributes[col.name]
-                  values << YAML.dump(self[col.name])
-                else
-                  values << self[col.name]
+                 if (col.cast_type.is_a?(::ActiveRecord::Type::Serialized))				
+                  values << YAML.dump(self[col.name])		
+                else				  
+                  values << self[col.name]		
                 end
                 params << '?'
               end
@@ -284,21 +283,48 @@ module ActiveRecord
       def create_table_definition(name, temporary, options,as = nil)
         TableDefinition.new self, name, temporary, options
       end
+	  
+	  def remove_foreign_key(from_table, options_or_to_table = {})    
+        return unless supports_foreign_keys?
+
+        if options_or_to_table.is_a?(Hash)		  
+          options = options_or_to_table
+        else		  
+          options = { column: foreign_key_column_for(options_or_to_table) }
+        end
+		
+        fk_name_to_delete = options.fetch(:name) do          
+		  fk_to_delete = foreign_keys(@servertype.set_case(from_table)).detect {|fk| "#{@servertype.set_case(fk.column)}" == "#{servertype.set_case(options[:column])}"}
+		  		  
+          if fk_to_delete
+            fk_to_delete.name
+          else
+            raise ArgumentError, "Table '#{from_table}' has no foreign key on column '#{options[:column]}'"
+          end
+        end
+		
+        at = create_alter_table from_table
+        at.drop_foreign_key fk_name_to_delete
+
+        execute schema_creation.accept(at)
+      end
     end
+	
     class IBM_DBColumn < Column
 
       # Casts value (which is a String) to an appropriate instance
+=begin	  
       def type_cast(value)
         # Casts the database NULL value to nil
         return nil if value == 'NULL'
         # Invokes parent's method for default casts
         super
       end
-
+=end
       # Used to convert from BLOBs to Strings
       def self.binary_to_string(value)
         # Returns a string removing the eventual BLOB scalar function
-        value.to_s.gsub(/"SYSIBM"."BLOB"\('(.*)'\)/i,'\1')
+        value.to_s.gsub(/"SYSIBM"."BLOB"\('(.*)'\)/i,'\1')				
       end
 
        private
@@ -946,24 +972,7 @@ module ActiveRecord
           end
         end
       end
-=begin
-      # Returns an array of hashes with the column names as keys and
-      # column values as values. +sql+ is the select query, 
-      # and +name+ is an optional description for logging
-      def select(sql, name = nil)
-        # Replaces {"= NULL" with " IS NULL"} OR {"IN (NULL)" with " IS NULL"}
-        sql.gsub!( /(=\s*NULL|IN\s*\(NULL\))/i, " IS NULL" )
-        
-        results = []
-        # Invokes the method +execute+ in order to log and execute the SQL
-        # IBM_DB.Statement is returned from which results can be fetched
-        stmt = execute(sql, name)
 
-        results = fetch_data(stmt)
-        # The array of record hashes is returned
-        results
-      end
-=end
       def select(sql, name = nil, binds = [])
         # Replaces {"= NULL" with " IS NULL"} OR {"IN (NULL)" with " IS NULL"}
         sql.gsub!( /(=\s*NULL|IN\s*\(NULL\))/i, " IS NULL" )
@@ -1062,14 +1071,12 @@ module ActiveRecord
             end
           end
           if item.at(1).nil? || 
-              item.at(1) == {} || 
-              (item.at(1) == '' && !(col.type.to_sym == :text))
+              item.at(1) == {} || 			  
+			  (item.at(1) == '' && !(col.sql_type.to_s =~ /text|clob/i))
           
                 params << 'NULL'
-          
-          elsif col.type.to_sym == :xml ||
-                 col.type.to_sym == :text ||
-                    col.type.to_sym == :binary 
+				
+		  elsif (!col.nil? &&  (col.sql_type.to_s =~ /blob|binary|clob|text|xml/i)  )			
             #  Add a '?' for the parameter or a NULL if the value is nil or empty 
             # (except for a CLOB field where '' can be a value)
              insert_values << quote_value_for_pstmt(item.at(1))
@@ -1430,8 +1437,8 @@ module ActiveRecord
         case value
           when String, ActiveSupport::Multibyte::Chars then
             value = value.to_s
-            if column && [:integer, :float].include?(column.type)
-              value = column.type == :integer ? value.to_i : value.to_f
+			if column && column.sql_type.to_s =~ /int|serial|float/i
+              value = column.sql_type.to_s =~ /int|serial/i ? value.to_i : value.to_f
               value
             else
               value
@@ -1458,38 +1465,38 @@ module ActiveRecord
         return value.quoted_id if value.respond_to?(:quoted_id)
 
         case value
-          # If it's a numeric value and the column type is not a string, it shouldn't be quoted
+          # If it's a numeric value and the column sql_type is not a string, it shouldn't be quoted
           # (IBM_DB doesn't accept quotes on numeric types)
           when Numeric
-            # If the column type is text or string, return the quote value
-            if column && column.type.to_sym == :text || column && column.type.to_sym == :string
+            # If the column sql_type is text or string, return the quote value
+            if (column && ( column.sql_type.to_s =~ /text|char/i ))
               unless caller[0] =~ /insert_fixture/i
                   "'#{value}'"
               else
                   "#{value}"
               end 
             else
-              # value is Numeric, column.type is not a string,
+              # value is Numeric, column.sql_type is not a string,
               # therefore it converts the number to string without quoting it
               value.to_s
             end
           when String, ActiveSupport::Multibyte::Chars
-          if column && column.type.to_sym == :binary && !(column.sql_type =~ /for bit data/i)
+          if column && column.sql_type.to_s =~ /binary|blob/i && !(column.sql_type.to_s =~ /for bit data/i)				
             # If quoting is required for the insert/update of a BLOB
               unless caller[0] =~ /add_column_options/i
                  # Invokes a convertion from string to binary
                 @servertype.set_binary_value
               else
-                # Quoting required for the default value of a column
+                # Quoting required for the default value of a column				
                 @servertype.set_binary_default(value)
               end
-          elsif column && column.type.to_sym == :text
+          elsif column && column.sql_type.to_s =~ /text|clob/i
               unless caller[0] =~ /add_column_options/i
                 "'<ibm>@@@IBMTEXT@@@</ibm>'"
               else
                 @servertype.set_text_default(quote_string(value))
               end
-          elsif column && column.type.to_sym == :xml
+          elsif column && column.sql_type.to_s =~ /xml/i
               unless caller[0] =~ /add_column_options/i
                 "'<ibm>@@@IBMXML@@@</ibm>'"
               else
@@ -1944,20 +1951,24 @@ module ActiveRecord
 		#FKCOLUMN_NAME:: fk_row[7] Name of the column containing the foreign key.		
 		#FK_NAME:: fk_row[11] The name of the foreign key.
 							
+		table_name = @servertype.set_case(table_name.to_s)
+		foreignKeys = []
         stmt = IBM_DB.foreignkeys( @connection, nil, 
                                    @servertype.set_case(@schema), 
-                                   @servertype.set_case(table_name))		
-		foreignKeys = []		
+                                   @servertype.set_case(table_name), "FK_TABLE")								
 		
         if(stmt)
           begin
             while ( fk_row = IBM_DB.fetch_array(stmt) )			  
               options = {
-				column: fk_row[3],
+				column: fk_row[7],
 				name: fk_row[11],
-				primary_key: fk_row[7],				
+				primary_key: fk_row[3],
 			  }			  			  			  
-			  foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[6], options)			  			  
+			  options[:on_delete] = extract_foreign_key_action(fk_row[9])		 
+			  options[:on_update] = extract_foreign_key_action(fk_row[10])		
+			  #foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[6], options)
+			  foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[2], options)
             end			
 
           rescue StandardError => fetch_error # Handle driver fetch errors
@@ -1982,6 +1993,40 @@ module ActiveRecord
         end
 	   #Returns the foreignKeys array
 	   return foreignKeys
+	end
+	def extract_foreign_key_action(specifier) # :nodoc:	      				
+		  case specifier
+          when 0; :cascade
+		  when 1; :restrict
+		  when 2; :nullify
+		  when 3; :noaction		  
+          end
+	  end
+	  
+	  def supports_disable_referential_integrity? #:nodoc:
+          true
+      end
+
+      def disable_referential_integrity #:nodoc:
+        if supports_disable_referential_integrity?
+          alter_foreign_keys(tables, true)
+        end
+
+        yield
+      ensure
+        if supports_disable_referential_integrity?
+          alter_foreign_keys(tables, false)
+        end
+		
+      end
+	  
+	  def alter_foreign_keys(tables, not_enforced)
+        enforced = not_enforced ? 'NOT ENFORCED' : 'ENFORCED'
+        tables.each do |table|
+          foreign_keys(table).each do |fk|
+            execute("ALTER TABLE #{@servertype.set_case(fk.from_table)} ALTER FOREIGN KEY #{@servertype.set_case(fk.name)} #{enforced}")			
+          end
+        end
 	end
 
       # Renames a table.
@@ -2020,32 +2065,6 @@ module ActiveRecord
         @servertype.change_column(table_name, column_name, type, options)
       end
 
-=begin
-      #overrides the abstract adapter method to generate proper sql
-      #specifying the column options, like default value and nullability clause
-      def add_column_options!(sql,options={})
-        #add default null option only if :default option is not specified and 
-        #:null option is not specified or is true
-        if (options[:default].nil? && (options[:null].nil? || options[:null] == true))
-          sql << " DEFAULT NULL"
-        else  
-          if( !options[:default].nil?)
-              #check, :column option is passed only in case of create_table but not in case of add_column
-            if (!options[:column].nil?)   
-              sql << " DEFAULT #{quote(options[:default],options[:column])}"
-            else
-              sql << " DEFAULT #{quote(options[:default])}" 
-            end 
-          end 
-          #append NOT NULL to sql only---
-          #---if options[:null] is not nil and is equal to false
-          unless options[:null] == nil 
-             sql << " NOT NULL" if (options[:null] == false)
-          end
-        end   
-      end
-=end
-
       #Add distinct clause to the sql if there is no order by specified
       def distinct(columns, order_by)
         if order_by.nil?
@@ -2054,6 +2073,17 @@ module ActiveRecord
           "#{columns}"
         end
       end
+	  
+	  def columns_for_distinct(columns, orders) #:nodoc:
+		  order_columns = orders.reject(&:blank?).map{ |s|
+			  # Convert Arel node to string
+			  s = s.to_sql unless s.is_a?(String)
+			  # Remove any ASC/DESC modifiers
+			  s.gsub(/\s+(?:ASC|DESC)\b/i, '')
+			   .gsub(/\s+NULLS\s+(?:FIRST|LAST)\b/i, '')
+			}.reject(&:blank?).map.with_index { |column, i| "#{column} AS alias_#{i}" }			
+		  [super, *order_columns].join(', ')
+		end
 
       # Sets a new default value for a column. This does not set the default
       # value to +NULL+, instead, it needs DatabaseStatements#execute which
@@ -2429,206 +2459,7 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
       def get_double_mapping
         return "double"
       end
-=begin
-      # Commenting this code, as offset handling is now part of sql and we need to handle it in select and also
-      # need not set cursor type during prepare or execute
-      # Fetches all the results available. IBM_DB.fetch_assoc(stmt) returns
-      # an hash for each single record.
-      # The loop stops when there aren't any more valid records to fetch
-      def select(stmt)
-        results = []
-        begin
-          if (!@offset.nil? && @offset >= 0) || (!@limit.nil? && @limit > 0)
-            # We know at this point that there is an offset and/or a limit
-            # Check if the cursor type is set correctly
-            cursor_type = IBM_DB.get_option stmt, IBM_DB::SQL_ATTR_CURSOR_TYPE, 0
-            @offset = 0 if @offset.nil?
-            if (cursor_type == IBM_DB::SQL_CURSOR_STATIC)
-              index = 0
-              # Get @limit rows starting at @offset
-              while (index < @limit)
-                # We increment the offset by 1 because for DB2 the offset of the initial row is 1 instead of 0
-                if single_hash = IBM_DB.fetch_assoc(stmt, @offset + index + 1)
-                  # Add the record to the +results+ array
-                  results <<  single_hash
-                  index = index + 1
-                else
-                  # break from the while loop
-                  break 
-                end
-              end
-            else # cursor != IBM_DB::SQL_CURSOR_STATIC
-              # If the result set contains a LOB, the cursor type will never be SQL_CURSOR_STATIC
-              # because DB2 does not allow this. We can't use the offset mechanism because the cursor 
-              # is not scrollable. In this case, ignore first @offset rows and return rows starting 
-              # at @offset to @offset + @limit
-              index = 0
-              while (index < @offset + @limit)
-                if single_hash = IBM_DB.fetch_assoc(stmt)
-                  # Add the record to the +results+ array only from row @offset to @offset + @limit
-                  if (index >= @offset)
-                    results <<  single_hash
-                  end
-                  index = index + 1
-                else
-                  # break from the while loop
-                  break
-                end
-              end
-            end
-          # This is the case where limit is set to zero
-          # Simply return an empty +results+
-          elsif (!@limit.nil? && @limit == 0)
-            results
-          # No limits or offsets specified
-          else
-            while single_hash = IBM_DB.fetch_assoc(stmt)
-              # Add the record to the +results+ array
-              results <<  single_hash
-            end
-            return results
-          end
-        rescue StandardError => fetch_error # Handle driver fetch errors
-          error_msg = IBM_DB.getErrormsg(stmt, IBM_DB::DB_STMT )
-          if error_msg && !error_msg.empty?
-            raise StatementInvalid,"Failed to retrieve data: #{error_msg}"
-          else
-            error_msg = "An unexpected error occurred during data retrieval"
-            error_msg = error_msg + ": #{fetch_error.message}" if !fetch_error.message.empty?
-            raise error_msg
-          end
-        ensure
-          # Assign the instance variables to nil. We will not be using them again
-          @offset = nil
-          @limit = nil
-        end
-      end
 
-      # Fetches all the results available. IBM_DB.fetch_array(stmt) returns
-      # an array for each single record.
-      # The loop stops when there aren't any more valid records to fetch
-      def select_rows(sql, name, stmt, results)
-        begin
-          if (!@offset.nil? && @offset >= 0) || (!@limit.nil? && @limit > 0)
-            # We know at this point that there is an offset and/or a limit
-            # Check if the cursor type is set correctly
-            cursor_type = IBM_DB.get_option stmt, IBM_DB::SQL_ATTR_CURSOR_TYPE, 0
-            @offset = 0 if @offset.nil?
-            if (cursor_type == IBM_DB::SQL_CURSOR_STATIC)
-              index = 0
-              # Get @limit rows starting at @offset
-              while (index < @limit)
-                # We increment the offset by 1 because for DB2 the offset of the initial row is 1 instead of 0
-                if single_array = IBM_DB.fetch_array(stmt, @offset + index + 1)
-                  # Add the array to the +results+ array
-                  results <<  single_array
-                  index = index + 1
-                else
-                  # break from the while loop
-                  break 
-                end
-              end
-            else # cursor != IBM_DB::SQL_CURSOR_STATIC
-              # If the result set contains a LOB, the cursor type will never be SQL_CURSOR_STATIC
-              # because DB2 does not allow this. We can't use the offset mechanism because the cursor 
-              # is not scrollable. In this case, ignore first @offset rows and return rows starting 
-              # at @offset to @offset + @limit
-              index = 0
-              while (index < @offset + @limit)
-                if single_array = IBM_DB.fetch_array(stmt)
-                  # Add the array to the +results+ array only from row @offset to @offset + @limit
-                  if (index >= @offset)
-                    results <<  single_array
-                  end
-                  index = index + 1
-                else
-                  # break from the while loop
-                  break
-                end
-              end
-            end
-          # This is the case where limit is set to zero
-          # Simply return an empty +results+
-          elsif (!@limit.nil? && @limit == 0)
-            results
-          # No limits or offsets specified
-          else
-            while single_array = IBM_DB.fetch_array(stmt)
-              # Add the array to the +results+ array
-              results <<  single_array
-            end
-          end
-        rescue StandardError => fetch_error # Handle driver fetch errors
-          error_msg = IBM_DB.getErrormsg(stmt, IBM_DB::DB_STMT )
-          if error_msg && !error_msg.empty?
-            raise StatementInvalid,"Failed to retrieve data: #{error_msg}"
-          else
-            error_msg = "An unexpected error occurred during data retrieval"
-            error_msg = error_msg + ": #{fetch_error.message}" if !fetch_error.message.empty?
-            raise error_msg
-          end
-        ensure
-          # Assign the instance variables to nil. We will not be using them again
-          @offset = nil
-          @limit = nil
-        end
-        return results
-      end
-
-      # Praveen
-      def prepare(sql,name = nil)
-        # Check if there is a limit and/or an offset
-        # If so then make sure and use a static cursor type
-        begin
-          if (!@offset.nil? && @offset >= 0) || (!@limit.nil? && @limit > 0)
-            # Set the cursor type to static so we can later utilize the offset and limit correctly
-            if stmt = IBM_DB.prepare(@adapter.connection, sql, 
-                      {IBM_DB::SQL_ATTR_CURSOR_TYPE => IBM_DB::SQL_CURSOR_STATIC})
-              stmt   # Return the statement object
-            else
-              raise StatementInvalid, IBM_DB.getErrormsg(@adapter.connection, IBM_DB::DB_CONN )
-            end
-          else
-            if stmt = IBM_DB.prepare(@adapter.connection, sql)
-              stmt   # Return the statement object
-            else
-              raise StatementInvalid, IBM_DB.getErrormsg(@adapter.connection, IBM_DB::DB_CONN )
-            end
-          end
-        rescue StandardError => prep_err
-          error_msg = "Failed to prepare sql #{sql}"
-          error_msg = error_msg + ": #{prep_err.message}" if !prep_err.message.empty?     
-          raise error_msg
-        end
-      end
-
-      # Praveen
-      def execute(sql, name = nil)
-        # Check if there is a limit and/or an offset
-        # If so then make sure and use a static cursor type
-        begin
-          if (!@offset.nil? && @offset >= 0) || (!@limit.nil? && @limit > 0)
-            # Set the cursor type to static so we can later utilize the offset and limit correctly
-            if stmt = IBM_DB.exec(@adapter.connection, sql, 
-                      {IBM_DB::SQL_ATTR_CURSOR_TYPE => IBM_DB::SQL_CURSOR_STATIC})
-              stmt   # Return the statement object
-            else
-              raise StatementInvalid, IBM_DB.getErrormsg(@adapter.connection, IBM_DB::DB_CONN )
-            end
-          else
-            if stmt = IBM_DB.exec(@adapter.connection, sql)
-              stmt   # Return the statement object
-            else
-              raise StatementInvalid, IBM_DB.getErrormsg(@adapter.connection, IBM_DB::DB_CONN )
-            end
-          end
-        rescue StandardError => exec_err
-          error_msg = "Failed to execute statement"
-          error_msg = error_msg + ": #{exec_err.message}" if !exec_err.message.empty?     
-          raise error_msg
-        end
-      end
-=end
       def get_limit_offset_clauses(limit, offset)
         retHash = {"endSegment"=> "", "startSegment" => ""}
         if(offset.nil? && limit.nil?)
@@ -2982,7 +2813,7 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
         is_nullable = true
         @adapter.columns(table_name).select do |col| 
            if (col.name == column_name)
-              sql_type =  @adapter.type_to_sql(col.type, col.limit, col.precision, col.scale)
+			  sql_type =  @adapter.type_to_sql(col.sql_type, col.limit, col.precision, col.scale)
               is_nullable = col.null 
            end
         end
@@ -3004,7 +2835,7 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
         sql_type = nil
         @adapter.columns(table_name).select do |col| 
           if (col.name == column_name)
-            sql_type =  @adapter.type_to_sql(col.type, col.limit, col.precision, col.scale)
+			sql_type =  @adapter.type_to_sql(col.sql_type, col.limit, col.precision, col.scale)
           end
         end
         if !null.nil?

@@ -1,6 +1,6 @@
 =====================================================================
-README for the IBM_DB Adapter (2.6.1) and Driver (2.6.1) (2015/07/14)
-For ActiveRecord Version >= 1.15.5 (and Rails >= 1.2.5)
+README for the IBM_DB Adapter (3.0.0) and Driver (3.0.0) (2015/09/30)
+For ActiveRecord Version >= 4.2.0 (and Rails >= 4.2.0)
 =====================================================================
 
 Supported Operating Systems 

@@ -1,5 +1,10 @@
 Change Log
 ==============
+2015/09/30 (IBM_DB adapter 3.0.0, driver 3.0.0)
+  - Added minimum dependency for Rails version 4.2.0 and for active record 4.2.0, as some Rails 4.2 APIs are not backward compatible.
+  - Fixed Foreign key issues
+  - Changed code to remove use of serialized_attributes as it is deprecated.
+  
 2015/07/14 (IBM_DB adapter 2.6.1, driver 2.6.1)
   - Foreign key support
   
