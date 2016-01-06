@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006- 2015           					 |
+# | (C) Copyright IBM Corporation 2006- 2016           					 |
 # +----------------------------------------------------------------------+
 # |  Authors: Antonio Cangiano <cangiano@ca.ibm.com>                     |
 # |         : Mario Ds Briggs  <mario.briggs@in.ibm.com>                 |
@@ -1485,20 +1485,20 @@ module ActiveRecord
             # If quoting is required for the insert/update of a BLOB
               unless caller[0] =~ /add_column_options/i
                  # Invokes a convertion from string to binary
-                @servertype.set_binary_value
+                @servertype.set_binary_default(value)
               else
                 # Quoting required for the default value of a column				
                 @servertype.set_binary_default(value)
               end
           elsif column && column.sql_type.to_s =~ /text|clob/i
               unless caller[0] =~ /add_column_options/i
-                "'<ibm>@@@IBMTEXT@@@</ibm>'"
+                @servertype.set_text_default(quote_string(value))
               else
                 @servertype.set_text_default(quote_string(value))
               end
           elsif column && column.sql_type.to_s =~ /xml/i
               unless caller[0] =~ /add_column_options/i
-                "'<ibm>@@@IBMXML@@@</ibm>'"
+                "#{value}"
               else
                 "#{value}"
               end

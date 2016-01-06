@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006- 2015                             |
+# | (C) Copyright IBM Corporation 2006- 2016                             |
 # +----------------------------------------------------------------------+
 
 require 'rubygems'
@@ -10,7 +10,7 @@ require 'pathname'
 SPEC = Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '3.0.0'
+  spec.version  = '3.0.1'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec
@@ -47,13 +47,8 @@ SPEC = Gem::Specification.new do |spec|
     if drv_lib.file? #&& (require "#{drv_lib.to_s}") #Commenting condition check as Ruby-1.9 does not recognize files from local directory
       puts ".. ibm_db driver was found:   #{drv_lib.realpath}"
     else
-      puts ".. ibm_db driver binary was not found. The driver native extension to be built during install."
-	  if(RUBY_PLATFORM =~ /darwin/i)
-	    spec.platform = Gem::Platform::CURRENT
-		spec.extensions << 'ext/extconf_MacOS.rb'
-	  else
-		spec.extensions << 'ext/extconf.rb'
-	  end
+      puts ".. ibm_db driver binary was not found. The driver native extension to be built during install."	  
+		spec.extensions << 'ext/extconf.rb'	  
     end
   end
 

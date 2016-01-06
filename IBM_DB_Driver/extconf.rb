@@ -9,7 +9,7 @@ require 'fileutils'
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006 - 2015                            |
+# | (C) Copyright IBM Corporation 2006 - 2016                            |
 # +----------------------------------------------------------------------+
 
 TAR_LONGLINK = '././@LongLink'
@@ -86,6 +86,13 @@ elsif (RUBY_PLATFORM =~ /solaris/i)
   else
         puts "Detected platform - sun amd32"
         DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd32_odbc_cli.tar.gz"
+  end
+elsif (RUBY_PLATFORM =~ /darwin/i)
+  if(is64Bit) 
+        puts "Detected platform - MacOS darwin64"
+        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"			
+  else
+        puts "Mac OS 32 bit not supported. Please use an x64 architecture."
   end
 end
 
@@ -234,28 +241,48 @@ end
 
 alias :libpathflag0 :libpathflag
 def libpathflag(libpath)
-if(RUBY_VERSION =~ /2./)
-  ldflags =  case RbConfig::CONFIG["arch"]
-  when /solaris2/
-      libpath[0..-2].map {|path| " -R#{path}"}.join
-    when /linux/
-      libpath[0..-2].map {|path| " -R#{path} "}.join
-    else
-      ""
-  end
-else
-	ldflags =  case Config::CONFIG["arch"]
-	when /solaris2/
-      libpath[0..-2].map {|path| " -R#{path}"}.join
-    when /linux/
-      libpath[0..-2].map {|path| " -R#{path} "}.join
-    else
-      ""
-  end
-end  
-    
-  #libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib #{ldflags}' "
-  libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib' "
+	if(RUBY_PLATFORM =~ /darwin/i)
+		if(RUBY_VERSION =~ /2./)	
+			libpathflag0 + case RbConfig::CONFIG["arch"]	
+			when /solaris2/
+			  libpath[0..-2].map {|path| " -R#{path}"}.join
+			when /linux/
+			  libpath[0..-2].map {|path| " -R#{path} "}.join
+			else
+			  ""
+		    end
+		else
+			libpathflag0 + case Config::CONFIG["arch"]				
+			when /solaris2/
+			  libpath[0..-2].map {|path| " -R#{path}"}.join
+			when /linux/
+			  libpath[0..-2].map {|path| " -R#{path} "}.join
+			else
+			  ""
+			end
+		end  
+	else
+		if(RUBY_VERSION =~ /2./)	
+			ldflags =  case RbConfig::CONFIG["arch"]	
+			when /solaris2/
+			  libpath[0..-2].map {|path| " -R#{path}"}.join
+			when /linux/
+			  libpath[0..-2].map {|path| " -R#{path} "}.join
+			else
+			  ""
+		  end
+		else
+			ldflags =  case Config::CONFIG["arch"]
+			when /solaris2/
+			  libpath[0..-2].map {|path| " -R#{path}"}.join
+			when /linux/
+			  libpath[0..-2].map {|path| " -R#{path} "}.join
+			else
+			  ""
+		    end
+		end			
+		libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib' "		
+	end
 end
 
 have_header('gil_release_version')

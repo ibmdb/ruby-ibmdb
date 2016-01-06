@@ -1,5 +1,9 @@
 Change Log
 ==============
+2016/01/06 (IBM_DB adapter 3.0.1, driver 3.0.1)
+  - Combined MacOS and Linux installation code in one file under extconf.rb to handle any Mac OS version upgrade.
+  - Fixed bug#49 - Regardless of what value you pass in for a clob, update_attributes will set the value to <ibm>@@@IBMTEXT@@@</ibm> in the database
+  
 2015/09/30 (IBM_DB adapter 3.0.0, driver 3.0.0)
   - Added minimum dependency for Rails version 4.2.0 and for active record 4.2.0, as some Rails 4.2 APIs are not backward compatible.
   - Fixed Foreign key issues
