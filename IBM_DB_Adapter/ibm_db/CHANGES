@@ -1,5 +1,9 @@
 Change Log
 ==============
+2016/05/24 (IBM_DB adapter 3.0.2, driver 3.0.2)
+  - Fixed issue #52 - Invalid foreign key ON UPDATE action specified in schema.rb 
+  - Fixed issue #59 - Can't Upload Binary Files Using 3.0.x (with Ruby 2.1.0 and Rails 4.2.6) 
+  
 2016/01/06 (IBM_DB adapter 3.0.1, driver 3.0.1)
   - Combined MacOS and Linux installation code in one file under extconf.rb to handle any Mac OS version upgrade.
   - Fixed bug#49 - Regardless of what value you pass in for a clob, update_attributes will set the value to <ibm>@@@IBMTEXT@@@</ibm> in the database

@@ -1485,7 +1485,7 @@ module ActiveRecord
             # If quoting is required for the insert/update of a BLOB
               unless caller[0] =~ /add_column_options/i
                  # Invokes a convertion from string to binary
-                @servertype.set_binary_default(value)
+                @servertype.set_binary_value
               else
                 # Quoting required for the default value of a column				
                 @servertype.set_binary_default(value)
@@ -1965,8 +1965,8 @@ module ActiveRecord
 				name: fk_row[11],
 				primary_key: fk_row[3],
 			  }			  			  			  
-			  options[:on_delete] = extract_foreign_key_action(fk_row[9])		 
-			  options[:on_update] = extract_foreign_key_action(fk_row[10])		
+			  options[:on_update] = extract_foreign_key_action(fk_row[9])	
+			  options[:on_delete] = extract_foreign_key_action(fk_row[10])		 			  				  
 			  #foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[6], options)
 			  foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[2], options)
             end			
