@@ -770,7 +770,7 @@ module ActiveRecord
 			else
 			  arel
 			end
-		  end
+		  end	
 	end
       # This adapter supports migrations.
       # Current limitations:
@@ -1146,9 +1146,16 @@ module ActiveRecord
         if binds.nil? || binds.empty?
           return insert_direct(sql, name, pk, id_value, sequence_name)
         end
-
+		
+		 new_binds = Hash.new
+		 param_array = binds.map do |column,value|			  
+		   if column && column.sql_type.to_s =~ /binary|blob/i			    			    
+		     new_binds [column] = value
+		   end
+		 end		
+			
         clear_query_cache if defined? clear_query_cache
-        if stmt = exec_insert(sql, name, binds)
+        if stmt = exec_insert(sql, name, new_binds)
           begin
             @sql << sql
             return id_value || @servertype.last_generated_id(stmt)
@@ -1326,8 +1333,15 @@ module ActiveRecord
         if binds.nil? || binds.empty?
           update_direct(sql, name)
         else
-          begin
-            if stmt = exec_query(sql,name,binds)
+          begin			
+			 new_binds = Hash.new
+			 param_array = binds.map do |column,value|			  			  
+			  if column && column.sql_type.to_s =~ /binary|blob/i			    			    
+				new_binds [column] = value
+			  end
+			end						
+			
+            if stmt = exec_query(sql,name,new_binds)			  
               IBM_DB.num_rows(stmt)
             end
           ensure
@@ -1946,10 +1960,11 @@ module ActiveRecord
 	  	  
 	  def foreign_keys(table_name)        
         #fetch the foreign keys of the table using function foreign_keys        
+		#PKTABLE_NAME::  fk_row[2] Name of the table containing the primary key.
 		#PKCOLUMN_NAME:: fk_row[3] Name of the column containing the primary key.		
-		#FKTABLE_NAME:: fk_row[6] Name of the table containing the foreign key.
-		#FKCOLUMN_NAME:: fk_row[7] Name of the column containing the foreign key.		
-		#FK_NAME:: fk_row[11] The name of the foreign key.
+		#FKTABLE_NAME::  fk_row[6] Name of the table containing the foreign key.
+		#FKCOLUMN_NAME:  fk_row[7] Name of the column containing the foreign key.		
+		#FK_NAME:: 		 fk_row[11] The name of the foreign key.
 							
 		table_name = @servertype.set_case(table_name.to_s)
 		foreignKeys = []
@@ -1966,9 +1981,8 @@ module ActiveRecord
 				primary_key: fk_row[3],
 			  }			  			  			  
 			  options[:on_update] = extract_foreign_key_action(fk_row[9])	
-			  options[:on_delete] = extract_foreign_key_action(fk_row[10])		 			  				  
-			  #foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[6], options)
-			  foreignKeys << ForeignKeyDefinition.new(table_name, fk_row[2], options)
+			  options[:on_delete] = extract_foreign_key_action(fk_row[10])		 			  				  			  
+			  foreignKeys << ForeignKeyDefinition.new(fk_row[6], table_name, options) 
             end			
 
           rescue StandardError => fetch_error # Handle driver fetch errors
@@ -2544,12 +2558,14 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
       # This method generates the default blob value specified for 
       # DB2 Dataservers
       def set_binary_default(value)
-        "BLOB('#{value}')"
+        #"BLOB('#{value}')"		
+		"?"
       end
 
       # This method generates the blob value specified for DB2 Dataservers
       def set_binary_value
-        "BLOB('?')"       
+        #"BLOB('?')"
+		"?"
       end
 
       # This method generates the default clob value specified for 

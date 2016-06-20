@@ -105,12 +105,19 @@ elsif (RUBY_VERSION =~ /2.1./)
 elsif (RUBY_VERSION =~ /2.2./ )
 	#Check if we are on 64-bit or 32-bit ruby and load binary accordingly
 	machine_bits = ['ibm'].pack('p').size * 8
-	if machine_bits == 64
-		#require 'rb22x/x64/ibm_db.so'
+	if machine_bits == 64		
 		raise NotImplementedError, "ibm_db with Ruby 2.2 64-bit on Windows platform is not supported. Refer to README for more details"
 	else		
 		require 'rb22x/i386/ibm_db.so'
 	end
+elsif (RUBY_VERSION =~ /2.3./ )
+	#Check if we are on 64-bit or 32-bit ruby and load binary accordingly
+	machine_bits = ['ibm'].pack('p').size * 8
+	if machine_bits == 64		
+		raise NotImplementedError, "ibm_db with Ruby 2.2 64-bit on Windows platform is not supported. Refer to README for more details"
+	else		
+		require 'rb23x/i386/ibm_db.so'
+	end	
 else
 	require 'rb18x/ibm_db.so'
 end
