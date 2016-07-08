@@ -81,7 +81,7 @@ ActiveRecord::Schema.define do
     t.string :owned_essay_id
   end
 
-  create_table :author_addresses, force: true do |t|		
+  create_table :author_addresses, force: true do |t|
   end
 
   add_foreign_key :authors, :author_addresses
@@ -262,6 +262,7 @@ ActiveRecord::Schema.define do
   create_table :developers, force: true do |t|
     t.string   :name
     t.integer  :salary, default: 70000
+    t.integer  :firm_id
     t.datetime :created_at
     t.datetime :updated_at
     t.datetime :created_on
@@ -633,6 +634,7 @@ ActiveRecord::Schema.define do
   create_table :projects, force: true do |t|
     t.string :name
     t.string :type
+    t.integer :firm_id
   end
 
   create_table :randomly_named_table, force: true do |t|
@@ -875,9 +877,15 @@ ActiveRecord::Schema.define do
     #t.string 'a$b'
     #t.string 'なまえ'
     #t.string 'from'
+	
 	t.string 'test1'
     t.string 'test2'
     t.string 'test3'
+  end
+
+  create_table :trees, force: true do |t|
+    t.string :name
+    t.datetime :updated_at
   end
 
   create_table :hotels, force: true do |t|
@@ -893,6 +901,8 @@ ActiveRecord::Schema.define do
     t.integer :employable_id
     t.string :employable_type
     t.integer :department_id
+    t.string :employable_list_type
+    t.integer :employable_list_id
   end
 
   create_table :records, force: true do |t|
@@ -916,6 +926,10 @@ ActiveRecord::Schema.define do
     t.float :unoverloaded_float
     t.string :overloaded_string_with_limit, limit: 255
     t.string :string_with_default, default: 'the original default'
+  end
+
+  create_table :test_with_keyword_column_name, force: true do |t|
+    t.string :desc
   end
 end
 

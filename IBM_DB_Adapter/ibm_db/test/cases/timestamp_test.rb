@@ -433,11 +433,10 @@ class TimestampTest < ActiveRecord::TestCase
 
     indexes = ActiveRecord::Base.connection.indexes('foos')
     assert_equal ['created_at', 'updated_at'], indexes.flat_map(&:columns).sort
-  #ensure
-  #  ActiveRecord::Base.connection.drop_table(:foos)
+  ensure
+    ActiveRecord::Base.connection.drop_table(:foos)
   end
 end
-
 
 class TimestampsWithoutTransactionTest < ActiveRecord::TestCase
   include DdlHelper
@@ -447,7 +446,7 @@ class TimestampsWithoutTransactionTest < ActiveRecord::TestCase
     attr_accessor :created_at, :updated_at
   end
 
-  def test_do_not_write_timestamps_on_save_if_they_are_not_attributes    
+  def test_do_not_write_timestamps_on_save_if_they_are_not_attributes
 	  if current_adapter?(:IBM_DBAdapter)
 		  ActiveRecord::Base.connection.create_table :timestamp_attribute_posts, force: true, id: false do |t|
 			  t.primary_key :id

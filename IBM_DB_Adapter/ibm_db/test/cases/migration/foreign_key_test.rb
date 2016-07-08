@@ -6,8 +6,8 @@ if ActiveRecord::Base.connection.supports_foreign_keys?
 module ActiveRecord
   class Migration
     class ForeignKeyTest < ActiveRecord::TestCase
-     include DdlHelper
-     include SchemaDumpingHelper
+      include DdlHelper
+      include SchemaDumpingHelper
 
       class Rocket < ActiveRecord::Base
       end
@@ -15,7 +15,7 @@ module ActiveRecord
       class Astronaut < ActiveRecord::Base
       end
 
-      setup do	    
+      setup do
         @connection = ActiveRecord::Base.connection
         @connection.create_table "rockets", force: true do |t|
           t.string :name
@@ -24,17 +24,15 @@ module ActiveRecord
         @connection.create_table "astronauts", force: true do |t|
           t.string :name
           t.references :rocket
-        end			
+        end
       end
-	  	  
 
-      teardown do	    
+      teardown do
         if defined?(@connection)
           @connection.drop_table "astronauts" if @connection.table_exists? 'astronauts' 
           @connection.drop_table "rockets" if @connection.table_exists? 'rockets'
         end
       end
-
 
       def test_foreign_keys
         foreign_keys = @connection.foreign_keys("fk_test_has_fk")
@@ -56,9 +54,8 @@ module ActiveRecord
 		end        
       end
 
-
-      def test_add_foreign_key_inferes_column	  		        
-        @connection.add_foreign_key :astronauts, :rockets		
+      def test_add_foreign_key_inferes_column
+        @connection.add_foreign_key :astronauts, :rockets
 
         foreign_keys = @connection.foreign_keys("astronauts")
         assert_equal 1, foreign_keys.size
@@ -85,8 +82,6 @@ module ActiveRecord
         
       end
 
-	  
-
       def test_add_foreign_key_with_column
         @connection.add_foreign_key :astronauts, :rockets, column: "rocket_id"
 
@@ -110,7 +105,7 @@ module ActiveRecord
                 
       end
 
-      def test_add_foreign_key_with_non_standard_primary_key	  
+      def test_add_foreign_key_with_non_standard_primary_key
 		if current_adapter?(:IBM_DBAdapter)
 			@connection.create_table :space_shuttles, force: true, id: false do |t|
 			t.primary_key :pk
@@ -136,7 +131,7 @@ module ActiveRecord
 			assert_equal "pk", fk.primary_key		  
 			@connection.remove_foreign_key :astronauts, name: "custom_pk"
 			end		
-		end		
+        end
       end
 
       def test_add_on_delete_restrict_foreign_key
@@ -148,9 +143,7 @@ module ActiveRecord
         fk = foreign_keys.first
         if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
           # ON DELETE RESTRICT is the default on MySQL
-          assert_equal "noaction", fk.on_delete
-        elsif current_adapter?(:IBM_DBAdapter)
-			assert_equal :noaction, fk.on_delete		
+          assert_equal nil, fk.on_delete
 		else 
           assert_equal :restrict, fk.on_delete
         end
@@ -163,12 +156,7 @@ module ActiveRecord
         assert_equal 1, foreign_keys.size
 
         fk = foreign_keys.first		
-		if current_adapter?(:IBM_DBAdapter)
-			assert_equal :noaction, fk.on_delete		
-		else 
-			assert_equal :cascade, fk.on_delete
-		end
-        
+        assert_equal :cascade, fk.on_delete		
       end
 
       def test_add_on_delete_nullify_foreign_key
@@ -178,13 +166,7 @@ module ActiveRecord
         assert_equal 1, foreign_keys.size
 
         fk = foreign_keys.first
-		
-		if current_adapter?(:IBM_DBAdapter)
-			assert_equal :noaction, fk.on_delete		
-		else 
-			assert_equal :nullify, fk.on_delete
-		end
-        
+        assert_equal :nullify, fk.on_delete
       end
 
       def test_on_update_and_on_delete_raises_with_invalid_values
@@ -205,11 +187,8 @@ module ActiveRecord
         assert_equal 1, foreign_keys.size
 
         fk = foreign_keys.first
-		if current_adapter?(:IBM_DBAdapter)
-			assert_equal :noaction, fk.on_update		
-		else 
-			assert_equal :nullify, fk.on_update		
-		end
+        assert_equal :noaction, fk.on_update
+		#assert_equal nil, fk.on_update
       end
 
       def test_remove_foreign_key_inferes_column
@@ -230,17 +209,10 @@ module ActiveRecord
 
       def test_remove_foreign_key_by_symbol_column
         @connection.add_foreign_key :astronauts, :rockets, column: :rocket_id
-		
-		if current_adapter?(:IBM_DBAdapter)			
-			foreign_keys = @connection.foreign_keys("astronauts")
-			assert_equal 1, foreign_keys.size											
-			@connection.remove_foreign_key "astronauts".upcase, column: "rocket_id".upcase
-		else
-			assert_equal 1, @connection.foreign_keys("astronauts").size
-			@connection.remove_foreign_key :astronauts, column: :rocket_id
-		end
-        
-		assert_equal [], @connection.foreign_keys("astronauts")
+
+        assert_equal 1, @connection.foreign_keys("astronauts").size
+        @connection.remove_foreign_key :astronauts, column: :rocket_id
+        assert_equal [], @connection.foreign_keys("astronauts")
       end
 
       def test_remove_foreign_key_by_name
@@ -260,23 +232,21 @@ module ActiveRecord
       def test_schema_dumping
         @connection.add_foreign_key :astronauts, :rockets
         output = dump_table_schema "astronauts"
-        assert_match %r{\s+add_foreign_key "astronauts", "rockets"$}, output
+        assert_match %r{\s+add_foreign_key "ASTRONAUTS", "ROCKETS"$}, output
       end
 
       def test_schema_dumping_with_options
-        output = dump_table_schema "fk_test_has_fk"		
-		assert_match %r{\s+add_foreign_key "fk_test_has_fk", "fk_test_has_pk", column: "fk_id", primary_key: "pk_id", name: "fk_name"$}, output		
+        output = dump_table_schema "fk_test_has_fk"
+        assert_match %r{\s+add_foreign_key "FK_TEST_HAS_FK", "FK_TEST_HAS_PK", column: "FK_ID", primary_key: "PK_ID", name: "FK_NAME"$}, output
       end
 
       def test_schema_dumping_on_delete_and_on_update_options
-	    if current_adapter?(:IBM_DBAdapter)
-			@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :nullify, on_update: :restrict
-		else
-			@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :nullify, on_update: :cascade
-		end
-		
-		output = dump_table_schema "astronauts"
-		assert_match %r{\s+add_foreign_key "astronauts",.+on_update: :restrict,.+on_delete: :nullify$}, output		
+        #@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :nullify, on_update: :cascade
+		@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :cascade, on_update: :restrict
+
+        output = dump_table_schema "astronauts"
+        #assert_match %r{\s+add_foreign_key "astronauts",.+on_update: :cascade,.+on_delete: :nullify$}, output
+		assert_match %r{\s+add_foreign_key "ASTRONAUTS",.+on_update: :restrict,.+on_delete: :cascade$}, output
       end
 
       class CreateCitiesAndHousesMigration < ActiveRecord::Migration
@@ -328,8 +298,6 @@ module ActiveRecord
         silence_stream($stdout) { migration.migrate(:down) }
         ActiveRecord::Base.table_name_suffix = nil
       end
-	  
-
     end
   end
 end

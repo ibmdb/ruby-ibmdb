@@ -159,9 +159,9 @@ module ActiveRecord
         raise LoadError, "Failed to load IBM_DB Ruby driver."
       end
 
-      if( config.has_key?(:parameterized) && config[:parameterized] == true )
-        require 'active_record/connection_adapters/ibm_db_pstmt'
-      end
+      #if( config.has_key?(:parameterized) && config[:parameterized] == true )
+      #  require 'active_record/connection_adapters/ibm_db_pstmt'
+      #end
 
 	  # Check if class TableDefinition responds to indexes method to determine if we are on AR 3 or AR 4.
 	  # This is a interim hack ti ensure backward compatibility. To remove as we move out of AR 3 support or have a better way to determine which version of AR being run against.
@@ -617,14 +617,6 @@ module ActiveRecord
         @authentication   = config[:authentication] || nil
         @timeout          = config[:timeout] || 0  # default timeout value is 0
 
-        if( config.has_key?(:parameterized) && config[:parameterized] == true )
-          @pstmt_support_on = true
-          @set_quoted_literal_replacement = IBM_DB::QUOTED_LITERAL_REPLACEMENT_OFF
-        else
-          @pstmt_support_on = false
-          @set_quoted_literal_replacement = IBM_DB::QUOTED_LITERAL_REPLACEMENT_ON
-        end
-        
         @app_user = @account = @application = @workstation = nil
         # Caching database connection options (auditing and billing support)
         @app_user         = conn_options[:app_user]     if conn_options.has_key?(:app_user)
@@ -701,6 +693,16 @@ module ActiveRecord
         if(@arelVersion >=  3 )
           @visitor = Arel::Visitors::IBM_DB.new self
         end
+		
+        if(config.has_key?(:parameterized) && config[:parameterized] == true)			 
+          @pstmt_support_on = true
+          @prepared_statements = true
+          @set_quoted_literal_replacement = IBM_DB::QUOTED_LITERAL_REPLACEMENT_OFF
+        else		  
+          @pstmt_support_on = false
+          @prepared_statements = false
+          @set_quoted_literal_replacement = IBM_DB::QUOTED_LITERAL_REPLACEMENT_ON
+        end
       end
 
       # Optional connection attribute: database name space qualifier
@@ -770,7 +772,7 @@ module ActiveRecord
 			else
 			  arel
 			end
-		  end	
+		  end
 	end
       # This adapter supports migrations.
       # Current limitations:
@@ -1146,16 +1148,9 @@ module ActiveRecord
         if binds.nil? || binds.empty?
           return insert_direct(sql, name, pk, id_value, sequence_name)
         end
-		
-		 new_binds = Hash.new
-		 param_array = binds.map do |column,value|			  
-		   if column && column.sql_type.to_s =~ /binary|blob/i			    			    
-		     new_binds [column] = value
-		   end
-		 end		
-			
+
         clear_query_cache if defined? clear_query_cache
-        if stmt = exec_insert(sql, name, new_binds)
+        if stmt = exec_insert(sql, name, binds)
           begin
             @sql << sql
             return id_value || @servertype.last_generated_id(stmt)
@@ -1333,15 +1328,8 @@ module ActiveRecord
         if binds.nil? || binds.empty?
           update_direct(sql, name)
         else
-          begin			
-			 new_binds = Hash.new
-			 param_array = binds.map do |column,value|			  			  
-			  if column && column.sql_type.to_s =~ /binary|blob/i			    			    
-				new_binds [column] = value
-			  end
-			end						
-			
-            if stmt = exec_query(sql,name,new_binds)			  
+          begin
+            if stmt = exec_query(sql,name,binds)
               IBM_DB.num_rows(stmt)
             end
           ensure
@@ -1963,7 +1951,7 @@ module ActiveRecord
 		#PKTABLE_NAME::  fk_row[2] Name of the table containing the primary key.
 		#PKCOLUMN_NAME:: fk_row[3] Name of the column containing the primary key.		
 		#FKTABLE_NAME::  fk_row[6] Name of the table containing the foreign key.
-		#FKCOLUMN_NAME:  fk_row[7] Name of the column containing the foreign key.		
+		#FKCOLUMN_NAME:: fk_row[7] Name of the column containing the foreign key.		
 		#FK_NAME:: 		 fk_row[11] The name of the foreign key.
 							
 		table_name = @servertype.set_case(table_name.to_s)
@@ -1981,7 +1969,7 @@ module ActiveRecord
 				primary_key: fk_row[3],
 			  }			  			  			  
 			  options[:on_update] = extract_foreign_key_action(fk_row[9])	
-			  options[:on_delete] = extract_foreign_key_action(fk_row[10])		 			  				  			  
+			  options[:on_delete] = extract_foreign_key_action(fk_row[10])
 			  foreignKeys << ForeignKeyDefinition.new(fk_row[6], table_name, options) 
             end			
 
@@ -2486,14 +2474,16 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
         end
 
         if(limit.nil?)
-          retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( SELECT "
+          #retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( SELECT "
+          retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM (  "
           retHash["endSegment"] = " ) AS I) AS O WHERE sys_row_num > #{offset}"
           return retHash
         end
 
         # Defines what will be the last record
         last_record = offset.to_i + limit.to_i
-        retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( SELECT "
+        #retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( SELECT "
+        retHash["startSegment"] = "SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM (  "
         retHash["endSegment"] = " ) AS I) AS O WHERE sys_row_num BETWEEN #{offset+1} AND #{last_record}"
         return retHash
       end
@@ -2558,14 +2548,12 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
       # This method generates the default blob value specified for 
       # DB2 Dataservers
       def set_binary_default(value)
-        #"BLOB('#{value}')"		
-		"?"
+        "BLOB('#{value}')"
       end
 
       # This method generates the blob value specified for DB2 Dataservers
       def set_binary_value
-        #"BLOB('?')"
-		"?"
+        "BLOB('?')"
       end
 
       # This method generates the default clob value specified for 
@@ -3075,7 +3063,7 @@ end
         @arelVersion = Arel::VERSION.to_i
       rescue
         @arelVersion = 0
-      end      
+      end	  
 if(@arelVersion < 6)
 
 	  def visit_Arel_Nodes_Limit o, a=nil
@@ -3165,11 +3153,14 @@ else
         limOffClause = @connection.get_limit_offset_clauses(limit,offset)
 
         if( !limOffClause["startSegment"].empty? ) 
-          collector.changeFirstSegment(limOffClause["startSegment"])
+          #collector.changeFirstSegment(limOffClause["startSegment"])		  
+          collector.value.prepend(limOffClause["startSegment"])		  
         end
         
         if( !limOffClause["endSegment"].empty? )
-          collector.changeEndSegment(limOffClause["endSegment"])
+          #collector.changeEndSegment(limOffClause["endSegment"])
+          collector << SPACE
+          collector << limOffClause["endSegment"]
         end
 
         #Initialize a new Collector and set its value to the sql string built so far with any limit and ofset modifications
