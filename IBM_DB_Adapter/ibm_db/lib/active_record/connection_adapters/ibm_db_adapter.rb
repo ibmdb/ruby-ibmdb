@@ -1665,6 +1665,11 @@ module ActiveRecord
         128
       end
 
+      # Returns empty array. Rails 5 expects this method to be overwritten. Views are used by calling tables in ibm_db, see line 1685.
+      def views
+       	[]
+      end
+
       # Retrieves table's metadata for a specified shema name
       def tables(name = nil)
         # Initializes the tables array
