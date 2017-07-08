@@ -648,6 +648,8 @@ module ActiveRecord
                 end
               when /DB2/i               # DB2 for zOS
                 case server_info.DBMS_VER
+		  when /11/ 		# DB2 for zOS version 11
+		    @servertype = IBM_DB2_ZOS.new(self, @isAr3)
                   when /09/             # DB2 for zOS version 9 and version 10
                     @servertype = IBM_DB2_ZOS.new(self, @isAr3)
                   when /10/
