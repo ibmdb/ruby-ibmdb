@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Contributing
 =======
-See [CONTRIBUTING] (https://github.com/ibmdb/ruby-ibmdb/contributing/CONTRIBUTING.md)
+See [CONTRIBUTING] (https://github.com/ibmdb/ruby-ibmdb/blob/master/contributing/CONTRIBUTING.md)
 
 ```
 The developer sign-off should include the reference to the DCO in remarks(example below):
