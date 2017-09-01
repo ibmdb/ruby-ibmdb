@@ -1,25 +1,4 @@
-ruby-ibmdb
-==========
-Rails Adapter/Ruby Driver for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on IBMi, IBM Informix (IDS)}
-
-Installing the IBM_DB adapter and driver
-========================================
-
-Issue the following command to install the ibm_db gem
-
-```
-gem install ibm_db
-```
-
-Contacts
-========
-
-For any issues or help: https://github.com/ibmdb/ruby-ibmdb/issues
-
-
-License
-=======
-Copyright (c) 2006 - 2017 IBM Corporation
+Copyright (c) 2006 - 2015 IBM Corporation
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the "Software"),
@@ -37,14 +16,3 @@ PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIG
 HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-
-Contributing
-=======
-See [CONTRIBUTING] (https://github.com/ibmdb/ruby-ibmdb/contributing/CONTRIBUTING.md)
-
-```
-The developer sign-off should include the reference to the DCO in remarks(example below):
-DCO 1.1 Signed-off-by: Random J Developer <random@developer.org>
-```
