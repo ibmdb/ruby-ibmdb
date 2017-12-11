@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   |  Licensed Materials - Property of IBM                                |
   |                                                                      |
-  | (C) Copyright IBM Corporation 2006 - 2016                            |
+  | (C) Copyright IBM Corporation 2006 - 2017                            |
   +----------------------------------------------------------------------+
   | Authors: Sushant Koduru, Lynh Nguyen, Kanchana Padmanabhan,          |
   |          Dan Scott, Helmut Tessarek, Sam Ruby, Kellen Bombardier,    |
@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "3.0.3"
+#define MODULE_RELEASE "3.0.5"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -10423,14 +10423,17 @@ VALUE ibm_db_fetch_array(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_INDEX;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
-    ret_val = helper_args->return_value;
-						
-  #else
-    ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  #endif
+  //Call without thread API to avoid the Thread lock.
+  ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
+  
+  //#ifdef UNICODE_SUPPORT_VERSION    
+  //ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
+  //                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
+  //  ret_val = helper_args->return_value;
+  //					
+  //#else
+  //  ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
+  //#endif
 
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {

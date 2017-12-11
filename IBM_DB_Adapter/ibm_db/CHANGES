@@ -1,7 +1,10 @@
 Change Log
 ==============
+2016/07/08 (IBM_DB adapter 3.0.5, driver 3.0.5)
+  - Fixed issue #71 - Query hangs from db2 with no any exception return
+  
 2016/07/08 (IBM_DB adapter 3.0.4, driver 3.0.3)
-  - Fixed issue #58 - non-string query parameters do nor get prepared.
+  - Fixed issue #58 - non-string query parameters do not get prepared.
   
 2016/06/17 (IBM_DB adapter 3.0.3, driver 3.0.3)
   - Fixed issue #59 - Can't Update Binary Files Using 3.0.x (with Ruby 2.1.0 and Rails 4.2.6) 
