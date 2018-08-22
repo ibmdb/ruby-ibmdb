@@ -4,13 +4,14 @@ require 'models/comment'
 require 'models/developer'
 require 'models/computer'
 require 'models/vehicle'
+require 'models/cat'
 
 class DefaultScopingTest < ActiveRecord::TestCase
   fixtures :developers, :posts, :comments
 
   def test_default_scope
-    expected = Developer.all.merge!(:order => 'salary DESC').to_a.collect { |dev| dev.salary }
-    received = DeveloperOrderedBySalary.all.collect { |dev| dev.salary }
+    expected = Developer.all.merge!(:order => 'salary DESC').to_a.collect(&:salary)
+    received = DeveloperOrderedBySalary.all.collect(&:salary)
     assert_equal expected, received
   end
 
@@ -87,14 +88,14 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_scope_overwrites_default
-    expected = Developer.all.merge!(order: 'salary DESC, name DESC').to_a.collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.by_name.to_a.collect { |dev| dev.name }
+    expected = Developer.all.merge!(order: 'salary DESC, name DESC').to_a.collect(&:name)
+    received = DeveloperOrderedBySalary.by_name.to_a.collect(&:name)
     assert_equal expected, received
   end
 
   def test_reorder_overrides_default_scope_order
-    expected = Developer.order('name DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.reorder('name DESC').collect { |dev| dev.name }
+    expected = Developer.order('name DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.reorder('name DESC').collect(&:name)
     assert_equal expected, received
   end
 
@@ -144,6 +145,14 @@ class DefaultScopingTest < ActiveRecord::TestCase
     expected_5 = Developer.order('salary DESC').collect(&:name)
     received_5 = DeveloperOrderedBySalary.where.not("name" => ["Jamis", "David"]).unscope(where: :name).collect(&:name)
     assert_equal expected_5, received_5
+
+    expected_6 = Developer.order('salary DESC').collect(&:name)
+    received_6 = DeveloperOrderedBySalary.where(Developer.arel_table['name'].eq('David')).unscope(where: :name).collect(&:name)
+    assert_equal expected_6, received_6
+
+    expected_7 = Developer.order('salary DESC').collect(&:name)
+    received_7 = DeveloperOrderedBySalary.where(Developer.arel_table[:name].eq('David')).unscope(where: :name).collect(&:name)
+    assert_equal expected_7, received_7
   end
 
   def test_unscope_comparison_where_clauses
@@ -159,34 +168,34 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_unscope_multiple_where_clauses
-    expected = Developer.order('salary DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.where(name: 'Jamis').where(id: 1).unscope(where: [:name, :id]).collect { |dev| dev.name }
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.where(name: 'Jamis').where(id: 1).unscope(where: [:name, :id]).collect(&:name)
     assert_equal expected, received
   end
 
   def test_unscope_string_where_clauses_involved
     dev_relation = Developer.order('salary DESC').where("created_at > ?", 1.year.ago)
-    expected = dev_relation.collect { |dev| dev.name }
+    expected = dev_relation.collect(&:name)
 
     dev_ordered_relation = DeveloperOrderedBySalary.where(name: 'Jamis').where("created_at > ?", 1.year.ago)
-    received = dev_ordered_relation.unscope(where: [:name]).collect { |dev| dev.name }
+    received = dev_ordered_relation.unscope(where: [:name]).collect(&:name)
 
     assert_equal expected, received
   end
 
   def test_unscope_with_grouping_attributes
-    expected = Developer.order('salary DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.group(:name).unscope(:group).collect { |dev| dev.name }
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.group(:name).unscope(:group).collect(&:name)
     assert_equal expected, received
 
-    expected_2 = Developer.order('salary DESC').collect { |dev| dev.name }
-    received_2 = DeveloperOrderedBySalary.group("name").unscope(:group).collect { |dev| dev.name }
+    expected_2 = Developer.order('salary DESC').collect(&:name)
+    received_2 = DeveloperOrderedBySalary.group("name").unscope(:group).collect(&:name)
     assert_equal expected_2, received_2
   end
 
   def test_unscope_with_limit_in_query
-    expected = Developer.order('salary DESC').collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.limit(1).unscope(:limit).collect { |dev| dev.name }
+    expected = Developer.order('salary DESC').collect(&:name)
+    received = DeveloperOrderedBySalary.limit(1).unscope(:limit).collect(&:name)
     assert_equal expected, received
   end
 
@@ -196,42 +205,42 @@ class DefaultScopingTest < ActiveRecord::TestCase
   end
 
   def test_unscope_reverse_order
-    expected = Developer.all.collect { |dev| dev.name }
-    received = Developer.order('salary DESC').reverse_order.unscope(:order).collect { |dev| dev.name }
+    expected = Developer.all.collect(&:name)
+    received = Developer.order('salary DESC').reverse_order.unscope(:order).collect(&:name)
     assert_equal expected, received
   end
 
   def test_unscope_select
-    expected = Developer.order('salary ASC').collect { |dev| dev.name }
-    received = Developer.order('salary DESC').reverse_order.select(:name).unscope(:select).collect { |dev| dev.name }
+    expected = Developer.order('salary ASC').collect(&:name)
+    received = Developer.order('salary DESC').reverse_order.select(:name).unscope(:select).collect(&:name)
     assert_equal expected, received
 
-    expected_2 = Developer.all.collect { |dev| dev.id }
-    received_2 = Developer.select(:name).unscope(:select).collect { |dev| dev.id }
+    expected_2 = Developer.all.collect(&:id)
+    received_2 = Developer.select(:name).unscope(:select).collect(&:id)
     assert_equal expected_2, received_2
   end
 
   def test_unscope_offset
-    expected = Developer.all.collect { |dev| dev.name }
-    received = Developer.offset(5).unscope(:offset).collect { |dev| dev.name }
+    expected = Developer.all.collect(&:name)
+    received = Developer.offset(5).unscope(:offset).collect(&:name)
     assert_equal expected, received
   end
 
   def test_unscope_joins_and_select_on_developers_projects
-    expected = Developer.all.collect { |dev| dev.name }
-    received = Developer.joins('JOIN developers_projects ON id = developer_id').select(:id).unscope(:joins, :select).collect { |dev| dev.name }
+    expected = Developer.all.collect(&:name)
+    received = Developer.joins('JOIN developers_projects ON id = developer_id').select(:id).unscope(:joins, :select).collect(&:name)
     assert_equal expected, received
   end
 
   def test_unscope_includes
-    expected = Developer.all.collect { |dev| dev.name }
-    received = Developer.includes(:projects).select(:id).unscope(:includes, :select).collect { |dev| dev.name }
+    expected = Developer.all.collect(&:name)
+    received = Developer.includes(:projects).select(:id).unscope(:includes, :select).collect(&:name)
     assert_equal expected, received
   end
 
   def test_unscope_having
-    expected = DeveloperOrderedBySalary.all.collect { |dev| dev.name }
-    received = DeveloperOrderedBySalary.having("name IN ('Jamis', 'David')").unscope(:having).collect { |dev| dev.name }
+    expected = DeveloperOrderedBySalary.all.collect(&:name)
+    received = DeveloperOrderedBySalary.having("name IN ('Jamis', 'David')").unscope(:having).collect(&:name)
     assert_equal expected, received
   end
 
@@ -289,13 +298,13 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
   def test_unscope_merging
     merged = Developer.where(name: "Jamis").merge(Developer.unscope(:where))
-    assert merged.where_values.empty?
-    assert !merged.where(name: "Jon").where_values.empty?
+    assert merged.where_clause.empty?
+    assert !merged.where(name: "Jon").where_clause.empty?
   end
 
   def test_order_in_default_scope_should_not_prevail
-    expected = Developer.all.merge!(order: 'salary desc').to_a.collect { |dev| dev.salary }
-    received = DeveloperOrderedBySalary.all.merge!(order: 'salary').to_a.collect { |dev| dev.salary }
+    expected = Developer.all.merge!(order: 'salary desc').to_a.collect(&:salary)
+    received = DeveloperOrderedBySalary.all.merge!(order: 'salary').to_a.collect(&:salary)
     assert_equal expected, received
   end
 
@@ -366,6 +375,46 @@ class DefaultScopingTest < ActiveRecord::TestCase
     assert_equal 10, DeveloperCalledJamis.unscoped { DeveloperCalledJamis.poor }.length
   end
 
+  def test_default_scope_with_joins
+    assert_equal Comment.where(post_id: SpecialPostWithDefaultScope.pluck(:id)).count,
+                 Comment.joins(:special_post_with_default_scope).count
+    assert_equal Comment.where(post_id: Post.pluck(:id)).count,
+                 Comment.joins(:post).count
+  end
+
+  def test_joins_not_affected_by_scope_other_than_default_or_unscoped
+    without_scope_on_post = Comment.joins(:post).to_a
+    with_scope_on_post = nil
+    Post.where(id: [1, 5, 6]).scoping do
+      with_scope_on_post = Comment.joins(:post).to_a
+    end
+
+    assert_equal with_scope_on_post, without_scope_on_post
+  end
+
+  def test_unscoped_with_joins_should_not_have_default_scope
+    assert_equal SpecialPostWithDefaultScope.unscoped { Comment.joins(:special_post_with_default_scope).to_a },
+                 Comment.joins(:post).to_a
+  end
+
+  def test_sti_association_with_unscoped_not_affected_by_default_scope
+    post = posts(:thinking)
+    comments = [comments(:does_it_hurt)]
+
+    post.special_comments.update_all(deleted_at: Time.now)
+
+    assert_raises(ActiveRecord::RecordNotFound) { Post.joins(:special_comments).find(post.id) }
+    assert_equal [], post.special_comments
+
+    SpecialComment.unscoped do
+      assert_equal post, Post.joins(:special_comments).find(post.id)
+      assert_equal comments, Post.joins(:special_comments).find(post.id).special_comments
+      assert_equal comments, Post.eager_load(:special_comments).find(post.id).special_comments
+      assert_equal comments, Post.includes(:special_comments).find(post.id).special_comments
+      assert_equal comments, Post.preload(:special_comments).find(post.id).special_comments
+    end
+  end
+
   def test_default_scope_select_ignored_by_aggregations
     assert_equal DeveloperWithSelect.all.to_a.count, DeveloperWithSelect.count
   end
@@ -431,24 +480,49 @@ class DefaultScopingTest < ActiveRecord::TestCase
 
   test "additional conditions are ANDed with the default scope" do
     scope = DeveloperCalledJamis.where(name: "David")
-    assert_equal 2, scope.where_values.length
+    assert_equal 2, scope.where_clause.ast.children.length
     assert_equal [], scope.to_a
   end
 
   test "additional conditions in a scope are ANDed with the default scope" do
     scope = DeveloperCalledJamis.david
-    assert_equal 2, scope.where_values.length
+    assert_equal 2, scope.where_clause.ast.children.length
     assert_equal [], scope.to_a
   end
 
   test "a scope can remove the condition from the default scope" do
     scope = DeveloperCalledJamis.david2
-    assert_equal 1, scope.where_values.length
-    assert_equal Developer.where(name: "David").map(&:id), scope.map(&:id)
+    assert_equal 1, scope.where_clause.ast.children.length
+    assert_equal Developer.where(name: "David"), scope
   end
 
   def test_with_abstract_class_where_clause_should_not_be_duplicated
     scope = Bus.all
-    assert_equal scope.where_values.length, 1
+    assert_equal scope.where_clause.ast.children.length, 1
+  end
+
+  def test_sti_conditions_are_not_carried_in_default_scope
+    ConditionalStiPost.create! body: ''
+    SubConditionalStiPost.create! body: ''
+    SubConditionalStiPost.create! title: 'Hello world', body: ''
+
+    assert_equal 2, ConditionalStiPost.count
+    assert_equal 2, ConditionalStiPost.all.to_a.size
+    assert_equal 3, ConditionalStiPost.unscope(where: :title).to_a.size
+
+    assert_equal 1, SubConditionalStiPost.count
+    assert_equal 1, SubConditionalStiPost.all.to_a.size
+    assert_equal 2, SubConditionalStiPost.unscope(where: :title).to_a.size
+  end
+
+  def test_with_abstract_class_scope_should_be_executed_in_correct_context
+    vegetarian_pattern, gender_pattern = if current_adapter?(:Mysql2Adapter)
+      [/`lions`.`is_vegetarian`/, /`lions`.`gender`/]
+    else
+      [/"lions"."is_vegetarian"/, /"lions"."gender"/]
+    end
+
+    assert_match vegetarian_pattern, Lion.all.to_sql
+    assert_match gender_pattern, Lion.female.to_sql
   end
 end

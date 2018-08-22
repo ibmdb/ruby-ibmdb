@@ -13,7 +13,7 @@ require 'models/edge'
 
 class CascadedEagerLoadingTest < ActiveRecord::TestCase
   fixtures :authors, :mixins, :companies, :posts, :topics, :accounts, :comments,
-           :categorizations, :people, :categories, :edges, :vertices, :author_addresses
+           :categorizations, :people, :categories, :edges, :vertices
 
   def test_eager_association_loading_with_cascaded_two_levels
     authors = Author.all.merge!(:includes=>{:posts=>:comments}, :order=>"authors.id").to_a

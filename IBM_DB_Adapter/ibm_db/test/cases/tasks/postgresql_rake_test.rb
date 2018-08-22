@@ -1,4 +1,5 @@
 require 'cases/helper'
+require 'active_record/tasks/database_tasks'
 
 if current_adapter?(:PostgreSQLAdapter)
 module ActiveRecord
@@ -12,6 +13,13 @@ module ActiveRecord
 
       ActiveRecord::Base.stubs(:connection).returns(@connection)
       ActiveRecord::Base.stubs(:establish_connection).returns(true)
+
+      $stdout, @original_stdout = StringIO.new, $stdout
+      $stderr, @original_stderr = StringIO.new, $stderr
+    end
+
+    def teardown
+      $stdout, $stderr = @original_stdout, @original_stderr
     end
 
     def test_establishes_connection_to_postgresql_database
@@ -60,17 +68,23 @@ module ActiveRecord
       $stderr.expects(:puts).
         with("Couldn't create database for #{@configuration.inspect}")
 
+      assert_raises(Exception) { ActiveRecord::Tasks::DatabaseTasks.create @configuration }
+    end
+
+    def test_when_database_created_successfully_outputs_info_to_stdout
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
+
+      assert_equal $stdout.string, "Created database 'my-app-db'\n"
     end
 
     def test_create_when_database_exists_outputs_info_to_stderr
-      $stderr.expects(:puts).with("my-app-db already exists").once
-
       ActiveRecord::Base.connection.stubs(:create_database).raises(
-        ActiveRecord::StatementInvalid.new('database "my-app-db" already exists')
+        ActiveRecord::Tasks::DatabaseAlreadyExists
       )
 
       ActiveRecord::Tasks::DatabaseTasks.create @configuration
+
+      assert_equal $stderr.string, "Database 'my-app-db' already exists\n"
     end
   end
 
@@ -84,6 +98,13 @@ module ActiveRecord
 
       ActiveRecord::Base.stubs(:connection).returns(@connection)
       ActiveRecord::Base.stubs(:establish_connection).returns(true)
+
+      $stdout, @original_stdout = StringIO.new, $stdout
+      $stderr, @original_stderr = StringIO.new, $stderr
+    end
+
+    def teardown
+      $stdout, $stderr = @original_stdout, @original_stderr
     end
 
     def test_establishes_connection_to_postgresql_database
@@ -100,6 +121,12 @@ module ActiveRecord
       @connection.expects(:drop_database).with('my-app-db')
 
       ActiveRecord::Tasks::DatabaseTasks.drop @configuration
+    end
+
+    def test_when_database_dropped_successfully_outputs_info_to_stdout
+      ActiveRecord::Tasks::DatabaseTasks.drop @configuration
+
+      assert_equal $stdout.string, "Dropped database 'my-app-db'\n"
     end
   end
 
@@ -216,6 +243,34 @@ module ActiveRecord
 
       ActiveRecord::Tasks::DatabaseTasks.structure_dump(@configuration, @filename)
     end
+
+    def test_structure_dump_with_schema_search_path_and_dump_schemas_all
+      @configuration['schema_search_path'] = 'foo,bar'
+
+      Kernel.expects(:system).with("pg_dump", '-s', '-x', '-O', '-f', @filename,  'my-app-db').returns(true)
+
+      with_dump_schemas(:all) do
+        ActiveRecord::Tasks::DatabaseTasks.structure_dump(@configuration, @filename)
+      end
+    end
+
+    def test_structure_dump_with_dump_schemas_string
+      Kernel.expects(:system).with("pg_dump", '-s', '-x', '-O', '-f', @filename, '--schema=foo', '--schema=bar', "my-app-db").returns(true)
+
+      with_dump_schemas('foo,bar') do
+        ActiveRecord::Tasks::DatabaseTasks.structure_dump(@configuration, @filename)
+      end
+    end
+
+    private
+
+    def with_dump_schemas(value, &block)
+      old_dump_schemas = ActiveRecord::Base.dump_schemas
+      ActiveRecord::Base.dump_schemas = value
+      yield
+    ensure
+      ActiveRecord::Base.dump_schemas = old_dump_schemas
+    end
   end
 
   class PostgreSQLStructureLoadTest < ActiveRecord::TestCase
@@ -233,18 +288,17 @@ module ActiveRecord
 
     def test_structure_load
       filename = "awesome-file.sql"
-      Kernel.expects(:system).with('psql', '-q', '-f', filename, 'my-app-db').returns(true)
+      Kernel.expects(:system).with('psql', '-q', '-f', filename, @configuration['database']).returns(true)
 
       ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
     end
 
     def test_structure_load_accepts_path_with_spaces
       filename = "awesome file.sql"
-      Kernel.expects(:system).with('psql', '-q', '-f', 'awesome file.sql', 'my-app-db').returns(true)
+      Kernel.expects(:system).with('psql', '-q', '-f', filename, @configuration['database']).returns(true)
 
       ActiveRecord::Tasks::DatabaseTasks.structure_load(@configuration, filename)
     end
   end
-
 end
 end

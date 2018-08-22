@@ -22,12 +22,6 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     end
   end
 
-  def test_list_of_serialized_attributes
-    assert_deprecated do
-      assert_equal %w(content), Topic.serialized_attributes.keys
-    end
-  end
-
   def test_serialized_attribute
     Topic.serialize("content", MyObject)
 
@@ -265,6 +259,12 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     assert_not topic.content_changed?
   end
 
+  def test_classes_without_no_arg_constructors_are_not_supported
+    assert_raises(ArgumentError) do
+      Topic.serialize(:content, Regexp)
+    end
+  end
+
   def test_newly_emptied_serialized_hash_is_changed
     Topic.serialize(:content, Hash)
     topic = Topic.create(content: { "things" => "stuff" })
@@ -273,5 +273,92 @@ class SerializedAttributeTest < ActiveRecord::TestCase
     topic.reload
 
     assert_equal({}, topic.content)
+  end
+
+  def test_values_cast_from_nil_are_persisted_as_nil
+    # This is required to fulfil the following contract, which must be universally
+    # true in Active Record:
+    #
+    # model.attribute = value
+    # assert_equal model.attribute, model.tap(&:save).reload.attribute
+    Topic.serialize(:content, Hash)
+    topic = Topic.create!(content: {})
+    topic2 = Topic.create!(content: nil)
+
+    assert_equal [topic, topic2], Topic.where(content: nil)
+  end
+
+  def test_nil_is_always_persisted_as_null
+    Topic.serialize(:content, Hash)
+
+    topic = Topic.create!(content: { foo: "bar" })
+    topic.update_attribute :content, nil
+    assert_equal [topic], Topic.where(content: nil)
+  end
+
+  def test_mutation_detection_does_not_double_serialize
+    coder = Object.new
+    def coder.dump(value)
+      return if value.nil?
+      value + " encoded"
+    end
+    def coder.load(value)
+      return if value.nil?
+      value.gsub(" encoded", "")
+    end
+    type = Class.new(ActiveModel::Type::Value) do
+      include ActiveModel::Type::Helpers::Mutable
+
+      def serialize(value)
+        return if value.nil?
+        value + " serialized"
+      end
+
+      def deserialize(value)
+        return if value.nil?
+        value.gsub(" serialized", "")
+      end
+    end.new
+    model = Class.new(Topic) do
+      attribute :foo, type
+      serialize :foo, coder
+    end
+
+    topic = model.create!(foo: "bar")
+    topic.foo
+    refute topic.changed?
+  end
+end
+
+class ThreadedSerializedAttributeTest < ActiveRecord::TestCase
+  self.use_transactional_tests = false
+  fixtures :topics
+
+  def test_serialized_attribute_works_under_concurrent_initial_access
+    model = Topic.dup
+
+    topic = model.last
+    topic.update group: "1"
+
+    model.serialize :group, JSON
+    model.reset_column_information
+
+    # This isn't strictly necessary for the test, but a little bit of
+    # knowledge of internals allows us to make failures far more likely.
+    model.define_singleton_method(:define_attribute) do |*args|
+      Thread.pass
+      super(*args)
+    end
+
+    threads = 4.times.map do
+      Thread.new do
+        topic.reload.group
+      end
+    end
+
+    # All the threads should retrieve the value knowing it is JSON, and
+    # thus decode it. If this fails, some threads will instead see the
+    # raw string ("1"), or raise an exception.
+    assert_equal [1] * threads.size, threads.map(&:value)
   end
 end

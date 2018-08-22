@@ -29,7 +29,7 @@ module ActiveRecord
       assert_equal :bar, attributes[:bar].name
     end
 
-    test "duping creates a new hash and dups each attribute" do
+    test "duping creates a new hash, but does not dup the attributes" do
       builder = AttributeSet::Builder.new(foo: Type::Integer.new, bar: Type::String.new)
       attributes = builder.build_from_database(foo: 1, bar: 'foo')
 
@@ -38,6 +38,24 @@ module ActiveRecord
       attributes[:bar].value
 
       duped = attributes.dup
+      duped.write_from_database(:foo, 2)
+      duped[:bar].value << 'bar'
+
+      assert_equal 1, attributes[:foo].value
+      assert_equal 2, duped[:foo].value
+      assert_equal 'foobar', attributes[:bar].value
+      assert_equal 'foobar', duped[:bar].value
+    end
+
+    test "deep_duping creates a new hash and dups each attribute" do
+      builder = AttributeSet::Builder.new(foo: Type::Integer.new, bar: Type::String.new)
+      attributes = builder.build_from_database(foo: 1, bar: 'foo')
+
+      # Ensure the type cast value is cached
+      attributes[:foo].value
+      attributes[:bar].value
+
+      duped = attributes.deep_dup
       duped.write_from_database(:foo, 2)
       duped[:bar].value << 'bar'
 
@@ -142,7 +160,8 @@ module ActiveRecord
     end
 
     test "the primary_key is always initialized" do
-      builder = AttributeSet::Builder.new({ foo: Type::Integer.new }, :foo)
+      defaults = { foo: Attribute.from_user(:foo, nil, nil) }
+      builder = AttributeSet::Builder.new({ foo: Type::Integer.new }, defaults)
       attributes = builder.build_from_database
 
       assert attributes.key?(:foo)
@@ -151,14 +170,17 @@ module ActiveRecord
     end
 
     class MyType
-      def type_cast_from_user(value)
+      def cast(value)
         return if value.nil?
         value + " from user"
       end
 
-      def type_cast_from_database(value)
+      def deserialize(value)
         return if value.nil?
         value + " from database"
+      end
+
+      def assert_valid_value(*)
       end
     end
 
@@ -195,6 +217,44 @@ module ActiveRecord
 
       attributes.freeze
       assert_equal({ foo: "1" }, attributes.to_hash)
+    end
+
+    test "marshaling dump/load legacy materialized attribute hash" do
+      builder = AttributeSet::Builder.new(foo: Type::String.new)
+      attributes = builder.build_from_database(foo: "1")
+
+      attributes.instance_variable_get(:@attributes).instance_eval do
+        class << self
+          def marshal_dump
+            materialize
+          end
+        end
+      end
+
+      attributes = Marshal.load(Marshal.dump(attributes))
+      assert_equal({ foo: "1" }, attributes.to_hash)
+    end
+
+    test "#accessed_attributes returns only attributes which have been read" do
+      builder = AttributeSet::Builder.new(foo: Type::Value.new, bar: Type::Value.new)
+      attributes = builder.build_from_database(foo: "1", bar: "2")
+
+      assert_equal [], attributes.accessed
+
+      attributes.fetch_value(:foo)
+
+      assert_equal [:foo], attributes.accessed
+    end
+
+    test "#map returns a new attribute set with the changes applied" do
+      builder = AttributeSet::Builder.new(foo: Type::Integer.new, bar: Type::Integer.new)
+      attributes = builder.build_from_database(foo: "1", bar: "2")
+      new_attributes = attributes.map do |attr|
+        attr.with_cast_value(attr.value + 1)
+      end
+
+      assert_equal 2, new_attributes.fetch_value(:foo)
+      assert_equal 3, new_attributes.fetch_value(:bar)
     end
 
     test "comparison for equality is correctly implemented" do

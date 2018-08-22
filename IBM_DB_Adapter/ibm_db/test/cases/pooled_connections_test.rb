@@ -3,7 +3,7 @@ require "models/project"
 require "timeout"
 
 class PooledConnectionsTest < ActiveRecord::TestCase
-  self.use_transactional_fixtures = false
+  self.use_transactional_tests = false
 
   def setup
     @per_test_teardown = []
@@ -13,7 +13,7 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   teardown do
     ActiveRecord::Base.clear_all_connections!
     ActiveRecord::Base.establish_connection(@connection)
-    @per_test_teardown.each {|td| td.call }
+    @per_test_teardown.each(&:call)
   end
 
   # Will deadlock due to lack of Monitor timeouts in 1.9
@@ -44,7 +44,7 @@ class PooledConnectionsTest < ActiveRecord::TestCase
         conn = ActiveRecord::Base.connection_pool.checkout
         ActiveRecord::Base.connection_pool.checkin conn
         @connection_count += 1
-        ActiveRecord::Base.connection.tables
+        ActiveRecord::Base.connection.data_sources
       rescue ActiveRecord::ConnectionTimeoutError
         @timed_out += 1
       end

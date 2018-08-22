@@ -83,10 +83,10 @@ class AutomaticInverseFindingTests < ActiveRecord::TestCase
 
     assert_equal rating.comment, comment, "The Rating's comment should be the original Comment"
 
-    rating.comment.body = "Brogramming is the act of programming, like a bro."
+    rating.comment.body = "Fennec foxes are the smallest of the foxes."
     assert_equal rating.comment.body, comment.body, "Changing the Comment's body on the association should change the original Comment's body"
 
-    comment.body = "Broseiden is the king of the sea of bros."
+    comment.body = "Kittens are adorable."
     assert_equal comment.body, rating.comment.body, "Changing the original Comment's body should change the Comment's body on the association"
   end
 
@@ -97,10 +97,10 @@ class AutomaticInverseFindingTests < ActiveRecord::TestCase
 
     assert_equal rating.comment, comment, "The Rating's comment should be the original Comment"
 
-    rating.comment.body = "Brogramming is the act of programming, like a bro."
+    rating.comment.body = "Fennec foxes are the smallest of the foxes."
     assert_equal rating.comment.body, comment.body, "Changing the Comment's body on the association should change the original Comment's body"
 
-    comment.body = "Broseiden is the king of the sea of bros."
+    comment.body = "Kittens are adorable."
     assert_equal comment.body, rating.comment.body, "Changing the original Comment's body should change the Comment's body on the association"
   end
 
@@ -130,15 +130,15 @@ end
 
 class InverseAssociationTests < ActiveRecord::TestCase
   def test_should_allow_for_inverse_of_options_in_associations
-    assert_nothing_raised(ArgumentError, 'ActiveRecord should allow the inverse_of options on has_many') do
+    assert_nothing_raised do
       Class.new(ActiveRecord::Base).has_many(:wheels, :inverse_of => :car)
     end
 
-    assert_nothing_raised(ArgumentError, 'ActiveRecord should allow the inverse_of options on has_one') do
+    assert_nothing_raised do
       Class.new(ActiveRecord::Base).has_one(:engine, :inverse_of => :car)
     end
 
-    assert_nothing_raised(ArgumentError, 'ActiveRecord should allow the inverse_of options on belongs_to') do
+    assert_nothing_raised do
       Class.new(ActiveRecord::Base).belongs_to(:car, :inverse_of => :driver)
     end
   end
@@ -495,6 +495,33 @@ class InverseHasManyTests < ActiveRecord::TestCase
 
     assert !man.persisted?
   end
+
+  def test_inverse_instance_should_be_set_before_find_callbacks_are_run
+    reset_callbacks(Interest, :find) do
+      Interest.after_find { raise unless association(:man).loaded? && man.present? }
+
+      assert Man.first.interests.reload.any?
+      assert Man.includes(:interests).first.interests.any?
+      assert Man.joins(:interests).includes(:interests).first.interests.any?
+    end
+  end
+
+  def test_inverse_instance_should_be_set_before_initialize_callbacks_are_run
+    reset_callbacks(Interest, :initialize) do
+      Interest.after_initialize { raise unless association(:man).loaded? && man.present? }
+
+      assert Man.first.interests.reload.any?
+      assert Man.includes(:interests).first.interests.any?
+      assert Man.joins(:interests).includes(:interests).first.interests.any?
+    end
+  end
+
+  def reset_callbacks(target, type)
+    old_callbacks = target.send(:get_callbacks, type).deep_dup
+    yield
+  ensure
+    target.send(:set_callbacks, type, old_callbacks) if old_callbacks
+  end
 end
 
 class InverseBelongsToTests < ActiveRecord::TestCase
@@ -666,7 +693,7 @@ class InversePolymorphicBelongsToTests < ActiveRecord::TestCase
 
   def test_trying_to_access_inverses_that_dont_exist_shouldnt_raise_an_error
     # Ideally this would, if only for symmetry's sake with other association types
-    assert_nothing_raised(ActiveRecord::InverseOfAssociationNotFoundError) { Face.first.horrible_polymorphic_man }
+    assert_nothing_raised { Face.first.horrible_polymorphic_man }
   end
 
   def test_trying_to_set_polymorphic_inverses_that_dont_exist_at_all_should_raise_an_error
@@ -676,7 +703,7 @@ class InversePolymorphicBelongsToTests < ActiveRecord::TestCase
 
   def test_trying_to_set_polymorphic_inverses_that_dont_exist_on_the_instance_being_set_should_raise_an_error
     # passes because Man does have the correct inverse_of
-    assert_nothing_raised(ActiveRecord::InverseOfAssociationNotFoundError) { Face.first.polymorphic_man = Man.first }
+    assert_nothing_raised { Face.first.polymorphic_man = Man.first }
     # fails because Interest does have the correct inverse_of
     assert_raise(ActiveRecord::InverseOfAssociationNotFoundError) { Face.first.polymorphic_man = Interest.first }
   end
@@ -688,7 +715,7 @@ class InverseMultipleHasManyInversesForSameModel < ActiveRecord::TestCase
   fixtures :men, :interests, :zines
 
   def test_that_we_can_load_associations_that_have_the_same_reciprocal_name_from_different_models
-    assert_nothing_raised(ActiveRecord::AssociationTypeMismatch) do
+    assert_nothing_raised do
       i = Interest.first
       i.zine
       i.man
@@ -696,7 +723,7 @@ class InverseMultipleHasManyInversesForSameModel < ActiveRecord::TestCase
   end
 
   def test_that_we_can_create_associations_that_have_the_same_reciprocal_name_from_different_models
-    assert_nothing_raised(ActiveRecord::AssociationTypeMismatch) do
+    assert_nothing_raised do
       i = Interest.first
       i.build_zine(:title => 'Get Some in Winter! 2008')
       i.build_man(:name => 'Gordon')

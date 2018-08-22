@@ -2,7 +2,7 @@ require "cases/helper"
 require "models/author"
 require "models/binary"
 require "models/cake_designer"
-require "models/category"
+require "models/car"
 require "models/chef"
 require "models/comment"
 require "models/edge"
@@ -15,7 +15,7 @@ require "models/vertex"
 
 module ActiveRecord
   class WhereTest < ActiveRecord::TestCase
-    fixtures :posts, :edges, :authors, :binaries, :essays, :author_addresses
+    fixtures :posts, :edges, :authors, :binaries, :essays, :cars, :treasures, :price_estimates
 
     def test_where_copies_bind_params
       author = authors(:david)
@@ -28,6 +28,14 @@ module ActiveRecord
         assert_equal author, post.author
         assert_not_equal 1, post.id
       }
+    end
+
+    def test_where_copies_bind_params_in_the_right_order
+      author = authors(:david)
+      posts = author.posts.where.not(id: 1)
+      joined = Post.where(id: posts, title: posts.first.title)
+
+      assert_equal joined, [posts.first]
     end
 
     def test_where_copies_arel_bind_params
@@ -107,16 +115,15 @@ module ActiveRecord
       assert_equal expected.to_sql, actual.to_sql
     end
 
-    def test_polymorphic_empty_array_where
-      treasure = Treasure.new
-      treasure.id = 1
-      hidden = HiddenTreasure.new
-      hidden.id = 2
+    def test_polymorphic_array_where_multiple_types
+      treasure_1 = treasures(:diamond)
+      treasure_2 = treasures(:sapphire)
+      car = cars(:honda)
 
-      expected = PriceEstimate.where("1=0")
-      actual   = PriceEstimate.where(estimate_of: [])
+      expected = [price_estimates(:diamond), price_estimates(:sapphire_1), price_estimates(:sapphire_2), price_estimates(:honda)].sort
+      actual   = PriceEstimate.where(estimate_of: [treasure_1, treasure_2, car]).to_a.sort
 
-      assert_equal expected.to_a, actual.to_a
+      assert_equal expected, actual
     end
 
     def test_polymorphic_nested_relation_where
@@ -207,12 +214,6 @@ module ActiveRecord
       assert_equal 0, Post.where(:id => []).count
     end
 
-    def test_where_with_table_name_and_nested_empty_array
-      assert_deprecated do
-        assert_equal [], Post.where(:id => [[]]).to_a
-      end
-    end
-
     def test_where_with_empty_hash_and_no_foreign_key
       assert_equal 0, Edge.where(:sink => {}).count
     end
@@ -233,12 +234,10 @@ module ActiveRecord
       assert_equal 0, count
     end
 
-  unless current_adapter?(:IBM_DBAdapter)
     def test_where_with_boolean_for_string_column
       count = Post.where(:title => false).count
       assert_equal 0, count
     end
-  end
 
     def test_where_with_decimal_for_string_column
       count = Post.where(:title => BigDecimal.new(0)).count
@@ -249,12 +248,11 @@ module ActiveRecord
       count = Post.where(:title => 0.seconds).count
       assert_equal 0, count
     end
-  unless current_adapter?(:IBM_DBAdapter)
+
     def test_where_with_integer_for_binary_column
       count = Binary.where(:data => 0).count
       assert_equal 0, count
     end
-  end
 
     def test_where_on_association_with_custom_primary_key
       author = authors(:david)
@@ -291,10 +289,34 @@ module ActiveRecord
       assert_equal essays(:david_modest_proposal), essay
     end
 
-    def test_where_on_non_polymorphic_association_with_custom_primary_key
-      essay = Essay.where(category: [Category.new(name: "General")]).first
+    def test_where_with_strong_parameters
+      protected_params = Class.new do
+        attr_reader :permitted
+        alias :permitted? :permitted
 
-      assert_equal essays(:david_modest_proposal), essay
+        def initialize(parameters)
+          @parameters = parameters
+          @permitted = false
+        end
+
+        def to_h
+          @parameters
+        end
+
+        def permit!
+          @permitted = true
+          self
+        end
+      end
+
+      author = authors(:david)
+      params = protected_params.new(name: author.name)
+      assert_raises(ActiveModel::ForbiddenAttributesError) { Author.where(params) }
+      assert_equal author, Author.where(params.permit!).first
+    end
+
+    def test_where_with_unsupported_arguments
+      assert_raises(ArgumentError) { Author.where(42) }
     end
   end
 end

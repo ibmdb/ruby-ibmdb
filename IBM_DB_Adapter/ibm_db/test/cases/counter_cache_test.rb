@@ -1,6 +1,7 @@
 require 'cases/helper'
 require 'models/topic'
 require 'models/car'
+require 'models/aircraft'
 require 'models/wheel'
 require 'models/engine'
 require 'models/reply'
@@ -150,7 +151,7 @@ class CounterCacheTest < ActiveRecord::TestCase
 
   test "reset the right counter if two have the same foreign key" do
     michael = people(:michael)
-    assert_nothing_raised(ActiveRecord::StatementInvalid) do
+    assert_nothing_raised do
       Person.reset_counters(michael.id, :friends_too)
     end
   end
@@ -199,11 +200,15 @@ class CounterCacheTest < ActiveRecord::TestCase
     assert_equal 2, car.reload.engines_count
   end
 
-  test "counter caches are not updated in memory when not selected" do
-    car = Car.select(:id).first
+  test "update counters in a polymorphic relationship" do
+    aircraft = Aircraft.create!
 
-    assert_nothing_raised do
-      car.engines << Engine.new
+    assert_difference 'aircraft.reload.wheels_count' do
+      aircraft.wheels << Wheel.create!
+    end
+
+    assert_difference 'aircraft.reload.wheels_count', -1 do
+      aircraft.wheels.first.destroy
     end
   end
 end

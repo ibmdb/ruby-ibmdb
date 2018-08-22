@@ -1,6 +1,5 @@
 require 'cases/helper'
 require 'models/developer'
-require 'models/computer'
 require 'models/project'
 require 'models/company'
 require 'models/topic'
@@ -36,6 +35,10 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal companies(:first_firm).name, firm.name
   end
 
+  def test_missing_attribute_error_is_raised_when_no_foreign_key_attribute
+    assert_raises(ActiveModel::MissingAttributeError) { Client.select(:id).first.firm }
+  end
+
   def test_belongs_to_does_not_use_order_by
     ActiveRecord::SQLCounter.clear_log
     Client.find(3).firm
@@ -50,7 +53,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
 
   def test_belongs_to_with_primary_key_joins_on_correct_column
     sql = Client.joins(:firm_with_primary_key).to_sql
-    if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+    if current_adapter?(:Mysql2Adapter)
       assert_no_match(/`firm_with_primary_keys_companies`\.`id`/, sql)
       assert_match(/`firm_with_primary_keys_companies`\.`name`/, sql)
     elsif current_adapter?(:OracleAdapter)
@@ -65,6 +68,56 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
       assert_no_match(/"firm_with_primary_keys_companies"\."id"/, sql)
       assert_match(/"firm_with_primary_keys_companies"\."name"/, sql)
     end
+  end
+
+  def test_optional_relation
+    original_value = ActiveRecord::Base.belongs_to_required_by_default
+    ActiveRecord::Base.belongs_to_required_by_default = true
+
+    model = Class.new(ActiveRecord::Base) do
+      self.table_name = "accounts"
+      def self.name; "Temp"; end
+      belongs_to :company, optional: true
+    end
+
+    account = model.new
+    assert account.valid?
+  ensure
+    ActiveRecord::Base.belongs_to_required_by_default = original_value
+  end
+
+  def test_not_optional_relation
+    original_value = ActiveRecord::Base.belongs_to_required_by_default
+    ActiveRecord::Base.belongs_to_required_by_default = true
+
+    model = Class.new(ActiveRecord::Base) do
+      self.table_name = "accounts"
+      def self.name; "Temp"; end
+      belongs_to :company, optional: false
+    end
+
+    account = model.new
+    assert_not account.valid?
+    assert_equal [{error: :blank}], account.errors.details[:company]
+  ensure
+    ActiveRecord::Base.belongs_to_required_by_default = original_value
+  end
+
+  def test_required_belongs_to_config
+    original_value = ActiveRecord::Base.belongs_to_required_by_default
+    ActiveRecord::Base.belongs_to_required_by_default = true
+
+    model = Class.new(ActiveRecord::Base) do
+      self.table_name = "accounts"
+      def self.name; "Temp"; end
+      belongs_to :company
+    end
+
+    account = model.new
+    assert_not account.valid?
+    assert_equal [{error: :blank}], account.errors.details[:company]
+  ensure
+    ActiveRecord::Base.belongs_to_required_by_default = original_value
   end
 
   def test_default_scope_on_relations_is_not_cached
@@ -242,11 +295,22 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert client.account.new_record?
   end
 
+  def test_reloading_the_belonging_object
+    odegy_account = accounts(:odegy_account)
+
+    assert_equal "Odegy", odegy_account.firm.name
+    Company.where(id: odegy_account.firm_id).update_all(name: "ODEGY")
+    assert_equal "Odegy", odegy_account.firm.name
+
+    assert_equal "ODEGY", odegy_account.reload_firm.name
+  end
+
   def test_natural_assignment_to_nil
     client = Client.find(3)
     client.firm = nil
     client.save
-    assert_nil client.firm(true)
+    client.association(:firm).reload
+    assert_nil client.firm
     assert_nil client.client_of
   end
 
@@ -254,7 +318,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     client = Client.create(:name => "Primary key client", :firm_name => companies(:first_firm).name)
     client.firm_with_primary_key = nil
     client.save
-    assert_nil client.firm_with_primary_key(true)
+    client.association(:firm_with_primary_key).reload
+    assert_nil client.firm_with_primary_key
     assert_nil client.client_of
   end
 
@@ -271,11 +336,13 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_polymorphic_association_class
     sponsor = Sponsor.new
     assert_nil sponsor.association(:sponsorable).send(:klass)
-    assert_nil sponsor.sponsorable(force_reload: true)
+    sponsor.association(:sponsorable).reload
+    assert_nil sponsor.sponsorable
 
     sponsor.sponsorable_type = '' # the column doesn't have to be declared NOT NULL
     assert_nil sponsor.association(:sponsorable).send(:klass)
-    assert_nil sponsor.sponsorable(force_reload: true)
+    sponsor.association(:sponsorable).reload
+    assert_nil sponsor.sponsorable
 
     sponsor.sponsorable = Member.new :name => "Bert"
     assert_equal Member, sponsor.association(:sponsorable).send(:klass)
@@ -423,13 +490,33 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_queries(1) { line_item.touch }
   end
 
+  def test_belongs_to_with_touch_on_multiple_records
+    line_item = LineItem.create!(amount: 1)
+    line_item2 = LineItem.create!(amount: 2)
+    Invoice.create!(line_items: [line_item, line_item2])
+
+    assert_queries(1) do
+      LineItem.transaction do
+        line_item.touch
+        line_item2.touch
+      end
+    end
+
+    assert_queries(2) do
+      line_item.touch
+      line_item2.touch
+    end
+  end
+
   def test_belongs_to_with_touch_option_on_touch_without_updated_at_attributes
     assert_not LineItem.column_names.include?("updated_at")
 
     line_item = LineItem.create!
     invoice = Invoice.create!(line_items: [line_item])
     initial = invoice.updated_at
-    line_item.touch
+    travel(1.second) do
+      line_item.touch
+    end
 
     assert_not_equal initial, invoice.reload.updated_at
   end
@@ -508,7 +595,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert final_cut.persisted?
     assert firm.persisted?
     assert_equal firm, final_cut.firm
-    assert_equal firm, final_cut.firm(true)
+    final_cut.association(:firm).reload
+    assert_equal firm, final_cut.firm
   end
 
   def test_assignment_before_child_saved_with_primary_key
@@ -520,7 +608,8 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert final_cut.persisted?
     assert firm.persisted?
     assert_equal firm, final_cut.firm_with_primary_key
-    assert_equal firm, final_cut.firm_with_primary_key(true)
+    final_cut.association(:firm_with_primary_key).reload
+    assert_equal firm, final_cut.firm_with_primary_key
   end
 
   def test_new_record_with_foreign_key_but_no_object
@@ -549,6 +638,12 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
   def test_dont_find_target_when_foreign_key_is_null
     tagging = taggings(:thinking_general)
     assert_queries(0) { tagging.super_tag }
+  end
+
+  def test_dont_find_target_when_saving_foreign_key_after_stale_association_loaded
+    client = Client.create!(name: "Test client", firm_with_basic_id: Firm.find(1))
+    client.firm_id = Firm.create!(name: "Test firm").id
+    assert_queries(1) { client.save! }
   end
 
   def test_field_name_same_as_foreign_key
@@ -625,6 +720,17 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert_equal 17, reply.replies.size
   end
 
+  def test_replace_counter_cache
+    topic = Topic.create(title: "Zoom-zoom-zoom")
+    reply = Reply.create(title: "re: zoom", content: "speedy quick!")
+
+    reply.topic = topic
+    reply.save
+    topic.reload
+
+    assert_equal 1, topic.replies_count
+  end
+
   def test_association_assignment_sticks
     post = Post.first
 
@@ -651,7 +757,7 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     assert companies(:first_client).readonly_firm.readonly?
   end
 
-  def test_test_polymorphic_assignment_foreign_key_type_string
+  def test_polymorphic_assignment_foreign_key_type_string
     comment = Comment.first
     comment.author   = Author.first
     comment.resource = Member.first
@@ -1014,6 +1120,12 @@ class BelongsToAssociationsTest < ActiveRecord::TestCase
     record = Record.create!
     Column.create! record: record
     assert_equal 1, Column.count
+  end
+
+  def test_association_force_reload_with_only_true_is_deprecated
+    client = Client.find(3)
+
+    assert_deprecated { client.firm(true) }
   end
 end
 

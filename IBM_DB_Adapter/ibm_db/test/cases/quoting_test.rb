@@ -44,30 +44,63 @@ module ActiveRecord
         assert_equal t.to_s(:db), @quoter.quoted_date(t)
       end
 
+      def test_quoted_timestamp_utc
+        with_timezone_config default: :utc do
+          t = Time.now.change(usec: 0)
+          assert_equal t.getutc.to_s(:db), @quoter.quoted_date(t)
+        end
+      end
+
+      def test_quoted_timestamp_local
+        with_timezone_config default: :local do
+          t = Time.now.change(usec: 0)
+          assert_equal t.getlocal.to_s(:db), @quoter.quoted_date(t)
+        end
+      end
+
+      def test_quoted_timestamp_crazy
+        with_timezone_config default: :asdfasdf do
+          t = Time.now.change(usec: 0)
+          assert_equal t.getlocal.to_s(:db), @quoter.quoted_date(t)
+        end
+      end
+
       def test_quoted_time_utc
         with_timezone_config default: :utc do
-          t = Time.now
-          assert_equal t.getutc.to_s(:db), @quoter.quoted_date(t)
+          t = Time.now.change(usec: 0)
+
+          expected = t.getutc.change(year: 2000, month: 1, day: 1)
+          expected = expected.to_s(:db).sub("2000-01-01 ", "")
+
+          assert_equal expected, @quoter.quoted_time(t)
         end
       end
 
       def test_quoted_time_local
         with_timezone_config default: :local do
-          t = Time.now
-          assert_equal t.getlocal.to_s(:db), @quoter.quoted_date(t)
+          t = Time.now.change(usec: 0)
+
+          expected = t.change(year: 2000, month: 1, day: 1)
+          expected = expected.getlocal.to_s(:db).sub("2000-01-01 ", "")
+
+          assert_equal expected, @quoter.quoted_time(t)
         end
       end
 
       def test_quoted_time_crazy
         with_timezone_config default: :asdfasdf do
-          t = Time.now
-          assert_equal t.getlocal.to_s(:db), @quoter.quoted_date(t)
+          t = Time.now.change(usec: 0)
+
+          expected = t.change(year: 2000, month: 1, day: 1)
+          expected = expected.getlocal.to_s(:db).sub("2000-01-01 ", "")
+
+          assert_equal expected, @quoter.quoted_time(t)
         end
       end
 
       def test_quoted_datetime_utc
         with_timezone_config default: :utc do
-          t = DateTime.now
+          t = Time.now.change(usec: 0).to_datetime
           assert_equal t.getutc.to_s(:db), @quoter.quoted_date(t)
         end
       end
@@ -76,7 +109,7 @@ module ActiveRecord
       # DateTime doesn't define getlocal, so make sure it does nothing
       def test_quoted_datetime_local
         with_timezone_config default: :local do
-          t = DateTime.now
+          t = Time.now.change(usec: 0).to_datetime
           assert_equal t.to_s(:db), @quoter.quoted_date(t)
         end
       end
@@ -102,9 +135,9 @@ module ActiveRecord
         assert_equal float.to_s, @quoter.quote(float, nil)
       end
 
-      def test_quote_fixnum
-        fixnum = 1
-        assert_equal fixnum.to_s, @quoter.quote(fixnum, nil)
+      def test_quote_integer
+        integer = 1
+        assert_equal integer.to_s, @quoter.quote(integer, nil)
       end
 
       def test_quote_bignum
@@ -125,14 +158,11 @@ module ActiveRecord
       end
 
       def test_crazy_object
-        crazy = Class.new.new
-        expected = "'#{YAML.dump(crazy)}'"
-        assert_equal expected, @quoter.quote(crazy, nil)
-      end
-
-      def test_crazy_object_calls_quote_string
-        crazy = Class.new { def initialize; @lol = 'lo\l' end }.new
-        assert_match "lo\\\\l", @quoter.quote(crazy, nil)
+        crazy = Object.new
+        e = assert_raises(TypeError) do
+          @quoter.quote(crazy, nil)
+        end
+        assert_equal "can't quote Object", e.message
       end
 
       def test_quote_string_no_column
@@ -150,6 +180,22 @@ module ActiveRecord
 
       def test_quote_duration
         assert_equal "1800", @quoter.quote(30.minutes)
+      end
+    end
+
+    class QuoteBooleanTest < ActiveRecord::TestCase
+      def setup
+        @connection = ActiveRecord::Base.connection
+      end
+
+      def test_quote_returns_frozen_string
+        assert_predicate @connection.quote(true), :frozen?
+        assert_predicate @connection.quote(false), :frozen?
+      end
+
+      def test_type_cast_returns_frozen_value
+        assert_predicate @connection.type_cast(true), :frozen?
+        assert_predicate @connection.type_cast(false), :frozen?
       end
     end
   end

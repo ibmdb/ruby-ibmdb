@@ -25,7 +25,7 @@ class AggregationsTest < ActiveRecord::TestCase
 
   def test_immutable_value_objects
     customers(:david).balance = Money.new(100)
-    assert_raise(RuntimeError) { customers(:david).balance.instance_eval { @amount = 20 } }
+    assert_raise(frozen_error_class) { customers(:david).balance.instance_eval { @amount = 20 } }
   end
 
   def test_inferred_mapping
@@ -137,6 +137,16 @@ class AggregationsTest < ActiveRecord::TestCase
     customers(:barney).fullname = 'Barnoit Gumbleau'
     assert_equal 'Barnoit GUMBLEAU', customers(:barney).fullname.to_s
     assert_kind_of Fullname, customers(:barney).fullname
+  end
+
+  def test_assigning_hash_to_custom_converter
+    customers(:barney).fullname = { first: "Barney", last: "Stinson" }
+    assert_equal "Barney STINSON", customers(:barney).name
+  end
+
+  def test_assigning_hash_without_custom_converter
+    customers(:barney).fullname_no_converter = { first: "Barney", last: "Stinson" }
+    assert_equal({ first: "Barney", last: "Stinson" }.to_s, customers(:barney).name)
   end
 end
 

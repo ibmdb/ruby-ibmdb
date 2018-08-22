@@ -1,6 +1,6 @@
 =====================================================================
-README for the IBM_DB Adapter (3.0.2) and Driver (3.0.2) (2016/05/24)
-For ActiveRecord Version >= 4.2.0 (and Rails >= 4.2.0)
+README for the IBM_DB Adapter (4.0.0) and Driver (3.0.5) (2018/05/24)
+For ActiveRecord Version >= 5.0.7 (and Rails >= 5.0.7)
 =====================================================================
 
 Supported Operating Systems 
@@ -14,13 +14,10 @@ Supported Operating Systems
 
 Supported Databases
 ====================
-  - IBM DB2 Universal Database on Linux/Unix/Windows versions 9 Fixpak2 and above
-  - Remote connections to IBM DB2 Universal Database on i5/OS versions V5R3 and V5R4. 
-    Please ensure PTF SI27358 (includes SI27250) is installed in i5/OS version 5R3 and
-    and PTF SI27256 is installed while using i5/OS version 5R4.
-  - Remote connections to IBM DB2 Universal Database on z/OS version 8, 9 and 10
-  - Informix Dynamic Server 11.10 and beyond.
-    Please ensure that the IBM DataServer Viper 2 client is installed.
+  - IBM DB2 Universal Database on Linux/Unix/Windows versions 10 Fixpak 5 and above
+  - Remote connections to IBM DB2 Universal Database on i5/OS versions 7.2 and above.        
+  - Remote connections to IBM DB2 Universal Database on z/OS version 11 and above
+
 
 
 Installing the IBM_DB adapter and driver as a Ruby gem
@@ -28,32 +25,26 @@ Installing the IBM_DB adapter and driver as a Ruby gem
 The IBM_DB gem is an ActiveRecord adapter. Installing the IBM_DB adapter and driver as a gem enables any application in the
 Ruby environment, including Rails, to interact with IBM data servers.
 
-Note : -	1)	If using activerecord version below 2.0 then it requires that the ibm_db adapter be registered with the list of connection adapters by manually adding ibm_db at line 77 (approx) in the file activerecord.rb (GEM_HOME\activerecord-<version>\lib\). 
 
-		    2)	The IBM_DB driver can also be built separately (from source) and used in direct API calls.
+	The IBM_DB driver can also be built separately (from source) and used in direct API calls.
 
+	
 1. Windows platforms:
 =====================
   INSTALL (as Ruby gem)
    To remove previous gem version (optionally):
     D:\>gem uninstall ibm_db
-    Successfully uninstalled ibm_db version 1.0.0
+    Successfully uninstalled ibm_db version 3.0.5
 
   Example:
     D:\>gem install ibm_db
-    Fetching: ibm_db-2.5.9-x86-mingw32.gem (100%)
-    Successfully installed ibm_db-2.5.9-x86-mingw32
+    Fetching: ibm_db-4.0.0-x86-mingw32.gem (100%)
+    Successfully installed ibm_db-4.0.0-x86-mingw32
     1 gem installed
-    Installing ri documentation for ibm_db-2.5.9-x86-mingw32...
-    Installing RDoc documentation for ibm_db-2.5.9-x86-mingw32...
+    Installing ri documentation for ibm_db-4.0.0-x86-mingw32...
+    Installing RDoc documentation for ibm_db-4.0.0-x86-mingw32...
     
-    Note:
-    	1) Currently Ruby-2.0 64-bit version on Windows is not supported as there are issues related to SQL definitions with the mingW compiler 
-    			[Details can be found here https://sourceforge.net/p/mingw/bugs/2041/ ]. 
-    		Support will be enabled after the abive reported issue is resolved.
     
-    	2)The manual step after install if using activerecord version below 2.0:
-         add ibm_db into GEM_HOME\1.8\gems\activerecord-1.15.3\lib\active_record.rb (Line 77)
 
 2. Linux and Unix platforms:
 ============================
@@ -61,28 +52,25 @@ Note : -	1)	If using activerecord version below 2.0 then it requires that the ib
   INSTALL (as Ruby gem)
     To remove previous gem version (optionally):
     $ gem uninstall ibm_db
-    Successfully uninstalled ibm_db version 0.6.0
+    Successfully uninstalled ibm_db version 3.0.5
 
-   Note: DB2 environment is required while using an arbitrary user account
-         (other than the DB2 install user account)
-   $ . /home/db2inst1/sqllib/db2profile
-   $ export IBM_DB_HOME=DB2HOME (eg. /home/db2inst1/sqllib or /opt/ibm/db2/v9.5)
+   
    $ gem install ibm_db
      Building native extensions.  This could take a while...
-     Successfully installed ibm_db-2.5.9
+     Successfully installed ibm_db-4.0.0
      1 gem installed
-     Installing ri documentation for ibm_db-2.5.9...
-     Installing RDoc documentation for ibm_db-2.5.9...
+     Installing ri documentation for ibm_db-4.0.0...
+     Installing RDoc documentation for ibm_db-4.0.0...
 
+	 
   BUILD (optionally) ibm_db gem  from sources (ibm_db-x.x.x.tar.gz):
-  1. Download source from Rubyforge
-     http://rubyforge.org/frs/?group_id=2361
+  1. Download source from Github
+     https://github.com/ibmdb/ruby-ibmdb
   2. Build gem from specification (IBM_DB.gemspec)
      $ cd IBM_DB_Adapter/ibm_db
      $ gem build IBM_DB.gemspec
 
-   Note: The manual step after install if using activerecord version below 2.0:
-         add ibm_db into GEM_HOME\1.8\gems\activerecord-1.15.3\lib\active_record.rb (Line 77)
+   
 
 TEST (simple gem install verification)
 ======================================
@@ -93,6 +81,7 @@ TEST (simple gem install verification)
    $ rake db:migrate
    $ rails console #rails server
    
+   
 Instructions for building and installing the IBM_DB driver from source
 =======================================================================
 Building the driver manually as described below is not required if the install
@@ -102,7 +91,7 @@ here only for reference.
 
  Prerequisites:
   Install Ruby from:
-    http://rubyforge.org
+    https://github.com/ibmdb/ruby-ibmdb
 
   Setup the environment
   
@@ -114,7 +103,7 @@ here only for reference.
           $ . /home/db2inst1/sqllib/db2profile
 
       - To compile and link with DB2 client libraries:
-         $ export IBM_DB_HOME=DB2HOME (eg. /home/db2inst1/sqllib or /opt/ibm/db2/v9.5)
+         $ export IBM_DB_HOME=DB2HOME (eg. /home/db2inst1/sqllib or /opt/ibm/db2/v10.5)
 
     Windows platforms:
       - Set ruby devkit environment:
@@ -128,9 +117,9 @@ here only for reference.
 
   Build the ibm_db gem
     - $ cp rubyibm_source/IBM_DB_Adapter/ibm_db/ext/ibm_db.so rubyibm_source/IBM_DB_Adapter/ibm_db/lib 
-    	# Not on windows separate binaries are generated for 1.8 and 1.9 version of ruby
-    	# and placed under rb18x and rb19x directories respectively. The file ibm_db_mswin32.rb is renamed to ibm_db.rb to ensure proper binary is loaded based on runtime
-    	# You will need to similarly ensure that the generated binary is placed on rb18x or rb19x directory under lib based on ruby version being used
+    	# On windows binaries are generated for 2.x version of ruby
+    	# and placed under rb2x directory. The file ibm_db.rb is to ensure that binary is loaded based on runtime
+    	
     - $ cd rubyibm_source/IBM_DB_Adapter/ibm_db
     - $ gem build IBM_DB.gemspec
     
@@ -184,12 +173,8 @@ Limitations and known problems
    The IBM_DB adapter relies on IBM_DB driver (C extension) and the IBM Driver for ODBC and
    CLI to access databases on IBM data servers. Alternatively, you can either use the regular C
    implementation of Ruby, or use ActiveRecord-JDBC adapter to access databases.
- - When using ActiveRecord-2.1.0 it requires that ActiveRecord be patched, with the patch in the link below:
- 		http://rails.lighthouseapp.com/attachments/26975/association_preloading.diff
- 	The patch is required because, ActiveRecord 2.1.0 generates a non-standard SQL identifier,while preloading has_and_belongs_to_many associations,
- 	which standard compliant databases like DB2 do not support. The bug report, against ActiveRecord, can be found in the link below
- 		http://rails.lighthouseapp.com/projects/8994/tickets/394-patch-fixed-non-standard-sql-generated-by-preloading-has_and_belongs_to_many-associations
- - The following tests from the ActiveRecord 2.1.0 test suite with ibm_db gem 0.10.0 are expected to fail on DB2 LUW
+ 
+ - The following tests are expected to fail on DB2 LUW
  	- test_read_attributes_before_type_cast_on_datetime
  	- test_to_xml
  	- test_native_types
@@ -198,28 +183,26 @@ Limitations and known problems
  	- test_counting_with_empty_hash_conditions
  	- test_counting_with_single_conditions
  	- test_counting_with_single_hash
+	- Finders methods first, second, last, nth from first, nth from last, with limit, with offset etc. are expected to fail
  	Note :- 1)	The test cases from HasManyAssociations (4-8) above are found failing only when run as part of
  			the complete suite. However they pass when run standalone.
  		2)	Also there are two test cases (test_validate_uniqueness_with_non_standard_table_names, test_update_all_with_non_standard_table_name)which run against table with non-standard name. Given that DB2/IDS is standard compliant these test cases are expected to fail.
  			To have these test cases passing rename the fixtures file warehouse-things to warehouse_things.
- - Usage with Rails-3.0.3/Rails-3.0.4
-	- To use with Rails-3.0.3/4 patch latest Arel with the patch available at https://gist.github.com/814491
+	- The test cases do not follow the DB2 rules are expectedto fail
+
 	
 Unicode Support
 ===============
-  - Available only with Ruby version 1.9 and above
   - Data returned from the driver will be in UTF8 encoding format.
   - The input data to the driver can be in any Ruby supported encoding format.
 
 To Do
 ====
- - Support ActiveRecord remove_column method for DB2 zOS version 9
+ - Support ActiveRecord remove_column method for DB2 zOS
+ - Open issues in Github
 
 
 Feedback
 ========
-  Your feedback is very much appreciated and expected through Rubyforge:
-   - rubyibm project:     http://rubyforge.org/projects/rubyibm/
-   - rubyibm forum:       http://rubyforge.org/forum/?group_id=2361
-   - rubyibm bug reports: http://rubyforge.org/tracker/?group_id=2361
-   - IBM_DB developers:   rubyibm-developers@rubyforge.org
+  Your feedback is very much appreciated and expected through github:
+   - github issue: https://github.com/ibmdb/ruby-ibmdb/issues

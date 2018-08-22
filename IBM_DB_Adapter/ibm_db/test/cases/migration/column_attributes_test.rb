@@ -5,7 +5,7 @@ module ActiveRecord
     class ColumnAttributesTest < ActiveRecord::TestCase
       include ActiveRecord::Migration::TestHelper
 
-      self.use_transactional_fixtures = false
+      self.use_transactional_tests = false
 
       def test_add_column_newline_default
         string = "foo\nbar"
@@ -37,13 +37,13 @@ module ActiveRecord
 
       def test_add_column_without_limit
         # TODO: limit: nil should work with all adapters.
-        skip "MySQL wrongly enforces a limit of 255" if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+        skip "MySQL wrongly enforces a limit of 255" if current_adapter?(:Mysql2Adapter)
         add_column :test_models, :description, :string, limit: nil
         TestModel.reset_column_information
         assert_nil TestModel.columns_hash["description"].limit
       end
 
-      if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+      if current_adapter?(:Mysql2Adapter)
         def test_unabstracted_database_dependent_types
           add_column :test_models, :intelligence_quotient, :tinyint
           TestModel.reset_column_information
@@ -63,12 +63,8 @@ module ActiveRecord
           # Do a manual insertion
           if current_adapter?(:OracleAdapter)
             connection.execute "insert into test_models (id, wealth) values (people_seq.nextval, 12345678901234567890.0123456789)"
-          elsif current_adapter?(:MysqlAdapter) && Mysql.client_version < 50003 #before MySQL 5.0.3 decimals stored as strings
-            connection.execute "insert into test_models (wealth) values ('12345678901234567890.0123456789')"
           elsif current_adapter?(:PostgreSQLAdapter)
             connection.execute "insert into test_models (wealth) values (12345678901234567890.0123456789)"
-		elsif current_adapter?(:IBM_DBAdapter)
-          Person.connection.execute "insert into people (wealth, created_at, updated_at, lock_version, first_name) values (12345678901234567890.0123456789, CURRENT TIMESTAMP, CURRENT TIMESTAMP, 0, 'Jim')"
           else
             connection.execute "insert into test_models (wealth) values (12345678901234567890.0123456789)"
           end
@@ -86,12 +82,7 @@ module ActiveRecord
           TestModel.delete_all
 
           # Now use the Rails insertion
-        unless current_adapter?(:IBM_DBAdapter)
-          assert_nothing_raised { Person.create :wealth => BigDecimal.new("12345678901234567890.0123456789") }
-        else
-          # First_name is a not null column, hence ensure a value is specified
-          assert_nothing_raised { Person.create ({:wealth => BigDecimal.new("12345678901234567890.0123456789"), :first_name => "James"}) }
-        end
+          TestModel.create :wealth => BigDecimal.new("12345678901234567890.0123456789")
 
           # SELECT
           row = TestModel.first
@@ -163,22 +154,15 @@ module ActiveRecord
           assert_equal String, bob.first_name.class
           assert_equal String, bob.last_name.class
           assert_equal String, bob.bio.class
-          assert_equal Fixnum, bob.age.class
+          assert_kind_of Integer, bob.age
           assert_equal Time, bob.birthday.class
-
-          if current_adapter?(:OracleAdapter)
-            # Oracle doesn't differentiate between date/time
-            assert_equal Time, bob.favorite_day.class
-          else
-            assert_equal Date, bob.favorite_day.class
-          end
-
+          assert_equal Date, bob.favorite_day.class
           assert_instance_of TrueClass, bob.male?
           assert_kind_of BigDecimal, bob.wealth
         end
       end
 
-      if current_adapter?(:MysqlAdapter, :Mysql2Adapter, :PostgreSQLAdapter)
+      if current_adapter?(:Mysql2Adapter, :PostgreSQLAdapter)
         def test_out_of_range_limit_should_raise
           assert_raise(ActiveRecordError) { add_column :test_models, :integer_too_big, :integer, :limit => 10 }
 

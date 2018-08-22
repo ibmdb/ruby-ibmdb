@@ -18,10 +18,17 @@ require 'models/minivan'
 require 'models/aircraft'
 require "models/possession"
 require "models/reader"
+require "models/categorization"
+require "models/edge"
 
 class RelationTest < ActiveRecord::TestCase
   fixtures :authors, :topics, :entrants, :developers, :companies, :developers_projects, :accounts, :categories, :categorizations, :posts, :comments,
-    :tags, :taggings, :cars, :minivans, :author_addresses
+    :tags, :taggings, :cars, :minivans
+
+  class TopicWithCallbacks < ActiveRecord::Base
+    self.table_name = :topics
+    before_update { |topic| topic.author_name = 'David' if topic.author_name.blank? }
+  end
 
   def test_do_not_double_quote_string_id
     van = Minivan.last
@@ -33,15 +40,6 @@ class RelationTest < ActiveRecord::TestCase
     van = Minivan.last
     assert van
     assert_equal van, Minivan.where(:minivan_id => [van]).to_a.first
-  end
-
-  def test_bind_values
-    relation = Post.all
-    assert_equal [], relation.bind_values
-
-    relation2 = relation.bind 'foo'
-    assert_equal %w{ foo }, relation2.bind_values
-    assert_equal [], relation.bind_values
   end
 
   def test_two_scopes_with_includes_should_not_drop_any_include
@@ -114,13 +112,36 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_loaded_first
     topics = Topic.all.order('id ASC')
+    topics.to_a # force load
 
-    assert_queries(1) do
-      topics.to_a # force load
-      2.times { assert_equal "The First Topic", topics.first.title }
+    assert_no_queries do
+      assert_equal "The First Topic", topics.first.title
     end
 
     assert topics.loaded?
+  end
+
+  def test_loaded_first_with_limit
+    topics = Topic.all.order('id ASC')
+    topics.to_a # force load
+
+    assert_no_queries do
+      assert_equal ["The First Topic",
+                    "The Second Topic of the day"], topics.first(2).map(&:title)
+    end
+
+    assert topics.loaded?
+  end
+
+  def test_first_get_more_than_available
+    topics = Topic.all.order('id ASC')
+    unloaded_first = topics.first(10)
+    topics.to_a # force load
+
+    assert_no_queries do
+      loaded_first = topics.first(10)
+      assert_equal unloaded_first, loaded_first
+    end
   end
 
   def test_reload
@@ -203,6 +224,48 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal topics(:fifth).title, topics.first.title
   end
 
+  def test_reverse_order_with_function
+    topics = Topic.order("length(title)").reverse_order
+    assert_equal topics(:second).title, topics.first.title
+  end
+
+  def test_reverse_order_with_function_other_predicates
+    topics = Topic.order("author_name, length(title), id").reverse_order
+    assert_equal topics(:second).title, topics.first.title
+    topics = Topic.order("length(author_name), id, length(title)").reverse_order
+    assert_equal topics(:fifth).title, topics.first.title
+  end
+
+  def test_reverse_order_with_multiargument_function
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("concat(author_name, title)").reverse_order
+    end
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("concat(lower(author_name), title)").reverse_order
+    end
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("concat(author_name, lower(title))").reverse_order
+    end
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("concat(lower(author_name), title, length(title)").reverse_order
+    end
+  end
+
+  def test_reverse_order_with_nulls_first_or_last
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("title NULLS FIRST").reverse_order
+    end
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Topic.order("title nulls last").reverse_order
+    end
+  end
+
+  def test_default_reverse_order_on_table_without_primary_key
+    assert_raises(ActiveRecord::IrreversibleOrderError) do
+      Edge.all.reverse_order
+    end
+  end
+
   def test_order_with_hash_and_symbol_generates_the_same_sql
     assert_equal Topic.order(:id).to_sql, Topic.order(:id => :asc).to_sql
   end
@@ -261,7 +324,7 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_finding_with_reorder
     topics = Topic.order('author_name').order('title').reorder('id').to_a
-    topics_titles = topics.map{ |t| t.title }
+    topics_titles = topics.map(&:title)
     assert_equal ['The First Topic', 'The Second Topic of the day', 'The Third Topic of the day', 'The Fourth Topic of the day', 'The Fifth Topic of the day'], topics_titles
   end
 
@@ -299,6 +362,17 @@ class RelationTest < ActiveRecord::TestCase
   def test_finding_with_complex_order
     tags = Tag.includes(:taggings).references(:taggings).order("REPLACE('abc', taggings.taggable_type, taggings.taggable_type)").to_a
     assert_equal 3, tags.length
+  end
+
+  def test_finding_with_sanitized_order
+    query = Tag.order(["field(id, ?)", [1,3,2]]).to_sql
+    assert_match(/field\(id, 1,3,2\)/, query)
+
+    query = Tag.order(["field(id, ?)", []]).to_sql
+    assert_match(/field\(id, NULL\)/, query)
+
+    query = Tag.order(["field(id, ?)", nil]).to_sql
+    assert_match(/field\(id, NULL\)/, query)
   end
 
   def test_finding_with_order_limit_and_offset
@@ -357,7 +431,9 @@ class RelationTest < ActiveRecord::TestCase
       assert_equal 0,     Developer.none.size
       assert_equal 0,     Developer.none.count
       assert_equal true,  Developer.none.empty?
+      assert_equal true, Developer.none.none?
       assert_equal false, Developer.none.any?
+      assert_equal false, Developer.none.one?
       assert_equal false, Developer.none.many?
     end
   end
@@ -365,7 +441,7 @@ class RelationTest < ActiveRecord::TestCase
   def test_null_relation_calculations_methods
     assert_no_queries(ignore_none: false) do
       assert_equal 0, Developer.none.count
-      assert_equal 0, Developer.none.calculate(:count, nil, {})
+      assert_equal 0, Developer.none.calculate(:count, nil)
       assert_equal nil, Developer.none.calculate(:average, 'salary')
     end
   end
@@ -453,7 +529,7 @@ class RelationTest < ActiveRecord::TestCase
       where('project_id=1').to_a
 
     assert_equal 3, developers_on_project_one.length
-    developer_names = developers_on_project_one.map { |d| d.name }
+    developer_names = developers_on_project_one.map(&:name)
     assert developer_names.include?('David')
     assert developer_names.include?('Jamis')
   end
@@ -709,8 +785,8 @@ class RelationTest < ActiveRecord::TestCase
     expected_taggings = taggings(:welcome_general, :thinking_general)
 
     assert_no_queries do
-      assert_equal expected_taggings, author.taggings.distinct.sort_by { |t| t.id }
-      assert_equal expected_taggings, author.taggings.uniq.sort_by { |t| t.id }
+      assert_equal expected_taggings, author.taggings.distinct.sort_by(&:id)
+      assert_equal expected_taggings, author.taggings.uniq.sort_by(&:id)
     end
 
     authors = Author.all
@@ -769,7 +845,9 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_find_by_classname
     Author.create!(:name => Mary.name)
-    assert_equal 1, Author.where(:name => Mary).size
+    assert_deprecated do
+      assert_equal 1, Author.where(:name => Mary).size
+    end
   end
 
   def test_find_by_id_with_list_of_ar
@@ -913,6 +991,12 @@ class RelationTest < ActiveRecord::TestCase
     assert authors.exists?(authors(:david).id)
   end
 
+  def test_any_with_scope_on_hash_includes
+    post = authors(:david).posts.first
+    categories = Categorization.includes(author: :posts).where(posts: { id: post.id })
+    assert categories.exists?
+  end
+
   def test_last
     authors = Author.all
     assert_equal authors(:bob), authors.last
@@ -931,11 +1015,23 @@ class RelationTest < ActiveRecord::TestCase
     assert davids.loaded?
   end
 
+  def test_destroy_all_with_conditions_is_deprecated
+    assert_deprecated do
+      assert_difference('Author.count', -1) { Author.destroy_all(name: 'David') }
+    end
+  end
+
   def test_delete_all
     davids = Author.where(:name => 'David')
 
     assert_difference('Author.count', -1) { davids.delete_all }
     assert ! davids.loaded?
+  end
+
+  def test_delete_all_with_conditions_is_deprecated
+    assert_deprecated do
+      assert_difference('Author.count', -1) { Author.delete_all(name: 'David') }
+    end
   end
 
   def test_delete_all_loaded
@@ -953,7 +1049,7 @@ class RelationTest < ActiveRecord::TestCase
 
   def test_delete_all_with_unpermitted_relation_raises_error
     assert_raises(ActiveRecord::ActiveRecordError) { Author.limit(10).delete_all }
-    assert_raises(ActiveRecord::ActiveRecordError) { Author.uniq.delete_all }
+    assert_raises(ActiveRecord::ActiveRecordError) { Author.distinct.delete_all }
     assert_raises(ActiveRecord::ActiveRecordError) { Author.group(:name).delete_all }
     assert_raises(ActiveRecord::ActiveRecordError) { Author.having('SUM(id) < 3').delete_all }
     assert_raises(ActiveRecord::ActiveRecordError) { Author.offset(10).delete_all }
@@ -1158,6 +1254,48 @@ class RelationTest < ActiveRecord::TestCase
 
     assert posts.many?
     assert ! posts.limit(1).many?
+  end
+
+  def test_none?
+    posts = Post.all
+    assert_queries(1) do
+      assert ! posts.none? # Uses COUNT()
+    end
+
+    assert ! posts.loaded?
+
+    assert_queries(1) do
+      assert posts.none? {|p| p.id < 0 }
+      assert ! posts.none? {|p| p.id == 1 }
+    end
+
+    assert posts.loaded?
+  end
+
+  def test_one
+    posts = Post.all
+    assert_queries(1) do
+      assert ! posts.one? # Uses COUNT()
+    end
+
+    assert ! posts.loaded?
+
+    assert_queries(1) do
+      assert ! posts.one? {|p| p.id < 3 }
+      assert posts.one? {|p| p.id == 1 }
+    end
+
+    assert posts.loaded?
+  end
+
+  def test_to_a_should_dup_target
+    posts = Post.all
+
+    original_size = posts.size
+    removed = posts.to_a.pop
+
+    assert_equal original_size, posts.size
+    assert_includes posts.to_a, removed
   end
 
   def test_build
@@ -1438,12 +1576,6 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal "id", Post.all.primary_key
   end
 
-  def test_disable_implicit_join_references_is_deprecated
-    assert_deprecated do
-      ActiveRecord::Base.disable_implicit_join_references = true
-    end
-  end
-
   def test_ordering_with_extra_spaces
     assert_equal authors(:david), Author.order('id DESC , name DESC').last
   end
@@ -1472,8 +1604,6 @@ class RelationTest < ActiveRecord::TestCase
     assert_equal posts(:welcome),  comments(:more_greetings).post
   end
 
-unless current_adapter?(:IBM_DBAdapter)
-  #IBM_DB does not support offset on subselect of the update statement
   def test_update_all_with_joins_and_offset
     all_comments = Comment.joins(:post).where('posts.id' => posts(:welcome).id)
     count        = all_comments.count
@@ -1491,7 +1621,26 @@ unless current_adapter?(:IBM_DBAdapter)
     assert_equal posts(:thinking), comments(:more_greetings).post
     assert_equal posts(:welcome),  comments(:greetings).post
   end
-end
+
+  def test_update_on_relation
+    topic1 = TopicWithCallbacks.create! title: 'arel', author_name: nil
+    topic2 = TopicWithCallbacks.create! title: 'activerecord', author_name: nil
+    topics = TopicWithCallbacks.where(id: [topic1.id, topic2.id])
+    topics.update(title: 'adequaterecord')
+
+    assert_equal 'adequaterecord', topic1.reload.title
+    assert_equal 'adequaterecord', topic2.reload.title
+    # Testing that the before_update callbacks have run
+    assert_equal 'David', topic1.reload.author_name
+    assert_equal 'David', topic2.reload.author_name
+  end
+
+  def test_update_on_relation_passing_active_record_object_is_deprecated
+    topic = Topic.create!(title: 'Foo', author_name: nil)
+    assert_deprecated(/update/) do
+      Topic.where(id: topic.id).update(topic, title: 'Bar')
+    end
+  end
 
   def test_distinct
     tag1 = Tag.create(:name => 'Foo')
@@ -1502,22 +1651,42 @@ end
     assert_equal ['Foo', 'Foo'], query.map(&:name)
     assert_sql(/DISTINCT/) do
       assert_equal ['Foo'], query.distinct.map(&:name)
-      assert_equal ['Foo'], query.uniq.map(&:name)
+      assert_deprecated { assert_equal ['Foo'], query.uniq.map(&:name) }
     end
     assert_sql(/DISTINCT/) do
       assert_equal ['Foo'], query.distinct(true).map(&:name)
-      assert_equal ['Foo'], query.uniq(true).map(&:name)
+      assert_deprecated { assert_equal ['Foo'], query.uniq(true).map(&:name) }
     end
     assert_equal ['Foo', 'Foo'], query.distinct(true).distinct(false).map(&:name)
-    assert_equal ['Foo', 'Foo'], query.uniq(true).uniq(false).map(&:name)
+
+    assert_deprecated do
+      assert_equal ['Foo', 'Foo'], query.uniq(true).uniq(false).map(&:name)
+    end
   end
 
   def test_doesnt_add_having_values_if_options_are_blank
     scope = Post.having('')
-    assert_equal [], scope.having_values
+    assert scope.having_clause.empty?
 
     scope = Post.having([])
-    assert_equal [], scope.having_values
+    assert scope.having_clause.empty?
+  end
+
+  def test_having_with_binds_for_both_where_and_having
+    post = Post.first
+    having_then_where = Post.having(id: post.id).where(title: post.title).group(:id)
+    where_then_having = Post.where(title: post.title).having(id: post.id).group(:id)
+
+    assert_equal [post], having_then_where
+    assert_equal [post], where_then_having
+  end
+
+  def test_multiple_where_and_having_clauses
+    post = Post.first
+    having_then_where = Post.having(id: post.id).where(title: post.title)
+      .having(id: post.id).where(title: post.title).group(:id)
+
+    assert_equal [post], having_then_where
   end
 
   def test_grouping_by_column_with_reserved_name
@@ -1649,6 +1818,10 @@ end
     assert_sql(/^((?!ORDER).)*$/) { Post.all.find_by(author_id: 2) }
   end
 
+  test "find_by requires at least one argument" do
+    assert_raises(ArgumentError) { Post.all.find_by }
+  end
+
   test "find_by! with hash conditions returns the first matching record" do
     assert_equal posts(:eager_other), Post.order(:id).find_by!(author_id: 2)
   end
@@ -1669,6 +1842,10 @@ end
     assert_raises(ActiveRecord::RecordNotFound) do
       Post.all.find_by!("1 = 0")
     end
+  end
+
+  test "find_by! requires at least one argument" do
+    assert_raises(ArgumentError) { Post.all.find_by! }
   end
 
   test "loaded relations cannot be mutated by multi value methods" do
@@ -1707,6 +1884,14 @@ end
     end
   end
 
+  test "relations with cached arel can't be mutated [internal API]" do
+    relation = Post.all
+    relation.count
+
+    assert_raises(ActiveRecord::ImmutableRelation) { relation.limit!(5) }
+    assert_raises(ActiveRecord::ImmutableRelation) { relation.where!("1 = 2") }
+  end
+
   test "relations show the records in #inspect" do
     relation = Post.limit(2)
     assert_equal "#<ActiveRecord::Relation [#{Post.limit(2).map(&:inspect).join(', ')}]>", relation.inspect
@@ -1731,7 +1916,9 @@ end
   test 'using a custom table affects the wheres' do
     table_alias = Post.arel_table.alias('omg_posts')
 
-    relation = ActiveRecord::Relation.new Post, table_alias
+    table_metadata = ActiveRecord::TableMetadata.new(Post, table_alias)
+    predicate_builder = ActiveRecord::PredicateBuilder.new(table_metadata)
+    relation = ActiveRecord::Relation.new(Post, table_alias, predicate_builder)
     relation.where!(:foo => "bar")
 
     node = relation.arel.constraints.first.grep(Arel::Attributes::Attribute).first
@@ -1790,14 +1977,13 @@ end
   end
 
   def test_merging_keeps_lhs_bind_parameters
-    column = Post.columns_hash['id']
-    binds = [[column, 20]]
+    binds = [ActiveRecord::Relation::QueryAttribute.new("id", 20, Post.type_for_attribute("id"))]
 
     right  = Post.where(id: 20)
     left   = Post.where(id: 10)
 
     merged = left.merge(right)
-    assert_equal binds, merged.bind_values
+    assert_equal binds, merged.bound_attributes
   end
 
   def test_merging_reorders_bind_params
@@ -1811,5 +1997,30 @@ end
 
   def test_relation_join_method
     assert_equal 'Thank you for the welcome,Thank you again for the welcome', Post.first.comments.join(",")
+  end
+
+  def test_connection_adapters_can_reorder_binds
+    posts = Post.limit(1).offset(2)
+
+    stubbed_connection = Post.connection.dup
+    def stubbed_connection.combine_bind_parameters(**kwargs)
+      offset = kwargs[:offset]
+      kwargs[:offset] = kwargs[:limit]
+      kwargs[:limit] = offset
+      super(**kwargs)
+    end
+
+    posts.define_singleton_method(:connection) do
+      stubbed_connection
+    end
+
+    assert_equal 2, posts.to_a.length
+  end
+
+  def test_update_all_can_receive_active_record_objects
+    assert_deprecated do
+      Comment.update_all(post_id: Post.first)
+      assert(Comment.all.all? { |c| c.post_id == Post.first.id })
+    end
   end
 end

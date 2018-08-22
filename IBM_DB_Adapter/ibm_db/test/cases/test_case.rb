@@ -1,33 +1,19 @@
 require 'active_support/test_case'
+require 'active_support/testing/stream'
 
 module ActiveRecord
   # = Active Record Test Case
   #
   # Defines some test assertions to test against SQL queries.
   class TestCase < ActiveSupport::TestCase #:nodoc:
+    include ActiveSupport::Testing::Stream
+
     def teardown
       SQLCounter.clear_log
     end
 
     def assert_date_from_db(expected, actual, message = nil)
       assert_equal expected.to_s, actual.to_s, message
-    end
-
-    def capture(stream)
-      stream = stream.to_s
-      captured_stream = Tempfile.new(stream)
-      stream_io = eval("$#{stream}")
-      origin_stream = stream_io.dup
-      stream_io.reopen(captured_stream)
-
-      yield
-
-      stream_io.rewind
-      return captured_stream.read
-    ensure
-      captured_stream.close
-      captured_stream.unlink
-      stream_io.reopen(origin_stream)
     end
 
     def capture_sql
@@ -43,7 +29,7 @@ module ActiveRecord
       patterns_to_match.each do |pattern|
         failed_patterns << pattern unless SQLCounter.log_all.any?{ |sql| pattern === sql }
       end
-      assert failed_patterns.empty?, "Query pattern(s) #{failed_patterns.map{ |p| p.inspect }.join(', ')} not found.#{SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{SQLCounter.log.join("\n")}"}"
+      assert failed_patterns.empty?, "Query pattern(s) #{failed_patterns.map(&:inspect).join(', ')} not found.#{SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{SQLCounter.log.join("\n")}"}"
     end
 
     def assert_queries(num = 1, options = {})
@@ -77,6 +63,28 @@ module ActiveRecord
       model.reset_column_information
       model.column_names.include?(column_name.to_s)
     end
+
+    def frozen_error_class
+      Object.const_defined?(:FrozenError) ? FrozenError : RuntimeError
+    end
+  end
+
+  class PostgreSQLTestCase < TestCase
+    def self.run(*args)
+      super if current_adapter?(:PostgreSQLAdapter)
+    end
+  end
+
+  class Mysql2TestCase < TestCase
+    def self.run(*args)
+      super if current_adapter?(:Mysql2Adapter)
+    end
+  end
+
+  class SQLite3TestCase < TestCase
+    def self.run(*args)
+      super if current_adapter?(:SQLite3Adapter)
+    end
   end
 
   class SQLCounter
@@ -93,9 +101,9 @@ module ActiveRecord
     # ignored SQL, or better yet, use a different notification for the queries
     # instead examining the SQL content.
     oracle_ignored     = [/^select .*nextval/i, /^SAVEPOINT/, /^ROLLBACK TO/, /^\s*select .* from all_triggers/im, /^\s*select .* from all_constraints/im, /^\s*select .* from all_tab_cols/im]
-    mysql_ignored      = [/^SHOW TABLES/i, /^SHOW FULL FIELDS/, /^SHOW CREATE TABLE /i, /^SHOW VARIABLES /]
+    mysql_ignored      = [/^SHOW FULL TABLES/i, /^SHOW FULL FIELDS/, /^SHOW CREATE TABLE /i, /^SHOW VARIABLES /, /^\s*SELECT (?:column_name|table_name)\b.*\bFROM information_schema\.(?:key_column_usage|tables)\b/im]
     postgresql_ignored = [/^\s*select\b.*\bfrom\b.*pg_namespace\b/im, /^\s*select tablename\b.*from pg_tables\b/im, /^\s*select\b.*\battname\b.*\bfrom\b.*\bpg_attribute\b/im, /^SHOW search_path/i]
-    sqlite3_ignored =    [/^\s*SELECT name\b.*\bFROM sqlite_master/im]
+    sqlite3_ignored =    [/^\s*SELECT name\b.*\bFROM sqlite_master/im, /^\s*SELECT sql\b.*\bFROM sqlite_master/im]
 
     [oracle_ignored, mysql_ignored, postgresql_ignored, sqlite3_ignored].each do |db_ignored_sql|
       ignored_sql.concat db_ignored_sql

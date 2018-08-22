@@ -7,7 +7,7 @@ require 'models/computer'
 require 'models/company'
 
 class AssociationCallbacksTest < ActiveRecord::TestCase
-  fixtures :posts, :authors, :projects, :developers, :author_addresses
+  fixtures :posts, :authors, :projects, :developers
 
   def setup
     @david = authors(:david)
@@ -15,7 +15,6 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
     @authorless = posts(:authorless)
     assert @david.post_log.empty?
   end
-  
 
   def test_adding_macro_callbacks
     @david.posts_with_callbacks << @thinking
@@ -25,7 +24,6 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
                   "after_adding#{@thinking.id}"], @david.post_log
   end
 
-  
   def test_adding_with_proc_callbacks
     @david.posts_with_proc_callbacks << @thinking
     assert_equal ["before_adding#{@thinking.id}", "after_adding#{@thinking.id}"], @david.post_log
@@ -179,14 +177,14 @@ class AssociationCallbacksTest < ActiveRecord::TestCase
   end
 
   def test_dont_add_if_before_callback_raises_exception
-    assert !@david.unchangable_posts.include?(@authorless)
+    assert !@david.unchangeable_posts.include?(@authorless)
     begin
-      @david.unchangable_posts << @authorless
+      @david.unchangeable_posts << @authorless
     rescue Exception
     end
     assert @david.post_log.empty?
-    assert !@david.unchangable_posts.include?(@authorless)
+    assert !@david.unchangeable_posts.include?(@authorless)
     @david.reload
-    assert !@david.unchangable_posts.include?(@authorless)
+    assert !@david.unchangeable_posts.include?(@authorless)
   end
 end

@@ -32,7 +32,7 @@ class Topic < ActiveRecord::Base
     end
   end
 
-  has_many :replies, :dependent => :destroy, :foreign_key => "parent_id"
+  has_many :replies, dependent: :destroy, foreign_key: "parent_id", autosave: true
   has_many :approved_replies, -> { approved }, class_name: 'Reply', foreign_key: "parent_id", counter_cache: 'replies_count'
 
   has_many :unique_replies, :dependent => :destroy, :foreign_key => "parent_id"
@@ -42,12 +42,6 @@ class Topic < ActiveRecord::Base
 
   before_create  :default_written_on
   before_destroy :destroy_children
-
-  # Explicitly define as :date column so that returned Oracle DATE values would be typecasted to Date and not Time.
-  # Some tests depend on assumption that this attribute will have Date values.
-  if current_adapter?(:OracleEnhancedAdapter)
-    set_date_columns :last_read
-  end
 
   def parent
     Topic.find(parent_id)
@@ -86,7 +80,7 @@ class Topic < ActiveRecord::Base
     end
 
     def destroy_children
-      self.class.delete_all "parent_id = #{id}"
+      self.class.where("parent_id = #{id}").delete_all
     end
 
     def set_email_address

@@ -1,19 +1,19 @@
-# encoding: utf-8
-
 require "cases/helper"
 require "models/book"
 require "models/post"
 require "models/author"
+require "models/event"
 
 module ActiveRecord
   class AdapterTest < ActiveRecord::TestCase
-    def setup
+    def setup	  
       @connection = ActiveRecord::Base.connection
     end
 
     ##
     # PostgreSQL does not support null bytes in strings
-    unless current_adapter?(:PostgreSQLAdapter)
+    unless current_adapter?(:PostgreSQLAdapter, :IBM_DBAdapter) ||
+        (current_adapter?(:SQLite3Adapter) && !ActiveRecord::Base.connection.prepared_statements)
       def test_update_prepared_statement
         b = Book.create(name: "my \x00 book")
         b.reload
@@ -24,18 +24,34 @@ module ActiveRecord
       end
     end
 
+	unless current_adapter?(:IBM_DBAdapter) 
+		def test_create_record_with_pk_as_zero
+		  Book.create(id: 0)
+		  assert_equal 0, Book.find(0).id
+		  assert_nothing_raised { Book.destroy(0) }
+		end
+	end
+
     def test_tables
-      tables = @connection.tables
+      tables = nil
+      ActiveSupport::Deprecation.silence { tables = @connection.tables }
       assert tables.include?("accounts")
       assert tables.include?("authors")
       assert tables.include?("tasks")
       assert tables.include?("topics")
     end
 
+	
     def test_table_exists?
-      assert @connection.table_exists?("accounts")
-      assert !@connection.table_exists?("nonexistingtable")
-      assert !@connection.table_exists?(nil)
+      ActiveSupport::Deprecation.silence do
+        assert @connection.table_exists?("accounts")
+        assert !@connection.table_exists?("nonexistingtable")
+        assert !@connection.table_exists?(nil)
+      end
+    end
+
+    def test_table_exists_checking_both_tables_and_views_is_deprecated
+      assert_deprecated { @connection.table_exists?("accounts") }
     end
 
     def test_data_sources
@@ -74,13 +90,26 @@ module ActiveRecord
       @connection.remove_index(:accounts, :name => idx_name) rescue nil
     end
 
+	unless current_adapter?(:IBM_DBAdapter)
+		def test_remove_index_when_name_and_wrong_column_name_specified
+		  index_name = "accounts_idx"
+
+		  @connection.add_index :accounts, :firm_id, :name => index_name
+		  assert_raises ArgumentError do
+			@connection.remove_index :accounts, :name => index_name, :column => :wrong_column_name
+		  end
+		ensure
+		  @connection.remove_index(:accounts, :name => index_name)
+		end
+	end
+	
     def test_current_database
       if @connection.respond_to?(:current_database)
         assert_equal ARTest.connection_config['arunit']['database'], @connection.current_database
       end
     end
 
-    if current_adapter?(:MysqlAdapter)
+    if current_adapter?(:Mysql2Adapter)
       def test_charset
         assert_not_nil @connection.charset
         assert_not_equal 'character_set_database', @connection.charset
@@ -150,17 +179,21 @@ module ActiveRecord
         assert_nothing_raised { sub.save! }
       end
     end
+	
+	unless current_adapter?(:IBM_DBAdapter)
+		def test_uniqueness_violations_are_translated_to_specific_exception
+		  @connection.execute "INSERT INTO subscribers(nick) VALUES('me')"
+		  error = assert_raises(ActiveRecord::RecordNotUnique) do
+			@connection.execute "INSERT INTO subscribers(nick) VALUES('me')"
+		  end
 
-    def test_uniqueness_violations_are_translated_to_specific_exception
-      @connection.execute "INSERT INTO subscribers(nick) VALUES('me')"
-      assert_raises(ActiveRecord::RecordNotUnique) do
-        @connection.execute "INSERT INTO subscribers(nick) VALUES('me')"
-      end
-    end
+		  assert_not_nil error.cause
+		end
+	end
 
-    unless current_adapter?(:SQLite3Adapter)
+    unless current_adapter?(:SQLite3Adapter, :IBM_DBAdapter)
       def test_foreign_key_violations_are_translated_to_specific_exception
-        assert_raises(ActiveRecord::InvalidForeignKey) do
+        error = assert_raises(ActiveRecord::InvalidForeignKey) do
           # Oracle adapter uses prefetched primary key values from sequence and passes them to connection adapter insert method
           if @connection.prefetch_primary_key?
             id_value = @connection.next_sequence_value(@connection.default_sequence_name("fk_test_has_fk", "id"))
@@ -169,6 +202,8 @@ module ActiveRecord
             @connection.execute "INSERT INTO fk_test_has_fk (fk_id) VALUES (0)"
           end
         end
+
+        assert_not_nil error.cause
       end
 
       def test_foreign_key_violations_are_translated_to_specific_exception_with_validate_false
@@ -176,11 +211,21 @@ module ActiveRecord
           self.table_name = 'fk_test_has_fk'
         end
 
-        assert_raises(ActiveRecord::InvalidForeignKey) do
+        error = assert_raises(ActiveRecord::InvalidForeignKey) do
           has_fk = klass_has_fk.new
           has_fk.fk_id = 1231231231
           has_fk.save(validate: false)
         end
+
+        assert_not_nil error.cause
+      end
+
+      def test_value_limit_violations_are_translated_to_specific_exception
+        error = assert_raises(ActiveRecord::ValueTooLong) do
+          Event.create(title: 'abcdefgh')
+        end
+
+        assert_not_nil error.cause
       end
     end
 
@@ -206,44 +251,69 @@ module ActiveRecord
       assert result.is_a?(ActiveRecord::Result)
     end
 
-    def test_select_methods_passing_a_association_relation
-      author = Author.create!(name: 'john')
-      Post.create!(author: author, title: 'foo', body: 'bar')
-      query = author.posts.where(title: 'foo').select(:title)
-      assert_equal({"title" => "foo"}, @connection.select_one(query.arel, nil, query.bind_values))
-      assert_equal({"title" => "foo"}, @connection.select_one(query))
-      assert @connection.select_all(query).is_a?(ActiveRecord::Result)
-      assert_equal "foo", @connection.select_value(query)
-      assert_equal ["foo"], @connection.select_values(query)
+    if ActiveRecord::Base.connection.prepared_statements
+      def test_select_all_with_legacy_binds
+        post = Post.create!(title: "foo", body: "bar")
+        expected = @connection.select_all("SELECT * FROM posts WHERE id = #{post.id}")
+        result = @connection.select_all("SELECT * FROM posts WHERE id = #{Arel::Nodes::BindParam.new.to_sql}", nil, [[nil, post.id]])
+        assert_equal expected.to_hash, result.to_hash
+      end
     end
 
-    def test_select_methods_passing_a_relation
-      Post.create!(title: 'foo', body: 'bar')
-      query = Post.where(title: 'foo').select(:title)
-      assert_equal({"title" => "foo"}, @connection.select_one(query.arel, nil, query.bind_values))
-      assert_equal({"title" => "foo"}, @connection.select_one(query))
-      assert @connection.select_all(query).is_a?(ActiveRecord::Result)
-      assert_equal "foo", @connection.select_value(query)
-      assert_equal ["foo"], @connection.select_values(query)
-    end
+	unless current_adapter?(:IBM_DBAdapter)
+		def test_select_methods_passing_a_association_relation
+		  author = Author.create!(name: 'john')
+		  Post.create!(author: author, title: 'foo', body: 'bar')
+		  query = author.posts.where(title: 'foo').select(:title)
+		  assert_equal({"title" => "foo"}, @connection.select_one(query.arel, nil, query.bound_attributes))
+		  assert_equal({"title" => "foo"}, @connection.select_one(query))
+		  assert @connection.select_all(query).is_a?(ActiveRecord::Result)
+		  assert_equal "foo", @connection.select_value(query)
+		  assert_equal ["foo"], @connection.select_values(query)
+		end
+	end
+	
+	unless current_adapter?(:IBM_DBAdapter)
+		def test_select_methods_passing_a_relation
+		  Post.create!(title: 'foo', body: 'bar')
+		  query = Post.where(title: 'foo').select(:title)
+		  assert_equal({"title" => "foo"}, @connection.select_one(query.arel, nil, query.bound_attributes))
+		  assert_equal({"title" => "foo"}, @connection.select_one(query))
+		  assert @connection.select_all(query).is_a?(ActiveRecord::Result)
+		  assert_equal "foo", @connection.select_value(query)
+		  assert_equal ["foo"], @connection.select_values(query)
+		end
+	end
 
     test "type_to_sql returns a String for unmapped types" do
       assert_equal "special_db_type", @connection.type_to_sql(:special_db_type)
     end
 
-    unless current_adapter?(:PostgreSQLAdapter)
+    unless current_adapter?(:PostgreSQLAdapter, :IBM_DBAdapter)
       def test_log_invalid_encoding
-        assert_raise ActiveRecord::StatementInvalid do
-          @connection.send :log, "SELECT '?' FROM DUAL" do
-            raise '?'.force_encoding(Encoding::ASCII_8BIT)
+        error = assert_raise ActiveRecord::StatementInvalid do
+          @connection.send :log, "SELECT 'ы' FROM DUAL" do
+            raise 'ы'.force_encoding(Encoding::ASCII_8BIT)
           end
         end
+
+        assert_not_nil error.cause
       end
+    end
+
+    if current_adapter?(:Mysql2Adapter, :SQLite3Adapter)
+      def test_tables_returning_both_tables_and_views_is_deprecated
+        assert_deprecated { @connection.tables }
+      end
+    end
+
+    def test_passing_arguments_to_tables_is_deprecated
+      assert_deprecated { @connection.tables(:books) }
     end
   end
 
   class AdapterTestWithoutTransaction < ActiveRecord::TestCase
-    self.use_transactional_fixtures = false
+    self.use_transactional_tests = false
 
     class Klass < ActiveRecord::Base
     end
@@ -257,20 +327,25 @@ module ActiveRecord
       Klass.remove_connection
     end
 
-    unless in_memory_db?
-      test "transaction state is reset after a reconnect" do
-        @connection.begin_transaction
-        assert @connection.transaction_open?
-        @connection.reconnect!
-        assert !@connection.transaction_open?
-      end
+	unless current_adapter?(:IBM_DBAdapter)
+		unless in_memory_db?
+		  test "transaction state is reset after a reconnect" do
+			@connection.begin_transaction
+			assert @connection.transaction_open?
+			@connection.reconnect!
+			assert !@connection.transaction_open?
+		  end
 
-      test "transaction state is reset after a disconnect" do
-        @connection.begin_transaction
-        assert @connection.transaction_open?
-        @connection.disconnect!
-        assert !@connection.transaction_open?
-      end
-    end
+		  test "transaction state is reset after a disconnect" do
+			@connection.begin_transaction
+			assert @connection.transaction_open?
+			@connection.disconnect!
+			assert !@connection.transaction_open?
+		  end
+		end
+	end
+	
   end
+  
+  
 end

@@ -1,7 +1,6 @@
 require "cases/helper"
 require 'models/computer'
 require 'models/developer'
-require 'models/computer'
 require 'models/project'
 require 'models/company'
 require 'models/categorization'
@@ -13,7 +12,6 @@ require 'models/tag'
 require 'models/tagging'
 require 'models/person'
 require 'models/reader'
-require 'models/parrot'
 require 'models/ship_part'
 require 'models/ship'
 require 'models/liquid'
@@ -24,7 +22,7 @@ require 'models/interest'
 
 class AssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :developers_projects,
-           :computers, :people, :readers, :authors, :author_favorites, :author_addresses
+           :computers, :people, :readers, :authors, :author_favorites
 
   def test_eager_loading_should_not_change_count_of_children
     liquid = Liquid.create(:name => 'salty')
@@ -41,28 +39,6 @@ class AssociationsTest < ActiveRecord::TestCase
     favs = author.author_favorites
     fav2 = author.author_favorites.where(:author => Author.where(id: author.id)).to_a
     assert_equal favs, fav2
-  end
-
-  def test_clear_association_cache_stored
-    firm = Firm.find(1)
-    assert_kind_of Firm, firm
-
-    firm.clear_association_cache
-    assert_equal Firm.find(1).clients.collect{ |x| x.name }.sort, firm.clients.collect{ |x| x.name }.sort
-  end
-
-  def test_clear_association_cache_new_record
-     firm            = Firm.new
-     client_stored   = Client.find(3)
-     client_new      = Client.new
-     client_new.name = "The Joneses"
-     clients         = [ client_stored, client_new ]
-
-     firm.clients    << clients
-     assert_equal clients.map(&:name).to_set, firm.clients.map(&:name).to_set
-
-     firm.clear_association_cache
-     assert_equal clients.map(&:name).to_set, firm.clients.map(&:name).to_set
   end
 
   def test_loading_the_association_target_should_keep_child_records_marked_for_destruction
@@ -115,8 +91,10 @@ class AssociationsTest < ActiveRecord::TestCase
     assert firm.clients.empty?, "New firm should have cached no client objects"
     assert_equal 0, firm.clients.size, "New firm should have cached 0 clients count"
 
-    assert !firm.clients(true).empty?, "New firm should have reloaded client objects"
-    assert_equal 1, firm.clients(true).size, "New firm should have reloaded clients count"
+    ActiveSupport::Deprecation.silence do
+      assert !firm.clients(true).empty?, "New firm should have reloaded client objects"
+      assert_equal 1, firm.clients(true).size, "New firm should have reloaded clients count"
+    end
   end
 
   def test_using_limitable_reflections_helper
@@ -132,16 +110,19 @@ class AssociationsTest < ActiveRecord::TestCase
   def test_force_reload_is_uncached
     firm = Firm.create!("name" => "A New Firm, Inc")
     Client.create!("name" => "TheClient.com", :firm => firm)
-    ActiveRecord::Base.cache do
-      firm.clients.each {}
-      assert_queries(0) { assert_not_nil firm.clients.each {} }
-      assert_queries(1) { assert_not_nil firm.clients(true).each {} }
+
+    ActiveSupport::Deprecation.silence do
+      ActiveRecord::Base.cache do
+        firm.clients.each {}
+        assert_queries(0) { assert_not_nil firm.clients.each {} }
+        assert_queries(1) { assert_not_nil firm.clients(true).each {} }
+      end
     end
   end
 
   def test_association_with_references
     firm = companies(:first_firm)
-    assert_equal ['foo'], firm.association_with_references.references_values
+    assert_includes firm.association_with_references.references_values, 'foo'
   end
 
 end
@@ -202,6 +183,14 @@ class AssociationProxyTest < ActiveRecord::TestCase
     assert !david.projects.loaded?
   end
 
+  def test_load_does_load_target
+    david = developers(:david)
+
+    assert !david.projects.loaded?
+    david.projects.load
+    assert david.projects.loaded?
+  end
+
   def test_inspect_does_not_reload_a_not_yet_loaded_target
     andreas = Developer.new :name => 'Andreas', :log => 'new developer added'
     assert !andreas.audit_logs.loaded?
@@ -238,7 +227,7 @@ class AssociationProxyTest < ActiveRecord::TestCase
   end
 
   def test_scoped_allows_conditions
-    assert developers(:david).projects.merge!(where: 'foo').where_values.include?('foo')
+    assert developers(:david).projects.merge(where: 'foo').to_sql.include?('foo')
   end
 
   test "getting a scope from an association" do
@@ -250,7 +239,14 @@ class AssociationProxyTest < ActiveRecord::TestCase
 
   test "proxy object is cached" do
     david = developers(:david)
-    assert david.projects.equal?(david.projects)
+    assert_same david.projects, david.projects
+  end
+
+  test "proxy object can be stubbed" do
+    david = developers(:david)
+    david.projects.define_singleton_method(:extra_method) { 42 }
+
+    assert_equal 42, david.projects.extra_method
   end
 
   test "inverses get set of subsets of the association" do
@@ -267,6 +263,15 @@ class AssociationProxyTest < ActiveRecord::TestCase
   test "first! works on loaded associations" do
     david = authors(:david)
     assert_equal david.posts.first, david.posts.reload.first!
+    assert david.posts.loaded?
+    assert_no_queries { david.posts.first! }
+  end
+
+  def test_pluck_uses_loaded_target
+    david = authors(:david)
+    assert_equal david.posts.pluck(:title), david.posts.load.pluck(:title)
+    assert david.posts.loaded?
+    assert_no_queries { david.posts.pluck(:title) }
   end
 
   def test_reset_unloads_target

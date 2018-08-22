@@ -6,7 +6,7 @@ module ActiveRecord
       class Pool < ConnectionPool
         def insert_connection_for_test!(c)
           synchronize do
-            @connections << c
+            adopt_connection(c)
             @available.add c
           end
         end
@@ -24,7 +24,9 @@ module ActiveRecord
 
       def test_lease_twice
         assert @adapter.lease, 'should lease adapter'
-        assert_not @adapter.lease, 'should not lease adapter'
+        assert_raises(ActiveRecordError) do
+          @adapter.lease
+        end
       end
 
       def test_expire_mutates_in_use
@@ -35,7 +37,7 @@ module ActiveRecord
       end
 
       def test_close
-        pool = Pool.new(ConnectionSpecification.new({}, nil))
+        pool = Pool.new(ConnectionSpecification.new("primary", {}, nil))
         pool.insert_connection_for_test! @adapter
         @adapter.pool = pool
 

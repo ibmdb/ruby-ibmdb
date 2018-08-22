@@ -2,11 +2,11 @@ require "cases/helper"
 require "cases/migration/helper"
 
 class MigratorTest < ActiveRecord::TestCase
-  self.use_transactional_fixtures = false
+  self.use_transactional_tests = false
 
   # Use this class to sense if migrations have gone
   # up or down.
-  class Sensor < ActiveRecord::Migration
+  class Sensor < ActiveRecord::Migration::Current
     attr_reader :went_up, :went_down
 
     def initialize name = self.class.name, version = nil
@@ -123,6 +123,67 @@ class MigratorTest < ActiveRecord::TestCase
     assert_equal migration_list.last, migrations.first
   end
 
+  def test_migrations_status
+    path = MIGRATIONS_ROOT + "/valid"
+
+    ActiveRecord::SchemaMigration.create(version: 2)
+    ActiveRecord::SchemaMigration.create(version: 10)
+
+    assert_equal [
+      ["down", "001", "Valid people have last names"],
+      ["up",   "002", "We need reminders"],
+      ["down", "003", "Innocent jointable"],
+      ["up",   "010", "********** NO FILE **********"],
+    ], ActiveRecord::Migrator.migrations_status(path)
+  end
+
+  def test_migrations_status_in_subdirectories
+    path = MIGRATIONS_ROOT + "/valid_with_subdirectories"
+
+    ActiveRecord::SchemaMigration.create(version: 2)
+    ActiveRecord::SchemaMigration.create(version: 10)
+
+    assert_equal [
+      ["down", "001", "Valid people have last names"],
+      ["up",   "002", "We need reminders"],
+      ["down", "003", "Innocent jointable"],
+      ["up",   "010", "********** NO FILE **********"],
+    ], ActiveRecord::Migrator.migrations_status(path)
+  end
+
+  def test_migrations_status_with_schema_define_in_subdirectories
+    path = MIGRATIONS_ROOT + "/valid_with_subdirectories"
+    prev_paths = ActiveRecord::Migrator.migrations_paths
+    ActiveRecord::Migrator.migrations_paths = path
+
+    ActiveRecord::Schema.define(version: 3) do
+    end
+
+    assert_equal [
+      ["up", "001", "Valid people have last names"],
+      ["up", "002", "We need reminders"],
+      ["up", "003", "Innocent jointable"],
+    ], ActiveRecord::Migrator.migrations_status(path)
+  ensure
+    ActiveRecord::Migrator.migrations_paths = prev_paths
+  end
+
+  def test_migrations_status_from_two_directories
+    paths = [MIGRATIONS_ROOT + "/valid_with_timestamps", MIGRATIONS_ROOT + "/to_copy_with_timestamps"]
+
+    ActiveRecord::SchemaMigration.create(version: "20100101010101")
+    ActiveRecord::SchemaMigration.create(version: "20160528010101")
+
+    assert_equal [
+      ["down", "20090101010101", "People have hobbies"],
+      ["down", "20090101010202", "People have descriptions"],
+      ["up",   "20100101010101", "Valid with timestamps people have last names"],
+      ["down", "20100201010101", "Valid with timestamps we need reminders"],
+      ["down", "20100301010101", "Valid with timestamps innocent jointable"],
+      ["up",   "20160528010101", "********** NO FILE **********"],
+    ], ActiveRecord::Migrator.migrations_status(paths)
+  end
+
   def test_migrator_interleaved_migrations
     pass_one = [Sensor.new('One', 1)]
 
@@ -149,7 +210,7 @@ class MigratorTest < ActiveRecord::TestCase
   def test_up_calls_up
     migrations = [Sensor.new(nil, 0), Sensor.new(nil, 1), Sensor.new(nil, 2)]
     ActiveRecord::Migrator.new(:up, migrations).migrate
-    assert migrations.all? { |m| m.went_up }
+    assert migrations.all?(&:went_up)
     assert migrations.all? { |m| !m.went_down }
     assert_equal 2, ActiveRecord::Migrator.current_version
   end
@@ -160,7 +221,7 @@ class MigratorTest < ActiveRecord::TestCase
     migrations = [Sensor.new(nil, 0), Sensor.new(nil, 1), Sensor.new(nil, 2)]
     ActiveRecord::Migrator.new(:down, migrations).migrate
     assert migrations.all? { |m| !m.went_up }
-    assert migrations.all? { |m| m.went_down }
+    assert migrations.all?(&:went_down)
     assert_equal 0, ActiveRecord::Migrator.current_version
   end
 
@@ -237,6 +298,7 @@ class MigratorTest < ActiveRecord::TestCase
   def test_migrator_verbosity
     _, migrations = sensors(3)
 
+    ActiveRecord::Migration.verbose = true
     ActiveRecord::Migrator.new(:up, migrations, 1).migrate
     assert_not_equal 0, ActiveRecord::Migration.message_count
 
@@ -249,7 +311,6 @@ class MigratorTest < ActiveRecord::TestCase
   def test_migrator_verbosity_off
     _, migrations = sensors(3)
 
-    ActiveRecord::Migration.message_count = 0
     ActiveRecord::Migration.verbose = false
     ActiveRecord::Migrator.new(:up, migrations, 1).migrate
     assert_equal 0, ActiveRecord::Migration.message_count
@@ -290,6 +351,27 @@ class MigratorTest < ActiveRecord::TestCase
     assert_equal [[:up, 1], [:up, 2], [:up, 3]], calls
   end
 
+  def test_migrator_output_when_running_multiple_migrations
+    _, migrator = migrator_class(3)
+
+    result = migrator.migrate("valid")
+    assert_equal(3, result.count)
+
+    # Nothing migrated from duplicate run
+    result = migrator.migrate("valid")
+    assert_equal(0, result.count)
+
+    result = migrator.rollback("valid")
+    assert_equal(1, result.count)
+  end
+
+  def test_migrator_output_when_running_single_migration
+    _, migrator = migrator_class(1)
+    result = migrator.run(:up, "valid", 1)
+
+    assert_equal(1, result.version)
+  end
+
   def test_migrator_rollback
     _, migrator = migrator_class(3)
 
@@ -312,10 +394,11 @@ class MigratorTest < ActiveRecord::TestCase
   def test_migrator_db_has_no_schema_migrations_table
     _, migrator = migrator_class(3)
 
-    ActiveRecord::Base.connection.execute("DROP TABLE schema_migrations")
-    assert_not ActiveRecord::Base.connection.table_exists?('schema_migrations')
+    ActiveRecord::Base.connection.drop_table "schema_migrations"
+	#, if_exists: true
+    ActiveSupport::Deprecation.silence { assert_not ActiveRecord::Base.connection.table_exists?('schema_migrations') }
     migrator.migrate("valid", 1)
-    assert ActiveRecord::Base.connection.table_exists?('schema_migrations')
+    ActiveSupport::Deprecation.silence { assert ActiveRecord::Base.connection.table_exists?('schema_migrations') }
   end
 
   def test_migrator_forward

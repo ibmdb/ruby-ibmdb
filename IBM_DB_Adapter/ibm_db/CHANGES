@@ -1,5 +1,9 @@
 Change Log
 ==============
+
+2018/05/24 (IBM_DB adapter 4.0.0, driver 3.0.5)
+  - Rails 5.0.7 Toleration support. New features of Active Record 5.0.7 are not added also none of the open issue are fixed in this release.
+  
 2016/07/08 (IBM_DB adapter 3.0.5, driver 3.0.5)
   - Fixed issue #71 - Query hangs from db2 with no any exception return
   

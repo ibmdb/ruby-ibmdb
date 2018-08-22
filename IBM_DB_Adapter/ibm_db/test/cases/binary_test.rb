@@ -1,4 +1,3 @@
-# encoding: utf-8
 require "cases/helper"
 
 # Without using prepared statements, it makes no sense to test
@@ -21,10 +20,6 @@ unless current_adapter?(:DB2Adapter)
 
       name = binary.name
 
-      # MySQL adapter doesn't properly encode things, so we have to do it
-      if current_adapter?(:MysqlAdapter, :DB2Adapter)
-        name.force_encoding(Encoding::UTF_8)
-      end
       assert_equal 'いただきます！', name
     end
 
@@ -32,11 +27,8 @@ unless current_adapter?(:DB2Adapter)
       Binary.delete_all
 
       FIXTURES.each do |filename|
-        data = File.read(ASSETS_ROOT + "/#{filename}")				
+        data = File.read(ASSETS_ROOT + "/#{filename}")
         data.force_encoding('ASCII-8BIT')
-		if current_adapter?(:DB2Adapter)
-			data.force_encoding(Encoding::UTF_8)
-		end
         data.freeze
 
         bin = Binary.new(:data => data)
@@ -44,7 +36,7 @@ unless current_adapter?(:DB2Adapter)
 
         bin.save!
         assert_equal data, bin.data, 'Data differs from original after save'
-	
+
         assert_equal data, bin.reload.data, 'Reloaded data differs from original'
       end
     end

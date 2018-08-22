@@ -15,6 +15,7 @@ require 'models/essay'
 require 'models/owner'
 require 'models/post'
 require 'models/comment'
+require 'models/categorization'
 require 'models/customer'
 require 'models/carrier'
 require 'models/shop_account'
@@ -22,7 +23,7 @@ require 'models/customer_carrier'
 
 class HasOneThroughAssociationsTest < ActiveRecord::TestCase
   fixtures :member_types, :members, :clubs, :memberships, :sponsors, :organizations, :minivans,
-           :dashboards, :speedometers, :authors, :posts, :comments, :categories, :essays, :owners, :author_addresses
+           :dashboards, :speedometers, :authors, :posts, :comments, :categories, :essays, :owners
 
   def setup
     @member = members(:groucho)
@@ -248,12 +249,14 @@ class HasOneThroughAssociationsTest < ActiveRecord::TestCase
     assert_not_nil @member_detail.member_type
     @member_detail.destroy
     assert_queries(1) do
-      assert_not_nil @member_detail.member_type(true)
+      @member_detail.association(:member_type).reload
+      assert_not_nil @member_detail.member_type
     end
 
     @member_detail.member.destroy
     assert_queries(1) do
-      assert_nil @member_detail.member_type(true)
+      @member_detail.association(:member_type).reload
+      assert_nil @member_detail.member_type
     end
   end
 

@@ -7,9 +7,10 @@ require 'models/computer'
 require 'models/project'
 require 'models/reader'
 require 'models/person'
+require 'models/ship'
 
 class ReadOnlyTest < ActiveRecord::TestCase
-  fixtures :authors, :posts, :comments, :developers, :projects, :developers_projects, :people, :readers, :author_addresses
+  fixtures :authors, :posts, :comments, :developers, :projects, :developers_projects, :people, :readers
 
   def test_cant_save_readonly_record
     dev = Developer.find(1)

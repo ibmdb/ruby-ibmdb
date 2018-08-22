@@ -8,6 +8,7 @@ module ActiveRecord
     class ForeignKeyTest < ActiveRecord::TestCase
       include DdlHelper
       include SchemaDumpingHelper
+      include ActiveSupport::Testing::Stream
 
       class Rocket < ActiveRecord::Base
       end
@@ -29,8 +30,10 @@ module ActiveRecord
 
       teardown do
         if defined?(@connection)
-          @connection.drop_table "astronauts" if @connection.table_exists? 'astronauts' 
-          @connection.drop_table "rockets" if @connection.table_exists? 'rockets'
+          @connection.drop_table "astronauts"
+		  #, if_exists: true
+          @connection.drop_table "rockets"
+		  #, if_exists: true
         end
       end
 
@@ -141,10 +144,10 @@ module ActiveRecord
         assert_equal 1, foreign_keys.size
 
         fk = foreign_keys.first
-        if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+        if current_adapter?(:Mysql2Adapter)
           # ON DELETE RESTRICT is the default on MySQL
           assert_equal nil, fk.on_delete
-		else 
+        else
           assert_equal :restrict, fk.on_delete
         end
       end
@@ -155,8 +158,8 @@ module ActiveRecord
         foreign_keys = @connection.foreign_keys("astronauts")
         assert_equal 1, foreign_keys.size
 
-        fk = foreign_keys.first		
-        assert_equal :cascade, fk.on_delete		
+        fk = foreign_keys.first
+        assert_equal :cascade, fk.on_delete
       end
 
       def test_add_on_delete_nullify_foreign_key
@@ -180,15 +183,34 @@ module ActiveRecord
       end
 
       def test_add_foreign_key_with_on_update
-        #@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id" , on_update: :nullify
-		@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id"
+        @connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_update: :nullify
 
         foreign_keys = @connection.foreign_keys("astronauts")
         assert_equal 1, foreign_keys.size
 
         fk = foreign_keys.first
-        assert_equal :noaction, fk.on_update
-		#assert_equal nil, fk.on_update
+        assert_equal :nullify, fk.on_update
+      end
+
+      def test_foreign_key_exists
+        @connection.add_foreign_key :astronauts, :rockets
+
+        assert @connection.foreign_key_exists?(:astronauts, :rockets)
+        assert_not @connection.foreign_key_exists?(:astronauts, :stars)
+      end
+
+      def test_foreign_key_exists_by_column
+        @connection.add_foreign_key :astronauts, :rockets, column: "rocket_id"
+
+        assert @connection.foreign_key_exists?(:astronauts, column: "rocket_id")
+        assert_not @connection.foreign_key_exists?(:astronauts, column: "star_id")
+      end
+
+      def test_foreign_key_exists_by_name
+        @connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", name: "fancy_named_fk"
+
+        assert @connection.foreign_key_exists?(:astronauts, name: "fancy_named_fk")
+        assert_not @connection.foreign_key_exists?(:astronauts, name: "other_fancy_named_fk")
       end
 
       def test_remove_foreign_key_inferes_column
@@ -232,24 +254,22 @@ module ActiveRecord
       def test_schema_dumping
         @connection.add_foreign_key :astronauts, :rockets
         output = dump_table_schema "astronauts"
-        assert_match %r{\s+add_foreign_key "ASTRONAUTS", "ROCKETS"$}, output
+        assert_match %r{\s+add_foreign_key "astronauts", "rockets"$}, output
       end
 
       def test_schema_dumping_with_options
         output = dump_table_schema "fk_test_has_fk"
-        assert_match %r{\s+add_foreign_key "FK_TEST_HAS_FK", "FK_TEST_HAS_PK", column: "FK_ID", primary_key: "PK_ID", name: "FK_NAME"$}, output
+        assert_match %r{\s+add_foreign_key "fk_test_has_fk", "fk_test_has_pk", column: "fk_id", primary_key: "pk_id", name: "fk_name"$}, output
       end
 
       def test_schema_dumping_on_delete_and_on_update_options
-        #@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :nullify, on_update: :cascade
-		@connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :cascade, on_update: :restrict
+        @connection.add_foreign_key :astronauts, :rockets, column: "rocket_id", on_delete: :nullify, on_update: :cascade
 
         output = dump_table_schema "astronauts"
-        #assert_match %r{\s+add_foreign_key "astronauts",.+on_update: :cascade,.+on_delete: :nullify$}, output
-		assert_match %r{\s+add_foreign_key "ASTRONAUTS",.+on_update: :restrict,.+on_delete: :cascade$}, output
+        assert_match %r{\s+add_foreign_key "astronauts",.+on_update: :cascade,.+on_delete: :nullify$}, output
       end
 
-      class CreateCitiesAndHousesMigration < ActiveRecord::Migration
+      class CreateCitiesAndHousesMigration < ActiveRecord::Migration::Current
         def change
           create_table("cities") { |t| }
 
@@ -257,6 +277,10 @@ module ActiveRecord
             t.column :city_id, :integer
           end
           add_foreign_key :houses, :cities, column: "city_id"
+
+          # remove and re-add to test that schema is updated and not accidently cached
+          remove_foreign_key :houses, :cities
+          add_foreign_key :houses, :cities, column: "city_id", on_delete: :cascade
         end
       end
 
@@ -268,7 +292,16 @@ module ActiveRecord
         silence_stream($stdout) { migration.migrate(:down) }
       end
 
-      class CreateSchoolsAndClassesMigration < ActiveRecord::Migration
+      def test_foreign_key_constraint_is_not_cached_incorrectly
+        migration = CreateCitiesAndHousesMigration.new
+        silence_stream($stdout) { migration.migrate(:up) }
+        output = dump_table_schema "houses"
+        assert_match %r{\s+add_foreign_key "houses",.+on_delete: :cascade$}, output
+      ensure
+        silence_stream($stdout) { migration.migrate(:down) }
+      end
+
+      class CreateSchoolsAndClassesMigration < ActiveRecord::Migration::Current
         def change
           create_table(:schools)
 
@@ -298,6 +331,7 @@ module ActiveRecord
         silence_stream($stdout) { migration.migrate(:down) }
         ActiveRecord::Base.table_name_suffix = nil
       end
+
     end
   end
 end

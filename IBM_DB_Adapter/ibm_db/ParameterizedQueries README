@@ -22,18 +22,18 @@ development:
 
 Similarly for the other sections (test/production) of the database.yml file set "parameterized" to true to enable usage of parameterized SQL queries
 
+
 Supported Activerecord Versions
 ===============================
-  Activerecord-2.3.3, Activerecord-2.3.4, Activerecord-2.3.5
+  Activerecord-5.0.7 and above
+  
   
 Supported Operating Systems and Databases
 =========================================
 Refer the main README
 
+
 Feedback
 ========
-  Your feedback is very much appreciated and expected through Rubyforge:
-   - rubyibm project:     http://rubyforge.org/projects/rubyibm/
-   - rubyibm forum:       http://rubyforge.org/forum/?group_id=2361
-   - rubyibm bug reports: http://rubyforge.org/tracker/?group_id=2361
-   - IBM_DB developers:   rubyibm-developers@rubyforge.org
+  Your feedback is very much appreciated and expected through github:
+   - github issue: https://github.com/ibmdb/ruby-ibmdb/issues

@@ -5,10 +5,8 @@ module ActiveRecord
     class ColumnsTest < ActiveRecord::TestCase
       include ActiveRecord::Migration::TestHelper
 
-      self.use_transactional_fixtures = false
+      self.use_transactional_tests = false
 
-if(!current_adapter?(:IBM_DBAdapter) )
-		#|| @ibm_db_rename_supported)
       # FIXME: this is more of an integration test with AR::Base and the
       # schema modifications.  Maybe we should move this?
       def test_add_rename
@@ -64,10 +62,10 @@ if(!current_adapter?(:IBM_DBAdapter) )
         assert_equal '70000', default_after
       end
 
-      if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+      if current_adapter?(:Mysql2Adapter)
         def test_mysql_rename_column_preserves_auto_increment
           rename_column "test_models", "id", "id_test"
-          assert_equal "auto_increment", connection.columns("test_models").find { |c| c.name == "id_test" }.extra
+          assert connection.columns("test_models").find { |c| c.name == "id_test" }.auto_increment?
           TestModel.reset_column_information
         ensure
           rename_column "test_models", "id_test", "id"
@@ -130,7 +128,6 @@ if(!current_adapter?(:IBM_DBAdapter) )
         rename_column "test_models", "hat_name", "name"
         assert_equal ['idx_hat_name'], connection.indexes('test_models').map(&:name)
       end
-end
 
       def test_remove_column_with_index
         add_column "test_models", :hat_name, :string
@@ -142,6 +139,10 @@ end
       end
 
       def test_remove_column_with_multi_column_index
+        # MariaDB starting with 10.2.8
+        # Dropping a column that is part of a multi-column UNIQUE constraint is not permitted.
+        skip if current_adapter?(:Mysql2Adapter) && connection.mariadb? && connection.version >= "10.2.8"
+
         add_column "test_models", :hat_size, :integer
         add_column "test_models", :hat_style, :string, :limit => 100
         add_index "test_models", ["hat_style", "hat_size"], :unique => true
@@ -182,7 +183,6 @@ end
         assert TestModel.columns_hash["funny"].null, "Column 'funny' must allow nulls again at this point"
       end
 
-unless current_adapter?(:IBM_DBAdapter)
       def test_change_column
         add_column 'test_models', 'age', :integer
         add_column 'test_models', 'approved', :boolean, :default => true
@@ -200,7 +200,7 @@ unless current_adapter?(:IBM_DBAdapter)
 
         old_columns = connection.columns(TestModel.table_name)
         assert old_columns.find { |c|
-          default = c.type_cast_from_database(c.default)
+          default = connection.lookup_cast_type_from_column(c).deserialize(c.default)
           c.name == 'approved' && c.type == :boolean && default == true
         }
 
@@ -208,16 +208,15 @@ unless current_adapter?(:IBM_DBAdapter)
         new_columns = connection.columns(TestModel.table_name)
 
         assert_not new_columns.find { |c|
-          default = c.type_cast_from_database(c.default)
+          default = connection.lookup_cast_type_from_column(c).deserialize(c.default)
           c.name == 'approved' and c.type == :boolean and default == true
         }
         assert new_columns.find { |c|
-          default = c.type_cast_from_database(c.default)
+          default = connection.lookup_cast_type_from_column(c).deserialize(c.default)
           c.name == 'approved' and c.type == :boolean and default == false
         }
         change_column :test_models, :approved, :boolean, :default => true
       end
-end
 
       def test_change_column_with_nil_default
         add_column "test_models", "contributor", :boolean, :default => true
@@ -270,6 +269,13 @@ end
         add_column "test_models", "first_name", :string
         connection.change_column_default "test_models", "first_name", nil
         assert_nil TestModel.new.first_name
+      end
+
+      def test_change_column_default_with_from_and_to
+        add_column "test_models", "first_name", :string
+        connection.change_column_default "test_models", "first_name", from: nil, to: "Tester"
+
+        assert_equal "Tester", TestModel.new.first_name
       end
 
       def test_remove_column_no_second_parameter_raises_exception

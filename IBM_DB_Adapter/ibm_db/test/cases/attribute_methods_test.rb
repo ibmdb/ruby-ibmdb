@@ -1,7 +1,6 @@
 require "cases/helper"
 require 'models/minimalistic'
 require 'models/developer'
-require 'models/computer'
 require 'models/auto_id'
 require 'models/boolean'
 require 'models/computer'
@@ -28,12 +27,31 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     ActiveRecord::Base.send(:attribute_method_matchers).concat(@old_matchers)
   end
 
-  def test_attribute_for_inspect
+  def test_attribute_for_inspect_string
     t = topics(:first)
     t.title = "The First Topic Now Has A Title With\nNewlines And More Than 50 Characters"
 
-    assert_equal %("#{t.written_on.to_s(:db)}"), t.attribute_for_inspect(:written_on)
     assert_equal '"The First Topic Now Has A Title With\nNewlines And ..."', t.attribute_for_inspect(:title)
+  end
+
+  def test_attribute_for_inspect_date
+    t = topics(:first)
+
+    assert_equal %("#{t.written_on.to_s(:db)}"), t.attribute_for_inspect(:written_on)
+  end
+
+  def test_attribute_for_inspect_array
+    t = topics(:first)
+    t.content = [Object.new]
+
+    assert_match %r(\[#<Object:0x[0-9a-f]+>\]), t.attribute_for_inspect(:content)
+  end
+
+  def test_attribute_for_inspect_long_array
+    t = topics(:first)
+    t.content = (1..11).to_a
+
+    assert_equal "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]", t.attribute_for_inspect(:content)
   end
 
   def test_attribute_present
@@ -67,8 +85,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_caching_nil_primary_key
     klass = Class.new(Minimalistic)
-    klass.expects(:reset_primary_key).returns(nil).once
-    2.times { klass.primary_key }
+    assert_called(klass, :reset_primary_key, returns: nil) do
+      2.times { klass.primary_key }
+    end
   end
 
   def test_attribute_keys_on_new_instance
@@ -175,9 +194,9 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal category_attrs , category.attributes_before_type_cast
   end
 
-  if current_adapter?(:MysqlAdapter)
+  if current_adapter?(:Mysql2Adapter)
     def test_read_attributes_before_type_cast_on_boolean
-      bool = Boolean.create({ "value" => false })
+      bool = Boolean.create!({ "value" => false })
       if RUBY_PLATFORM =~ /java/
         # JRuby will return the value before typecast as string
         assert_equal "0", bool.reload.attributes_before_type_cast["value"]
@@ -253,7 +272,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
   def test_case_sensitive_attributes_hash
     # DB2 is not case-sensitive
-    return true if current_adapter?(:DB2Adapter) || current_adapter?(:IBM_DBAdapter)
+    return true if current_adapter?(:DB2Adapter)
 
     assert_equal @loaded_fixtures['computers']['workstation'].to_hash, Computer.first.attributes
   end
@@ -502,7 +521,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def test_typecast_attribute_from_select_to_false
     Topic.create(:title => 'Budget')
     # Oracle does not support boolean expressions in SELECT
-    if current_adapter?(:OracleAdapter) || current_adapter?(:IBM_DBAdapter)
+    if current_adapter?(:OracleAdapter, :FbAdapter)
       topic = Topic.all.merge!(:select => "topics.*, 0 as is_test").first
     else
       topic = Topic.all.merge!(:select => "topics.*, 1=2 as is_test").first
@@ -513,7 +532,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
   def test_typecast_attribute_from_select_to_true
     Topic.create(:title => 'Budget')
     # Oracle does not support boolean expressions in SELECT
-    if current_adapter?(:OracleAdapter) || current_adapter?(:IBM_DBAdapter)
+    if current_adapter?(:OracleAdapter, :FbAdapter)
       topic = Topic.all.merge!(:select => "topics.*, 1 as is_test").first
     else
       topic = Topic.all.merge!(:select => "topics.*, 2=2 as is_test").first
@@ -531,20 +550,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_deprecated_cache_attributes
-    assert_deprecated do
-      Topic.cache_attributes :replies_count
-    end
-
-    assert_deprecated do
-      Topic.cached_attributes
-    end
-
-    assert_deprecated do
-      Topic.cache_attribute? :replies_count
-    end
-  end
-
   def test_converted_values_are_returned_after_assignment
     developer = Developer.new(name: 1337, salary: "50000")
 
@@ -555,9 +560,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "1337", developer.name
 
     developer.save!
-
-    assert_equal "50000", developer.salary_before_type_cast
-    assert_equal 1337, developer.name_before_type_cast
 
     assert_equal 50000, developer.salary
     assert_equal "1337", developer.name
@@ -671,7 +673,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     end
   end
 
-  def test_setting_time_zone_aware_attribute_in_current_time_zone
+  def test_setting_time_zone_aware_datetime_in_current_time_zone
     utc_time = Time.utc(2008, 1, 1)
     in_time_zone "Pacific Time (US & Canada)" do
       record   = @target.new
@@ -687,6 +689,54 @@ class AttributeMethodsTest < ActiveRecord::TestCase
       record = Topic.new(id: 1)
       record.written_on = "Jan 01 00:00:00 2014"
       assert_equal record, YAML.load(YAML.dump(record))
+    end
+  end
+
+  def test_setting_time_zone_aware_time_in_current_time_zone
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new
+      time_string = "10:00:00"
+      expected_time = Time.zone.parse("2000-01-01 #{time_string}")
+
+      record.bonus_time = time_string
+      assert_equal expected_time, record.bonus_time
+      assert_equal ActiveSupport::TimeZone["Pacific Time (US & Canada)"], record.bonus_time.time_zone
+
+      record.bonus_time = ''
+      assert_nil record.bonus_time
+    end
+  end
+
+  def test_setting_time_zone_aware_time_with_dst
+    in_time_zone "Pacific Time (US & Canada)" do
+      current_time = Time.zone.local(2014, 06, 15, 10)
+      record = @target.new(bonus_time: current_time)
+      time_before_save = record.bonus_time
+
+      record.save
+      record.reload
+
+      assert_equal time_before_save, record.bonus_time
+      assert_equal ActiveSupport::TimeZone["Pacific Time (US & Canada)"], record.bonus_time.time_zone
+    end
+  end
+
+  def test_removing_time_zone_aware_types
+    with_time_zone_aware_types(:datetime) do
+      in_time_zone "Pacific Time (US & Canada)" do
+        record = @target.new(bonus_time: "10:00:00")
+        expected_time = Time.utc(2000, 01, 01, 10)
+
+        assert_equal expected_time, record.bonus_time
+        assert record.bonus_time.utc?
+      end
+    end
+  end
+
+  def test_time_zone_aware_attributes_dont_recurse_infinitely_on_invalid_values
+    in_time_zone "Pacific Time (US & Canada)" do
+      record = @target.new(bonus_time: [])
+      assert_equal nil, record.bonus_time
     end
   end
 
@@ -744,17 +794,6 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_equal "unknown attribute 'hello' for Topic.", error.message
   end
 
-  # This test is related to a bug in Ruby 2.2.1.
-  # It can be safely removed once that bug is fixed.
-  #
-  # xref: https://bugs.ruby-lang.org/issues/10969
-  def test_bulk_does_not_raise_name_error
-    nope rescue nil # necessary to trigger the bug
-    assert_raises(ActiveRecord::UnknownAttributeError) {
-      Topic.new(hello: "world")
-    }
-  end
-
   def test_methods_override_in_multi_level_subclass
     klass = Class.new(Developer) do
       def name
@@ -778,7 +817,7 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert_nil computer.system
   end
 
-  def test_global_methods_are_overwritte_when_subclassing
+  def test_global_methods_are_overwritten_when_subclassing
     klass = Class.new(ActiveRecord::Base) { self.abstract_class = true }
 
     subklass = Class.new(klass) do
@@ -921,6 +960,16 @@ class AttributeMethodsTest < ActiveRecord::TestCase
     assert model.id_came_from_user?
   end
 
+  def test_accessed_fields
+    model = @target.first
+
+    assert_equal [], model.accessed_fields
+
+    model.title
+
+    assert_equal ["title"], model.accessed_fields
+  end
+
   private
 
   def new_topic_like_ar_class(&block)
@@ -931,6 +980,14 @@ class AttributeMethodsTest < ActiveRecord::TestCase
 
     assert_empty klass.generated_attribute_methods.instance_methods(false)
     klass
+  end
+
+  def with_time_zone_aware_types(*types)
+    old_types = ActiveRecord::Base.time_zone_aware_types
+    ActiveRecord::Base.time_zone_aware_types = types
+    yield
+  ensure
+    ActiveRecord::Base.time_zone_aware_types = old_types
   end
 
   def cached_columns

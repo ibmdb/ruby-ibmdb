@@ -13,16 +13,18 @@ class Post < ActiveRecord::Base
 
   module NamedExtension2
     def greeting
-      "hello"
+      "hullo"
     end
   end
 
   scope :containing_the_letter_a, -> { where("body LIKE '%a%'") }
+  scope :titled_with_an_apostrophe, -> { where("title LIKE '%''%'") }
   scope :ranked_by_comments,      -> { order("comments_count DESC") }
 
   scope :limit_by, lambda {|l| limit(l) }
 
   belongs_to :author
+  belongs_to :readonly_author, -> { readonly }, class_name: "Author", foreign_key: :author_id
 
   belongs_to :author_with_posts, -> { includes(:posts) }, :class_name => "Author", :foreign_key => :author_id
   belongs_to :author_with_address, -> { includes(:author_address) }, :class_name => "Author", :foreign_key => :author_id
@@ -42,6 +44,8 @@ class Post < ActiveRecord::Base
 
   scope :tagged_with, ->(id) { joins(:taggings).where(taggings: { tag_id: id }) }
   scope :tagged_with_comment, ->(comment) { joins(:taggings).where(taggings: { comment: comment }) }
+
+  scope :typographically_interesting, -> { containing_the_letter_a.or(titled_with_an_apostrophe) }
 
   has_many   :comments do
     def find_most_recent
@@ -72,15 +76,11 @@ class Post < ActiveRecord::Base
     through: :author_with_address,
     source: :author_address_extra
 
-  has_many :comments_with_interpolated_conditions,
-    ->(p) { where "#{"#{p.aliased_table_name}." rescue ""}body = ?", 'Thank you for the welcome' },
-    :class_name => 'Comment'
-
   has_one  :very_special_comment
   has_one  :very_special_comment_with_post, -> { includes(:post) }, :class_name => "VerySpecialComment"
   has_one :very_special_comment_with_post_with_joins, -> { joins(:post).order('posts.id') }, class_name: "VerySpecialComment"
   has_many :special_comments
-  has_many :nonexistant_comments, -> { where 'comments.id < 0' }, :class_name => 'Comment'
+  has_many :nonexistent_comments, -> { where 'comments.id < 0' }, :class_name => 'Comment'
 
   has_many :special_comments_ratings, :through => :special_comments, :source => :ratings
   has_many :special_comments_ratings_taggings, :through => :special_comments_ratings, :source => :taggings
@@ -186,6 +186,7 @@ class SubStiPost < StiPost
 end
 
 class FirstPost < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   default_scope { where(:id => 1) }
 
@@ -194,6 +195,7 @@ class FirstPost < ActiveRecord::Base
 end
 
 class PostWithDefaultInclude < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   default_scope { includes(:comments) }
   has_many :comments, :foreign_key => :post_id
@@ -205,6 +207,7 @@ class PostWithSpecialCategorization < Post
 end
 
 class PostWithDefaultScope < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   default_scope { order(:title) }
 end
@@ -226,11 +229,13 @@ class PostWithIncludesDefaultScope < ActiveRecord::Base
 end
 
 class SpecialPostWithDefaultScope < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   default_scope { where(:id => [1, 5,6]) }
 end
 
 class PostThatLoadsCommentsInAnAfterSaveHook < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   has_many :comments, class_name: "CommentThatAutomaticallyAltersPostBody", foreign_key: :post_id
 
@@ -240,6 +245,7 @@ class PostThatLoadsCommentsInAnAfterSaveHook < ActiveRecord::Base
 end
 
 class PostWithAfterCreateCallback < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   has_many :comments, foreign_key: :post_id
 
@@ -249,6 +255,7 @@ class PostWithAfterCreateCallback < ActiveRecord::Base
 end
 
 class PostWithCommentWithDefaultScopeReferencesAssociation < ActiveRecord::Base
+  self.inheritance_column = :disabled
   self.table_name = 'posts'
   has_many :comment_with_default_scope_references_associations, foreign_key: :post_id
   has_one :first_comment, class_name: "CommentWithDefaultScopeReferencesAssociation", foreign_key: :post_id
@@ -258,7 +265,9 @@ class SerializedPost < ActiveRecord::Base
   serialize :title
 end
 
-class PostWithConflictingDefaultScope < Post
-  default_scope ->{ where(author_id: 42) }
-  belongs_to :post_with_conflicting_default_scope, foreign_key: :post_id
+class ConditionalStiPost < Post
+  default_scope { where(title: 'Untitled') }
+end
+
+class SubConditionalStiPost < ConditionalStiPost
 end

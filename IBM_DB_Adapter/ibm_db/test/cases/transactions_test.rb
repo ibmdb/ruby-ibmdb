@@ -9,11 +9,11 @@ require 'models/post'
 require 'models/movie'
 
 class TransactionTest < ActiveRecord::TestCase
-  self.use_transactional_fixtures = false
+  self.use_transactional_tests = false
   fixtures :topics, :developers, :authors, :posts, :author_addresses
 
   def setup
-    @first, @second = Topic.find(1, 2).sort_by { |t| t.id }
+    @first, @second = Topic.find(1, 2).sort_by(&:id)
   end
 
   def test_persisted_in_a_model_with_custom_primary_key_after_failed_save
@@ -56,6 +56,11 @@ class TransactionTest < ActiveRecord::TestCase
       @second.save
       return
     end
+  end
+
+  def test_add_to_null_transaction
+    topic = Topic.new
+    topic.add_to_transaction
   end
 
   def test_successful_with_return
@@ -188,7 +193,7 @@ class TransactionTest < ActiveRecord::TestCase
     assert posts_count > 0
     status = author.update(name: nil, post_ids: [])
     assert !status
-    assert_equal posts_count, author.posts(true).size
+    assert_equal posts_count, author.posts.reload.size
   end
 
   def test_update_should_rollback_on_failure!
@@ -198,7 +203,17 @@ class TransactionTest < ActiveRecord::TestCase
     assert_raise(ActiveRecord::RecordInvalid) do
       author.update!(name: nil, post_ids: [])
     end
-    assert_equal posts_count, author.posts(true).size
+    assert_equal posts_count, author.posts.reload.size
+  end
+
+  def test_cancellation_from_returning_false_in_before_filter
+    def @first.before_save_for_transaction
+      false
+    end
+
+    assert_deprecated do
+      @first.save
+    end
   end
 
   def test_cancellation_from_before_destroy_rollbacks_in_destroy
@@ -477,13 +492,17 @@ class TransactionTest < ActiveRecord::TestCase
   end
 
   def test_rollback_when_commit_raises
-    Topic.connection.expects(:begin_db_transaction)
-    Topic.connection.expects(:commit_db_transaction).raises('OH NOES')
-    Topic.connection.expects(:rollback_db_transaction)
+    assert_called(Topic.connection, :begin_db_transaction) do
+      Topic.connection.stub(:commit_db_transaction, ->{ raise('OH NOES') }) do
+        assert_called(Topic.connection, :rollback_db_transaction) do
 
-    assert_raise RuntimeError do
-      Topic.transaction do
-        # do nothing
+          e = assert_raise RuntimeError do
+            Topic.transaction do
+              # do nothing
+            end
+          end
+          assert_equal 'OH NOES', e.message
+        end
       end
     end
   end
@@ -491,44 +510,42 @@ class TransactionTest < ActiveRecord::TestCase
   def test_rollback_when_saving_a_frozen_record
     topic = Topic.new(:title => 'test')
     topic.freeze
-    e = assert_raise(RuntimeError) { topic.save }
-    assert_match(/frozen/i, e.message) # Not good enough, but we can't do much
-                                       # about it since there is no specific error
-                                       # for frozen objects.
-    assert !topic.persisted?, 'not persisted'
+    e = assert_raise(frozen_error_class) { topic.save }
+    # Not good enough, but we can't do much
+    # about it since there is no specific error
+    # for frozen objects.
+    assert_match(/frozen/i, e.message)
+    assert !topic.persisted?, "not persisted"
     assert_nil topic.id
     assert topic.frozen?, 'not frozen'
   end
 
-  # The behavior of killed threads having a status of "aborting" was changed
-  # in Ruby 2.0, so Thread#kill on 1.9 will prematurely commit the transaction
-  # and there's nothing we can do about it.
-  if !RUBY_VERSION.start_with?('1.9') && !in_memory_db?
-    def test_rollback_when_thread_killed
-      queue = Queue.new
-      thread = Thread.new do
-        Topic.transaction do
-          @first.approved  = true
-          @second.approved = false
-          @first.save
+  def test_rollback_when_thread_killed
+    return if in_memory_db?
 
-          queue.push nil
-          sleep
+    queue = Queue.new
+    thread = Thread.new do
+      Topic.transaction do
+        @first.approved  = true
+        @second.approved = false
+        @first.save
 
-          @second.save
-        end
+        queue.push nil
+        sleep
+
+        @second.save
       end
-
-      queue.pop
-      thread.kill
-      thread.join
-
-      assert @first.approved?, "First should still be changed in the objects"
-      assert !@second.approved?, "Second should still be changed in the objects"
-
-      assert !Topic.find(1).approved?, "First shouldn't have been approved"
-      assert Topic.find(2).approved?, "Second should still be approved"
     end
+
+    queue.pop
+    thread.kill
+    thread.join
+
+    assert @first.approved?, "First should still be changed in the objects"
+    assert !@second.approved?, "Second should still be changed in the objects"
+
+    assert !Topic.find(1).approved?, "First shouldn't have been approved"
+    assert Topic.find(2).approved?, "Second should still be approved"
   end
 
   def test_restore_active_record_state_for_all_records_in_a_transaction
@@ -686,7 +703,8 @@ class TransactionTest < ActiveRecord::TestCase
       end
     end
   ensure
-    connection.drop_table("transaction_without_primary_keys") if connection.table_exists? "transaction_without_primary_keys"
+    connection.drop_table 'transaction_without_primary_keys'
+	#, if_exists: true
   end
 
   private
@@ -696,14 +714,14 @@ class TransactionTest < ActiveRecord::TestCase
       meta = class << topic; self; end
       meta.send("define_method", "before_#{filter}_for_transaction") do
         Book.create
-        false
+        throw(:abort)
       end
     end
   end
 end
 
 class TransactionsWithTransactionalFixturesTest < ActiveRecord::TestCase
-  self.use_transactional_fixtures = true
+  self.use_transactional_tests = true
   fixtures :topics
 
   def test_automatic_savepoint_in_outer_transaction
@@ -760,7 +778,7 @@ if current_adapter?(:PostgreSQLAdapter)
           end
         end
 
-        threads.each { |t| t.join }
+        threads.each(&:join)
       end
     end
 
@@ -808,7 +826,7 @@ if current_adapter?(:PostgreSQLAdapter)
           Developer.connection.close
         end
 
-        threads.each { |t| t.join }
+        threads.each(&:join)
       end
 
       assert_equal original_salary, Developer.find(1).salary

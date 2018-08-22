@@ -1,7 +1,4 @@
-# encoding: utf-8
-
 require "cases/helper"
-require 'active_support/concurrency/latch'
 require 'models/post'
 require 'models/author'
 require 'models/topic'
@@ -29,6 +26,7 @@ require 'models/bird'
 require 'models/car'
 require 'models/bulb'
 require 'rexml/document'
+require 'concurrent/atomic/count_down_latch'
 
 class FirstAbstractClass < ActiveRecord::Base
   self.abstract_class = true
@@ -77,18 +75,20 @@ class LintTest < ActiveRecord::TestCase
 end
 
 class BasicsTest < ActiveRecord::TestCase
-  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse_things', :authors, :categorizations, :categories, :posts, :author_addresses
+  #fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse_things', :authors, :categorizations, :categories, :posts
+  fixtures :topics, :companies, :developers, :projects, :computers, :accounts, :minimalistics, 'warehouse_things',  :categorizations, :categories, :posts
 
   def test_column_names_are_escaped
+    puts "In base_test test_column_names_are_escaped"
     conn      = ActiveRecord::Base.connection
     classname = conn.class.name[/[^:]*$/]
     badchar   = {
       'SQLite3Adapter'    => '"',
-      'MysqlAdapter'      => '`',
       'Mysql2Adapter'     => '`',
       'PostgreSQLAdapter' => '"',
       'OracleAdapter'     => '"',
       'IBM_DBAdapter'     => '"',
+      'FbAdapter'         => '"'
     }.fetch(classname) {
       raise "need a bad char for #{classname}"
     }
@@ -106,64 +106,81 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_columns_should_obey_set_primary_key
+    puts "In base_test test_columns_should_obey_set_primary_key"
     pk = Subscriber.columns_hash[Subscriber.primary_key]
     assert_equal 'nick', pk.name, 'nick should be primary key'
   end
 
   def test_primary_key_with_no_id
+    puts "In base_test test_primary_key_with_no_id"
     assert_nil Edge.primary_key
   end
 
-  unless current_adapter?(:PostgreSQLAdapter, :OracleAdapter, :SQLServerAdapter, :IBM_DBAdapter)
+  unless current_adapter?(:PostgreSQLAdapter, :OracleAdapter, :SQLServerAdapter, :IBM_DBAdapter, :FbAdapter)
     def test_limit_with_comma
-      assert Topic.limit("1,2").to_a
+	  puts "In base_test test_limit_with_comma"
+      assert_deprecated do
+        assert Topic.limit("1,2").to_a
+      end
     end
   end
 
+  def test_many_mutations
+    puts "In base_test test_many_mutations"
+    car = Car.new name: "<3<3<3"
+    car.engines_count = 0
+    20_000.times { car.engines_count += 1 }
+    assert car.save
+  end
+
   def test_limit_without_comma
+    puts "In base_test test_limit_without_comma"
     assert_equal 1, Topic.limit("1").to_a.length
     assert_equal 1, Topic.limit(1).to_a.length
   end
 
   def test_limit_should_take_value_from_latest_limit
+    puts "In base_test test_limit_should_take_value_from_latest_limit"
     assert_equal 1, Topic.limit(2).limit(1).to_a.length
   end
 
   def test_invalid_limit
+    puts "In base_test test_invalid_limit"
     assert_raises(ArgumentError) do
       Topic.limit("asdfadf").to_a
     end
   end
 
   def test_limit_should_sanitize_sql_injection_for_limit_without_commas
+    puts "In base_test test_limit_should_sanitize_sql_injection_for_limit_without_commas"
     assert_raises(ArgumentError) do
       Topic.limit("1 select * from schema").to_a
     end
   end
 
   def test_limit_should_sanitize_sql_injection_for_limit_with_commas
-    assert_raises(ArgumentError) do
-      Topic.limit("1, 7 procedure help()").to_a
-    end
-  end
-
-  unless current_adapter?(:MysqlAdapter, :Mysql2Adapter, :IBM_DBAdapter)
-    def test_limit_should_allow_sql_literal
-      assert_equal 1, Topic.limit(Arel.sql('2-1')).to_a.length
+    puts "In base_test test_limit_should_sanitize_sql_injection_for_limit_with_commas"
+    assert_deprecated do
+      assert_raises(ArgumentError) do
+        Topic.limit("1, 7 procedure help()").to_a
+      end
     end
   end
 
   def test_select_symbol
+    puts "In base_test test_select_symbol"
     topic_ids = Topic.select(:id).map(&:id).sort
     assert_equal Topic.pluck(:id).sort, topic_ids
   end
 
   def test_table_exists
+    puts "In base_test test_table_exists"
     assert !NonExistentTable.table_exists?
     assert Topic.table_exists?
   end
 
   def test_preserving_date_objects
+    puts "In base_test test_preserving_date_objects"
     # Oracle enhanced adapter allows to define Date attributes in model class (see topic.rb)
     assert_kind_of(
       Date, Topic.find(1).last_read,
@@ -172,6 +189,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_previously_changed
+    puts "In base_test test_previously_changed"
     topic = Topic.first
     topic.title = '<3<3<3'
     assert_equal({}, topic.previous_changes)
@@ -182,6 +200,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_previously_changed_dup
+    puts "In base_test test_previously_changed_dup"
     topic = Topic.first
     topic.title = '<3<3<3'
     topic.save!
@@ -197,6 +216,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_time_objects
+    puts "In base_test test_preserving_time_objects"
     assert_kind_of(
       Time, Topic.find(1).bonus_time,
       "The bonus_time attribute should be of the Time class"
@@ -208,7 +228,7 @@ class BasicsTest < ActiveRecord::TestCase
     )
 
     # For adapters which support microsecond resolution.
-    if current_adapter?(:PostgreSQLAdapter, :SQLite3Adapter) || mysql_56?
+    if subsecond_precision_supported?
       assert_equal 11, Topic.find(1).written_on.sec
       assert_equal 223300, Topic.find(1).written_on.usec
       assert_equal 9900, Topic.find(2).written_on.usec
@@ -217,7 +237,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_time_objects_with_local_time_conversion_to_default_timezone_utc
-    with_env_tz 'America/New_York' do
+    puts "In base_test test_preserving_time_objects_with_local_time_conversion_to_default_timezone_utc"
+    with_env_tz eastern_time_zone do
       with_timezone_config default: :utc do
         time = Time.local(2000)
         topic = Topic.create('written_on' => time)
@@ -230,7 +251,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_utc
-    with_env_tz 'America/New_York' do
+    puts "In base_test test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_utc"
+    with_env_tz eastern_time_zone do
       with_timezone_config default: :utc do
         Time.use_zone 'Central Time (US & Canada)' do
           time = Time.zone.local(2000)
@@ -245,7 +267,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local
-    with_env_tz 'America/New_York' do
+    puts "In base_test test_preserving_time_objects_with_utc_time_conversion_to_default_timezone_local"
+    with_env_tz eastern_time_zone do
       with_timezone_config default: :local do
         time = Time.utc(2000)
         topic = Topic.create('written_on' => time)
@@ -258,7 +281,8 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local
-    with_env_tz 'America/New_York' do
+    puts "In base_test test_preserving_time_objects_with_time_with_zone_conversion_to_default_timezone_local"
+    with_env_tz eastern_time_zone do
       with_timezone_config default: :local do
         Time.use_zone 'Central Time (US & Canada)' do
           time = Time.zone.local(2000)
@@ -272,7 +296,16 @@ class BasicsTest < ActiveRecord::TestCase
     end
   end
 
+  def eastern_time_zone
+    if Gem.win_platform?
+      "EST5EDT"
+    else
+      "America/New_York"
+    end
+  end
+
   def test_custom_mutator
+    puts "In base_test test_custom_mutator"
     topic = Topic.find(1)
     # This mutator is protected in the class definition
     topic.send(:approved=, true)
@@ -280,6 +313,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_initialize_with_attributes
+    puts "In base_test test_initialize_with_attributes"
     topic = Topic.new({
       "title" => "initialized from attributes", "written_on" => "2003-12-12 23:23"
     })
@@ -288,6 +322,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_initialize_with_invalid_attribute
+    puts "In base_test test_initialize_with_invalid_attribute"
     Topic.new({ "title" => "test",
       "last_read(1i)" => "2005", "last_read(2i)" => "2", "last_read(3i)" => "31"})
   rescue ActiveRecord::MultiparameterAssignmentErrors => ex
@@ -296,18 +331,21 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_create_after_initialize_without_block
+    puts "In base_test test_create_after_initialize_without_block"
     cb = CustomBulb.create(:name => 'Dude')
     assert_equal('Dude', cb.name)
     assert_equal(true, cb.frickinawesome)
   end
 
   def test_create_after_initialize_with_block
+    puts "In base_test test_create_after_initialize_with_block"
     cb = CustomBulb.create {|c| c.name = 'Dude' }
     assert_equal('Dude', cb.name)
     assert_equal(true, cb.frickinawesome)
   end
 
   def test_create_after_initialize_with_array_param
+    puts "In base_test test_create_after_initialize_with_array_param"
     cbs = CustomBulb.create([{ name: 'Dude' }, { name: 'Bob' }])
     assert_equal 'Dude', cbs[0].name
     assert_equal 'Bob', cbs[1].name
@@ -316,12 +354,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_load
+    puts "In base_test test_load"
     topics = Topic.all.merge!(:order => 'id').to_a
     assert_equal(5, topics.size)
     assert_equal(topics(:first).title, topics.first.title)
   end
 
   def test_load_with_condition
+    puts "In base_test test_load_with_condition"
     topics = Topic.all.merge!(:where => "author_name = 'Mary'").to_a
 
     assert_equal(1, topics.size)
@@ -331,6 +371,7 @@ class BasicsTest < ActiveRecord::TestCase
   GUESSED_CLASSES = [Category, Smarts, CreditCard, CreditCard::PinNumber, CreditCard::PinNumber::CvvCode, CreditCard::SubPinNumber, CreditCard::Brand, MasterCreditCard]
 
   def test_table_name_guesses
+    puts "In base_test test_table_name_guesses"
     assert_equal "topics", Topic.table_name
 
     assert_equal "categories", Category.table_name
@@ -346,6 +387,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_singular_table_name_guesses
+    puts "In base_test test_singular_table_name_guesses"
     ActiveRecord::Base.pluralize_table_names = false
     GUESSED_CLASSES.each(&:reset_table_name)
 
@@ -363,6 +405,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_table_name_guesses_with_prefixes_and_suffixes
+    puts "In base_test test_table_name_guesses_with_prefixes_and_suffixes"
     ActiveRecord::Base.table_name_prefix = "test_"
     Category.reset_table_name
     assert_equal "test_categories", Category.table_name
@@ -382,6 +425,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_singular_table_name_guesses_with_prefixes_and_suffixes
+    puts "In base_test test_singular_table_name_guesses_with_prefixes_and_suffixes"
     ActiveRecord::Base.pluralize_table_names = false
 
     ActiveRecord::Base.table_name_prefix = "test_"
@@ -404,6 +448,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_table_name_guesses_with_inherited_prefixes_and_suffixes
+    puts "In base_test test_table_name_guesses_with_inherited_prefixes_and_suffixes"
     GUESSED_CLASSES.each(&:reset_table_name)
 
     CreditCard.table_name_prefix = "test_"
@@ -433,6 +478,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_singular_table_name_guesses_for_individual_table
+    puts "In base_test test_singular_table_name_guesses_for_individual_table"
     Post.pluralize_table_names = false
     Post.reset_table_name
     assert_equal "post", Post.table_name
@@ -442,18 +488,21 @@ class BasicsTest < ActiveRecord::TestCase
     Post.reset_table_name
   end
 
-  if current_adapter?(:MysqlAdapter, :Mysql2Adapter)
+  if current_adapter?(:Mysql2Adapter)    
+    puts "In base_test test_update_all_with_order_and_limit"
     def test_update_all_with_order_and_limit
       assert_equal 1, Topic.limit(1).order('id DESC').update_all(:content => 'bulk updated!')
     end
   end
 
   def test_null_fields
+    puts "In base_test test_null_fields"
     assert_nil Topic.find(1).parent_id
     assert_nil Topic.create("title" => "Hey you").parent_id
   end
 
   def test_default_values
+    puts "In base_test test_default_values"
     topic = Topic.new
     assert topic.approved?
     assert_nil topic.written_on
@@ -477,17 +526,20 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   # Oracle does not have a TIME datatype.
-  unless current_adapter?(:OracleAdapter)
+  unless current_adapter?(:OracleAdapter,:IBM_DBAdapter)
     def test_utc_as_time_zone
+	  puts "In base_test test_utc_as_time_zone"
       with_timezone_config default: :utc do
         attributes = { "bonus_time" => "5:42:00AM" }
         topic = Topic.find(1)
         topic.attributes = attributes
         assert_equal Time.utc(2000, 1, 1, 5, 42, 0), topic.bonus_time
       end
-    end
+	end
+  end
 
     def test_utc_as_time_zone_and_new
+	  puts "In base_test test_utc_as_time_zone_and_new"
       with_timezone_config default: :utc do
         attributes = { "bonus_time(1i)"=>"2000",
           "bonus_time(2i)"=>"1",
@@ -502,6 +554,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_default_values_on_empty_strings
+    puts "In base_test test_default_values_on_empty_strings"
     topic = Topic.new
     topic.approved  = nil
     topic.last_read = nil
@@ -515,27 +568,34 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_equality
+    puts "In base_test test_equality"
     assert_equal Topic.find(1), Topic.find(2).topic
   end
 
   def test_find_by_slug
+    puts "In base_test test_find_by_slug"
     assert_equal Topic.find('1-meowmeow'), Topic.find(1)
   end
 
   def test_find_by_slug_with_array
-    assert_equal Topic.find(['1-meowmeow', '2-hello']), Topic.find([1, 2])
+    puts "In base_test test_find_by_slug_with_array"
+    assert_equal Topic.find([1, 2]), Topic.find(['1-meowmeow', '2-hello'])
+    assert_equal 'The Second Topic of the day', Topic.find(['2-hello', '1-meowmeow']).first.title
   end
 
   def test_find_by_slug_with_range
+    puts "In base_test test_find_by_slug_with_range"
     assert_equal Topic.where(id: '1-meowmeow'..'2-hello'), Topic.where(id: 1..2)
   end
 
   def test_equality_of_new_records
+    puts "In base_test test_equality_of_new_records"
     assert_not_equal Topic.new, Topic.new
     assert_equal false, Topic.new == Topic.new
   end
 
   def test_equality_of_destroyed_records
+    puts "In base_test test_equality_of_destroyed_records"
     topic_1 = Topic.new(:title => 'test_1')
     topic_1.save
     topic_2 = Topic.find(topic_1.id)
@@ -545,12 +605,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_equality_with_blank_ids
+    puts "In base_test test_equality_with_blank_ids"
     one = Subscriber.new(:id => '')
     two = Subscriber.new(:id => '')
     assert_equal one, two
   end
 
   def test_equality_of_relation_and_collection_proxy
+    puts "In base_test test_equality_of_relation_and_collection_proxy"
     car = Car.create!
     car.bulbs.build
     car.save
@@ -560,6 +622,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_equality_of_relation_and_array
+    puts "In base_test test_equality_of_relation_and_array"
     car = Car.create!
     car.bulbs.build
     car.save
@@ -568,6 +631,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_equality_of_relation_and_association_relation
+    puts "In base_test test_equality_of_relation_and_association_relation"
     car = Car.create!
     car.bulbs.build
     car.save
@@ -577,6 +641,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_equality_of_collection_proxy_and_association_relation
+    puts "In base_test test_equality_of_collection_proxy_and_association_relation"
     car = Car.create!
     car.bulbs.build
     car.save
@@ -586,10 +651,12 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_hashing
+    puts "In base_test test_hashing"
     assert_equal [ Topic.find(1) ], [ Topic.find(2).topic ] & [ Topic.find(1) ]
   end
 
   def test_successful_comparison_of_like_class_records
+    puts "In base_test test_successful_comparison_of_like_class_records"
     topic_1 = Topic.create!
     topic_2 = Topic.create!
 
@@ -597,12 +664,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_failed_comparison_of_unlike_class_records
+    puts "In base_test test_failed_comparison_of_unlike_class_records"
     assert_raises ArgumentError do
       [ topics(:first), posts(:welcome) ].sort
     end
   end
 
   def test_create_without_prepared_statement
+    puts "In base_test test_create_without_prepared_statement"
     topic = Topic.connection.unprepared_statement do
       Topic.create(:title => 'foo')
     end
@@ -611,6 +680,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_destroy_without_prepared_statement
+    puts "In base_test test_destroy_without_prepared_statement"
     topic = Topic.create(title: 'foo')
     Topic.connection.unprepared_statement do
       Topic.find(topic.id).destroy
@@ -620,12 +690,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_comparison_with_different_objects
+    puts "In base_test test_comparison_with_different_objects"
     topic = Topic.create
     category = Category.create(:name => "comparison")
     assert_nil topic <=> category
   end
 
   def test_comparison_with_different_objects_in_array
+    puts "In base_test test_comparison_with_different_objects_in_array"
     topic = Topic.create
     assert_raises(ArgumentError) do
       [1, topic].sort
@@ -633,6 +705,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_readonly_attributes
+    puts "In base_test test_readonly_attributes"
     assert_equal Set.new([ 'title' , 'comments_count' ]), ReadonlyTitlePost.readonly_attributes
 
     post = ReadonlyTitlePost.create(:title => "cannot change this", :body => "changeable")
@@ -646,6 +719,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_unicode_column_name
+    puts "In base_test test_unicode_column_name"
     Weird.reset_column_information
     weird = Weird.create(:なまえ => 'たこ焼き仮面')
     assert_equal 'たこ焼き仮面', weird.なまえ
@@ -653,6 +727,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   unless current_adapter?(:PostgreSQLAdapter)
     def test_respect_internal_encoding
+	  puts "In base_test test_respect_internal_encoding"
       old_default_internal = Encoding.default_internal
       silence_warnings { Encoding.default_internal = "EUC-JP" }
 
@@ -666,6 +741,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_non_valid_identifier_column_name
+    puts "In base_test test_non_valid_identifier_column_name"
     weird = Weird.create('a$b' => 'value')
     weird.reload
     assert_equal 'value', weird.send('a$b')
@@ -678,12 +754,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_group_weirds_by_from
+    puts "In base_test test_group_weirds_by_from"
     Weird.create('a$b' => 'value', :from => 'aaron')
     count = Weird.group(Weird.arel_table[:from]).count
     assert_equal 1, count['aaron']
   end
 
   def test_attributes_on_dummy_time
+    puts "In base_test test_attributes_on_dummy_time"
     # Oracle does not have a TIME datatype.
     return true if current_adapter?(:OracleAdapter)
 
@@ -698,6 +776,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_attributes_on_dummy_time_with_invalid_time
+    puts "In base_test test_attributes_on_dummy_time_with_invalid_time"
     # Oracle does not have a TIME datatype.
     return true if current_adapter?(:OracleAdapter)
 
@@ -710,6 +789,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean
+    puts "In base_test test_boolean"
     b_nil = Boolean.create({ "value" => nil })
     nil_id = b_nil.id
     b_false = Boolean.create({ "value" => false })
@@ -726,6 +806,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean_without_questionmark
+    puts "In base_test test_boolean_without_questionmark"
     b_true = Boolean.create({ "value" => true })
     true_id = b_true.id
 
@@ -736,6 +817,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_boolean_cast_from_string
+    puts "In base_test test_boolean_cast_from_string"
     b_blank = Boolean.create({ "value" => "" })
     blank_id = b_blank.id
     b_false = Boolean.create({ "value" => "0" })
@@ -752,11 +834,13 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_new_record_returns_boolean
+    puts "In base_test test_new_record_returns_boolean"
     assert_equal false, Topic.new.persisted?
     assert_equal true, Topic.find(1).persisted?
   end
 
   def test_dup
+    puts "In base_test test_dup"
     topic = Topic.find(1)
     duped_topic = nil
     assert_nothing_raised { duped_topic = topic.dup }
@@ -788,6 +872,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   DeveloperSalary = Struct.new(:amount)
   def test_dup_with_aggregate_of_same_name_as_attribute
+    puts "In base_test test_dup_with_aggregate_of_same_name_as_attribute"
     developer_with_aggregate = Class.new(ActiveRecord::Base) do
       self.table_name = 'developers'
       composed_of :salary, :class_name => 'BasicsTest::DeveloperSalary', :mapping => [%w(salary amount)]
@@ -802,7 +887,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_equal dev.salary.amount, dup.salary.amount
     assert !dup.persisted?
 
-    # test if the attributes have been dupd
+    # test if the attributes have been duped
     original_amount = dup.salary.amount
     dev.salary.amount = 1
     assert_equal original_amount, dup.salary.amount
@@ -813,21 +898,23 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_dup_does_not_copy_associations
+    puts "In base_test test_dup_does_not_copy_associations"
     author = authors(:david)
     assert_not_equal [], author.posts
-    author.send(:clear_association_cache)
 
     author_dup = author.dup
     assert_equal [], author_dup.posts
   end
 
   def test_clone_preserves_subtype
+    puts "In base_test test_clone_preserves_subtype"
     clone = nil
     assert_nothing_raised { clone = Company.find(3).clone }
     assert_kind_of Client, clone
   end
 
   def test_clone_of_new_object_with_defaults
+    puts "In base_test test_clone_of_new_object_with_defaults"
     developer = Developer.new
     assert !developer.name_changed?
     assert !developer.salary_changed?
@@ -838,6 +925,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_clone_of_new_object_marks_attributes_as_dirty
+    puts "In base_test test_clone_of_new_object_marks_attributes_as_dirty"
     developer = Developer.new :name => 'Bjorn', :salary => 100000
     assert developer.name_changed?
     assert developer.salary_changed?
@@ -848,6 +936,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_clone_of_new_object_marks_as_dirty_only_changed_attributes
+    puts "In base_test test_clone_of_new_object_marks_as_dirty_only_changed_attributes"
     developer = Developer.new :name => 'Bjorn'
     assert developer.name_changed?            # obviously
     assert !developer.salary_changed?         # attribute has non-nil default value, so treated as not changed
@@ -858,6 +947,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_dup_of_saved_object_marks_attributes_as_dirty
+    puts "In base_test test_dup_of_saved_object_marks_attributes_as_dirty"
     developer = Developer.create! :name => 'Bjorn', :salary => 100000
     assert !developer.name_changed?
     assert !developer.salary_changed?
@@ -868,6 +958,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_dup_of_saved_object_marks_as_dirty_only_changed_attributes
+    puts "In base_test test_dup_of_saved_object_marks_as_dirty_only_changed_attributes"
     developer = Developer.create! :name => 'Bjorn'
     assert !developer.name_changed?           # both attributes of saved object should be treated as not changed
     assert !developer.salary_changed?
@@ -878,6 +969,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_bignum
+    puts "In base_test test_bignum"
     company = Company.find(1)
     company.rating = 2147483647
     company.save
@@ -888,6 +980,7 @@ class BasicsTest < ActiveRecord::TestCase
   # TODO: extend defaults tests to other databases!
   if current_adapter?(:PostgreSQLAdapter)
     def test_default
+	  puts "In base_test test_default"
       with_timezone_config default: :local do
         default = Default.new
 
@@ -901,103 +994,17 @@ class BasicsTest < ActiveRecord::TestCase
         assert_equal 'a text field', default.char3
       end
     end
-
-    class Geometric < ActiveRecord::Base; end
-    def test_geometric_content
-
-      # accepted format notes:
-      # ()'s aren't required
-      # values can be a mix of float or integer
-
-      g = Geometric.new(
-        :a_point        => '(5.0, 6.1)',
-        #:a_line         => '((2.0, 3), (5.5, 7.0))' # line type is currently unsupported in postgresql
-        :a_line_segment => '(2.0, 3), (5.5, 7.0)',
-        :a_box          => '2.0, 3, 5.5, 7.0',
-        :a_path         => '[(2.0, 3), (5.5, 7.0), (8.5, 11.0)]',  # [ ] is an open path
-        :a_polygon      => '((2.0, 3), (5.5, 7.0), (8.5, 11.0))',
-        :a_circle       => '<(5.3, 10.4), 2>'
-      )
-
-      assert g.save
-
-      # Reload and check that we have all the geometric attributes.
-      h = Geometric.find(g.id)
-
-      assert_equal [5.0, 6.1], h.a_point
-      assert_equal '[(2,3),(5.5,7)]', h.a_line_segment
-      assert_equal '(5.5,7),(2,3)', h.a_box   # reordered to store upper right corner then bottom left corner
-      assert_equal '[(2,3),(5.5,7),(8.5,11)]', h.a_path
-      assert_equal '((2,3),(5.5,7),(8.5,11))', h.a_polygon
-      assert_equal '<(5.3,10.4),2>', h.a_circle
-
-      # use a geometric function to test for an open path
-      objs = Geometric.find_by_sql ["select isopen(a_path) from geometrics where id = ?", g.id]
-
-      assert_equal true, objs[0].isopen
-
-      # test alternate formats when defining the geometric types
-
-      g = Geometric.new(
-        :a_point        => '5.0, 6.1',
-        #:a_line         => '((2.0, 3), (5.5, 7.0))' # line type is currently unsupported in postgresql
-        :a_line_segment => '((2.0, 3), (5.5, 7.0))',
-        :a_box          => '(2.0, 3), (5.5, 7.0)',
-        :a_path         => '((2.0, 3), (5.5, 7.0), (8.5, 11.0))',  # ( ) is a closed path
-        :a_polygon      => '2.0, 3, 5.5, 7.0, 8.5, 11.0',
-        :a_circle       => '((5.3, 10.4), 2)'
-      )
-
-      assert g.save
-
-      # Reload and check that we have all the geometric attributes.
-      h = Geometric.find(g.id)
-
-      assert_equal [5.0, 6.1], h.a_point
-      assert_equal '[(2,3),(5.5,7)]', h.a_line_segment
-      assert_equal '(5.5,7),(2,3)', h.a_box   # reordered to store upper right corner then bottom left corner
-      assert_equal '((2,3),(5.5,7),(8.5,11))', h.a_path
-      assert_equal '((2,3),(5.5,7),(8.5,11))', h.a_polygon
-      assert_equal '<(5.3,10.4),2>', h.a_circle
-
-      # use a geometric function to test for an closed path
-      objs = Geometric.find_by_sql ["select isclosed(a_path) from geometrics where id = ?", g.id]
-
-      assert_equal true, objs[0].isclosed
-
-      # test native ruby formats when defining the geometric types
-      g = Geometric.new(
-        :a_point        => [5.0, 6.1],
-        #:a_line         => '((2.0, 3), (5.5, 7.0))' # line type is currently unsupported in postgresql
-        :a_line_segment => '((2.0, 3), (5.5, 7.0))',
-        :a_box          => '(2.0, 3), (5.5, 7.0)',
-        :a_path         => '((2.0, 3), (5.5, 7.0), (8.5, 11.0))',  # ( ) is a closed path
-        :a_polygon      => '2.0, 3, 5.5, 7.0, 8.5, 11.0',
-        :a_circle       => '((5.3, 10.4), 2)'
-      )
-
-      assert g.save
-
-      # Reload and check that we have all the geometric attributes.
-      h = Geometric.find(g.id)
-
-      assert_equal [5.0, 6.1], h.a_point
-      assert_equal '[(2,3),(5.5,7)]', h.a_line_segment
-      assert_equal '(5.5,7),(2,3)', h.a_box   # reordered to store upper right corner then bottom left corner
-      assert_equal '((2,3),(5.5,7),(8.5,11))', h.a_path
-      assert_equal '((2,3),(5.5,7),(8.5,11))', h.a_polygon
-      assert_equal '<(5.3,10.4),2>', h.a_circle
-    end
   end
 
   class NumericData < ActiveRecord::Base
     self.table_name = 'numeric_data'
 
-    attribute :my_house_population, Type::Integer.new
-    attribute :atoms_in_universe, Type::Integer.new
+    attribute :my_house_population, :integer
+    attribute :atoms_in_universe, :integer
   end
 
   def test_big_decimal_conditions
+    puts "In base_test test_big_decimal_conditions"
     m = NumericData.new(
       :bank_balance => 1586.43,
       :big_bank_balance => BigDecimal("1000234000567.95"),
@@ -1009,6 +1016,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_numeric_fields
+    puts "In base_test test_numeric_fields"
     m = NumericData.new(
       :bank_balance => 1586.43,
       :big_bank_balance => BigDecimal("1000234000567.95"),
@@ -1024,21 +1032,22 @@ class BasicsTest < ActiveRecord::TestCase
     # to cover 64-bit platforms and test it is a Bignum, but the main thing
     # is that it's an Integer.
     unless current_adapter?(:IBM_DBAdapter)
-		assert_kind_of Integer, m1.world_population
-	else
-		assert_equal 6000000000, m1.world_population
+	assert_kind_of Integer, m1.world_population
+    else
+	assert_equal 6000000000, m1.world_population
 
-		assert_kind_of Fixnum, m1.my_house_population
-		assert_equal 3, m1.my_house_population
+    assert_kind_of Integer, m1.my_house_population
+    assert_equal 3, m1.my_house_population
 
-		assert_kind_of BigDecimal, m1.bank_balance
-		assert_equal BigDecimal("1586.43"), m1.bank_balance
+    assert_kind_of BigDecimal, m1.bank_balance
+    assert_equal BigDecimal("1586.43"), m1.bank_balance
 
-		assert_kind_of BigDecimal, m1.big_bank_balance
-		assert_equal BigDecimal("1000234000567.95"), m1.big_bank_balance
+    assert_kind_of BigDecimal, m1.big_bank_balance
+    assert_equal BigDecimal("1000234000567.95"), m1.big_bank_balance
   end
 
   def test_numeric_fields_with_scale
+    puts "In base_test test_numeric_fields_with_scale"
     m = NumericData.new(
       :bank_balance => 1586.43122334,
       :big_bank_balance => BigDecimal("234000567.952344"),
@@ -1056,11 +1065,7 @@ class BasicsTest < ActiveRecord::TestCase
     assert_kind_of Integer, m1.world_population
     assert_equal 6000000000, m1.world_population
 
-    unless current_adapter?(:IBM_DBAdapter)
-      assert_kind_of Fixnum, m1.my_house_population
-    else
-      assert_kind_of BigDecimal, m1.my_house_population
-    end
+    assert_kind_of Integer, m1.my_house_population
     assert_equal 3, m1.my_house_population
 
     assert_kind_of BigDecimal, m1.bank_balance
@@ -1071,18 +1076,21 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_auto_id
+    puts "In base_test test_auto_id"
     auto = AutoId.new
     auto.save
     assert(auto.id > 0)
   end
 
   def test_sql_injection_via_find
+    puts "In base_test test_sql_injection_via_find"
     assert_raise(ActiveRecord::RecordNotFound, ActiveRecord::StatementInvalid) do
       Topic.find("123456 OR id > 0")
     end
   end
 
   def test_column_name_properly_quoted
+    puts "In base_test test_column_name_properly_quoted"
     col_record = ColumnName.new
     col_record.references = 40
     assert col_record.save
@@ -1093,6 +1101,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_quoting_arrays
+    puts "In base_test test_quoting_arrays"
     replies = Reply.all.merge!(:where => [ "id IN (?)", topics(:first).replies.collect(&:id) ]).to_a
     assert_equal topics(:first).replies.size, replies.size
 
@@ -1101,12 +1110,14 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_quote
+    puts "In base_test test_quote"
     author_name = "\\ \001 ' \n \\n \""
     topic = Topic.create('author_name' => author_name)
     assert_equal author_name, Topic.find(topic.id).author_name
   end
 
   def test_toggle_attribute
+    puts "In base_test test_toggle_attribute"
     assert !topics(:first).approved?
     topics(:first).toggle!(:approved)
     assert topics(:first).approved?
@@ -1118,6 +1129,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_reload
+    puts "In base_test test_reload"
     t1 = Topic.find(1)
     t2 = Topic.find(1)
     t1.title = "something else"
@@ -1127,63 +1139,77 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_reload_with_exclusive_scope
+    puts "In base_test test_reload_with_exclusive_scope"
     dev = DeveloperCalledDavid.first
     dev.update!(name: "NotDavid" )
     assert_equal dev, dev.reload
   end
 
   def test_switching_between_table_name
-    assert_difference("GoodJoke.count") do
-      Joke.table_name = "cold_jokes"
-      Joke.create
+    puts "In base_test test_switching_between_table_name"
+    k = Class.new(Joke)
 
-      Joke.table_name = "funny_jokes"
-      Joke.create
+    assert_difference("GoodJoke.count") do
+      k.table_name = "cold_jokes"
+      k.create
+
+      k.table_name = "funny_jokes"
+      k.create
     end
   end
 
   def test_clear_cash_when_setting_table_name
-    Joke.table_name = "cold_jokes"
-    before_columns = Joke.columns
-    before_seq     = Joke.sequence_name
+    puts "In base_test test_clear_cash_when_setting_table_name"
+    original_table_name = Joke.table_name
 
     Joke.table_name = "funny_jokes"
+    before_columns = Joke.columns
+    before_seq = Joke.sequence_name
+
+    Joke.table_name = "cold_jokes"
     after_columns = Joke.columns
-    after_seq     = Joke.sequence_name
+    after_seq = Joke.sequence_name
 
     assert_not_equal before_columns, after_columns
     assert_not_equal before_seq, after_seq unless before_seq.nil? && after_seq.nil?
+  ensure
+    Joke.table_name = original_table_name
   end
 
   def test_dont_clear_sequence_name_when_setting_explicitly
-    Joke.sequence_name = "black_jokes_seq"
-    Joke.table_name    = "cold_jokes"
-    before_seq         = Joke.sequence_name
+    puts "In base_test test_dont_clear_sequence_name_when_setting_explicitly"
+    k = Class.new(Joke)
+    k.sequence_name = "black_jokes_seq"
+    k.table_name = "cold_jokes"
+    before_seq = k.sequence_name
 
-    Joke.table_name    = "funny_jokes"
-    after_seq          = Joke.sequence_name
+    k.table_name = "funny_jokes"
+    after_seq = k.sequence_name
 
     assert_equal before_seq, after_seq unless before_seq.nil? && after_seq.nil?
-  ensure
-    Joke.reset_sequence_name
   end
 
   def test_dont_clear_inheritance_column_when_setting_explicitly
-    Joke.inheritance_column = "my_type"
-    before_inherit = Joke.inheritance_column
+    puts "In base_test test_dont_clear_inheritance_column_when_setting_explicitly"
+    k = Class.new(Joke)
+    k.inheritance_column = "my_type"
+    before_inherit = k.inheritance_column
 
-    Joke.reset_column_information
-    after_inherit = Joke.inheritance_column
+    k.reset_column_information
+    after_inherit = k.inheritance_column
 
     assert_equal before_inherit, after_inherit unless before_inherit.blank? && after_inherit.blank?
   end
 
   def test_set_table_name_symbol_converted_to_string
-    Joke.table_name = :cold_jokes
-    assert_equal 'cold_jokes', Joke.table_name
+    puts "In base_test test_set_table_name_symbol_converted_to_string"
+    k = Class.new(Joke)
+    k.table_name = :cold_jokes
+    assert_equal 'cold_jokes', k.table_name
   end
 
   def test_quoted_table_name_after_set_table_name
+    puts "In base_test test_quoted_table_name_after_set_table_name"
     klass = Class.new(ActiveRecord::Base)
 
     klass.table_name = "foo"
@@ -1196,6 +1222,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_set_table_name_with_inheritance
+    puts "In base_test test_set_table_name_with_inheritance"
     k = Class.new( ActiveRecord::Base )
     def k.name; "Foo"; end
     def k.table_name; super + "ks"; end
@@ -1203,6 +1230,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_sequence_name_with_abstract_class
+    puts "In base_test test_sequence_name_with_abstract_class"
     ak = Class.new(ActiveRecord::Base)
     ak.abstract_class = true
     k = Class.new(ak)
@@ -1213,6 +1241,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_count_with_join
+    puts "In base_test test_count_with_join"
     res = Post.count_by_sql "SELECT COUNT(*) FROM posts LEFT JOIN comments ON posts.id=comments.post_id WHERE posts.#{QUOTED_TYPE} = 'Post'"
 
     res2 = Post.where("posts.#{QUOTED_TYPE} = 'Post'").joins("LEFT JOIN comments ON posts.id=comments.post_id").count
@@ -1241,97 +1270,78 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_no_limit_offset
+    puts "In base_test test_no_limit_offset"
     assert_nothing_raised do
       Developer.all.merge!(:offset => 2).to_a
     end
   end
 
   def test_find_last
+    puts "In base_test test_find_last"
     last  = Developer.last
     assert_equal last, Developer.all.merge!(:order => 'id desc').first
   end
 
   def test_last
+    puts "In base_test test_last"
     assert_equal Developer.all.merge!(:order => 'id desc').first, Developer.last
   end
 
   def test_all
+    puts "In base_test test_all"
     developers = Developer.all
     assert_kind_of ActiveRecord::Relation, developers
     assert_equal Developer.all, developers
   end
 
   def test_all_with_conditions
+    puts "In base_test test_all_with_conditions"
     assert_equal Developer.all.merge!(:order => 'id desc').to_a, Developer.order('id desc').to_a
   end
 
   def test_find_ordered_last
+    puts "In base_test test_find_ordered_last"
     last  = Developer.all.merge!(:order => 'developers.salary ASC').last
     assert_equal last, Developer.all.merge!(:order => 'developers.salary ASC').to_a.last
   end
 
   def test_find_reverse_ordered_last
+    puts "In base_test test_find_reverse_ordered_last"
     last  = Developer.all.merge!(:order => 'developers.salary DESC').last
     assert_equal last, Developer.all.merge!(:order => 'developers.salary DESC').to_a.last
   end
 
   def test_find_multiple_ordered_last
+    puts "In base_test test_find_multiple_ordered_last"
     last  = Developer.all.merge!(:order => 'developers.name, developers.salary DESC').last
     assert_equal last, Developer.all.merge!(:order => 'developers.name, developers.salary DESC').to_a.last
   end
 
   def test_find_keeps_multiple_order_values
+    puts "In base_test test_find_keeps_multiple_order_values"
     combined = Developer.all.merge!(:order => 'developers.name, developers.salary').to_a
     assert_equal combined, Developer.all.merge!(:order => ['developers.name', 'developers.salary']).to_a
   end
 
   def test_find_keeps_multiple_group_values
+    puts "In base_test test_find_keeps_multiple_group_values"
     combined = Developer.all.merge!(:group => 'developers.name, developers.salary, developers.id, developers.created_at, developers.updated_at, developers.created_on, developers.updated_on').to_a
     assert_equal combined, Developer.all.merge!(:group => ['developers.name', 'developers.salary', 'developers.id', 'developers.created_at', 'developers.updated_at', 'developers.created_on', 'developers.updated_on']).to_a
   end
 
   def test_find_symbol_ordered_last
+    puts "In base_test test_find_symbol_ordered_last"
     last  = Developer.all.merge!(:order => :salary).last
     assert_equal last, Developer.all.merge!(:order => :salary).to_a.last
   end
 
-  def test_abstract_class
-    assert !ActiveRecord::Base.abstract_class?
-    assert LoosePerson.abstract_class?
-    assert !LooseDescendant.abstract_class?
-  end
-
   def test_abstract_class_table_name
+    puts "In base_test test_abstract_class_table_name"
     assert_nil AbstractCompany.table_name
   end
 
-  def test_descends_from_active_record
-    assert !ActiveRecord::Base.descends_from_active_record?
-
-    # Abstract subclass of AR::Base.
-    assert LoosePerson.descends_from_active_record?
-
-    # Concrete subclass of an abstract class.
-    assert LooseDescendant.descends_from_active_record?
-
-    # Concrete subclass of AR::Base.
-    assert TightPerson.descends_from_active_record?
-
-    # Concrete subclass of a concrete class but has no type column.
-    assert TightDescendant.descends_from_active_record?
-
-    # Concrete subclass of AR::Base.
-    assert Post.descends_from_active_record?
-
-    # Abstract subclass of a concrete class which has a type column.
-    # This is pathological, as you'll never have Sub < Abstract < Concrete.
-    assert !StiPost.descends_from_active_record?
-
-    # Concrete subclasses an abstract class which has a type column.
-    assert !SubStiPost.descends_from_active_record?
-  end
-
   def test_find_on_abstract_base_class_doesnt_use_type_condition
+    puts "In base_test test_find_on_abstract_base_class_doesnt_use_type_condition"
     old_class = LooseDescendant
     Object.send :remove_const, :LooseDescendant
 
@@ -1344,6 +1354,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_assert_queries
+    puts "In base_test test_assert_queries"
     query = lambda { ActiveRecord::Base.connection.execute 'select count(*) from developers' }
     assert_queries(2) { 2.times { query.call } }
     assert_queries 1, &query
@@ -1351,6 +1362,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_benchmark_with_log_level
+    puts "In base_test test_benchmark_with_log_level"
     original_logger = ActiveRecord::Base.logger
     log = StringIO.new
     ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
@@ -1366,60 +1378,19 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_benchmark_with_use_silence
+    puts "In base_test test_benchmark_with_use_silence"
     original_logger = ActiveRecord::Base.logger
     log = StringIO.new
     ActiveRecord::Base.logger = ActiveSupport::Logger.new(log)
+    ActiveRecord::Base.logger.level = Logger::DEBUG
     ActiveRecord::Base.benchmark("Logging", :level => :debug, :silence => false)  { ActiveRecord::Base.logger.debug "Quiet" }
     assert_match(/Quiet/, log.string)
   ensure
     ActiveRecord::Base.logger = original_logger
   end
 
-  def test_compute_type_success
-    assert_equal Author, ActiveRecord::Base.send(:compute_type, 'Author')
-  end
-
-  def test_compute_type_nonexistent_constant
-    e = assert_raises NameError do
-      ActiveRecord::Base.send :compute_type, 'NonexistentModel'
-    end
-    assert_equal 'uninitialized constant ActiveRecord::Base::NonexistentModel', e.message
-    assert_equal 'ActiveRecord::Base::NonexistentModel', e.name
-  end
-
-  def test_compute_type_no_method_error
-    ActiveSupport::Dependencies.stubs(:safe_constantize).raises(NoMethodError)
-    assert_raises NoMethodError do
-      ActiveRecord::Base.send :compute_type, 'InvalidModel'
-    end
-  end
-
-  def test_compute_type_on_undefined_method
-    error = nil
-    begin
-      Class.new(Author) do
-        alias_method :foo, :bar
-      end
-    rescue => e
-      error = e
-    end
-
-    ActiveSupport::Dependencies.stubs(:safe_constantize).raises(e)
-
-    exception = assert_raises NameError do
-      ActiveRecord::Base.send :compute_type, 'InvalidModel'
-    end
-    assert_equal error.message, exception.message
-  end
-
-  def test_compute_type_argument_error
-    ActiveSupport::Dependencies.stubs(:safe_constantize).raises(ArgumentError)
-    assert_raises ArgumentError do
-      ActiveRecord::Base.send :compute_type, 'InvalidModel'
-    end
-  end
-
   def test_clear_cache!
+    puts "In base_test test_clear_cache"
     # preheat cache
     c1 = Post.connection.schema_cache.columns('posts')
     ActiveRecord::Base.clear_cache!
@@ -1431,18 +1402,21 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_current_scope_is_reset
+    puts "In base_test test_current_scope_is_reset"
     Object.const_set :UnloadablePost, Class.new(ActiveRecord::Base)
     UnloadablePost.send(:current_scope=, UnloadablePost.all)
 
     UnloadablePost.unloadable
-    assert_not_nil ActiveRecord::Scoping::ScopeRegistry.value_for(:current_scope, "UnloadablePost")
+    klass = UnloadablePost
+    assert_not_nil ActiveRecord::Scoping::ScopeRegistry.value_for(:current_scope, klass)
     ActiveSupport::Dependencies.remove_unloadable_constants!
-    assert_nil ActiveRecord::Scoping::ScopeRegistry.value_for(:current_scope, "UnloadablePost")
+    assert_nil ActiveRecord::Scoping::ScopeRegistry.value_for(:current_scope, klass)
   ensure
     Object.class_eval{ remove_const :UnloadablePost } if defined?(UnloadablePost)
   end
 
   def test_marshal_round_trip
+    puts "In base_test test_marshal_round_trip"
     expected = posts(:welcome)
     marshalled = Marshal.dump(expected)
     actual   = Marshal.load(marshalled)
@@ -1451,6 +1425,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_marshal_new_record_round_trip
+    puts "In base_test test_marshal_new_record_round_trip"
     marshalled = Marshal.dump(Post.new)
     post       = Marshal.load(marshalled)
 
@@ -1458,6 +1433,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_marshalling_with_associations
+    puts "In base_test test_marshalling_with_associations"
     post = Post.new
     post.comments.build
 
@@ -1469,6 +1445,7 @@ class BasicsTest < ActiveRecord::TestCase
 
   if Process.respond_to?(:fork) && !in_memory_db?
     def test_marshal_between_processes
+	  puts "In base_test test_marshal_between_processes"
       # Define a new model to ensure there are no caches
       if self.class.const_defined?("Post", false)
         flunk "there should be no post constant"
@@ -1499,6 +1476,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_marshalling_new_record_round_trip_with_associations
+    puts "In base_test test_marshalling_new_record_round_trip_with_associations"
     post = Post.new
     post.comments.build
 
@@ -1508,19 +1486,38 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_attribute_names
+    puts "In base_test test_attribute_names"
     assert_equal ["id", "type", "firm_id", "firm_name", "name", "client_of", "rating", "account_id", "description"],
                  Company.attribute_names
   end
 
+  def test_has_attribute
+    puts "In base_test test_has_attribute"
+    assert Company.has_attribute?('id')
+    assert Company.has_attribute?('type')
+    assert Company.has_attribute?('name')
+    assert_not Company.has_attribute?('lastname')
+    assert_not Company.has_attribute?('age')
+  end
+
+  def test_has_attribute_with_symbol
+    puts "In base_test test_has_attribute_with_symbol"
+    assert Company.has_attribute?(:id)
+    assert_not Company.has_attribute?(:age)
+  end
+
   def test_attribute_names_on_table_not_exists
+    puts "In base_test test_attribute_names_on_table_not_exists"
     assert_equal [], NonExistentTable.attribute_names
   end
 
   def test_attribute_names_on_abstract_class
+    puts "In base_test test_attribute_names_on_abstract_class"
     assert_equal [], AbstractCompany.attribute_names
   end
 
   def test_touch_should_raise_error_on_a_new_object
+    puts "In base_test test_touch_should_raise_error_on_a_new_object"
     company = Company.new(:rating => 1, :name => "37signals", :firm_name => "37signals")
     assert_raises(ActiveRecord::ActiveRecordError) do
       company.touch :updated_at
@@ -1528,22 +1525,24 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_uniq_delegates_to_scoped
-    scope = stub
-    Bird.stubs(:all).returns(mock(:uniq => scope))
-    assert_equal scope, Bird.uniq
+    puts "In base_test test_uniq_delegates_to_scoped"
+    assert_deprecated do
+      assert_equal Bird.all.distinct, Bird.uniq
+    end
   end
 
   def test_distinct_delegates_to_scoped
-    scope = stub
-    Bird.stubs(:all).returns(mock(:distinct => scope))
-    assert_equal scope, Bird.distinct
+    puts "In base_test test_distinct_delegates_to_scoped"
+    assert_equal Bird.all.distinct, Bird.distinct
   end
 
   def test_table_name_with_2_abstract_subclasses
+    puts "In base_test test_table_name_with_2_abstract_subclasses"
     assert_equal "photos", Photo.table_name
   end
 
   def test_column_types_typecast
+    puts "In base_test test_column_types_typecast"
     topic = Topic.first
     assert_not_equal 't.lo', topic.author_name
 
@@ -1551,7 +1550,7 @@ class BasicsTest < ActiveRecord::TestCase
     attrs.delete 'id'
 
     typecast = Class.new(ActiveRecord::Type::Value) {
-      def type_cast value
+      def cast value
         "t.lo"
       end
     }
@@ -1563,10 +1562,12 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_typecasting_aliases
+    puts "In base_test test_typecasting_aliases"
     assert_equal 10, Topic.select('10 as tenderlove').first.tenderlove
   end
 
   def test_slice
+    puts "In base_test test_slice"
     company = Company.new(:rating => 1, :name => "37signals", :firm_name => "37signals")
     hash = company.slice(:name, :rating, "arbitrary_method")
     assert_equal hash[:name], company.name
@@ -1579,17 +1580,20 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   def test_default_values_are_deeply_dupped
+    puts "In base_test test_default_values_are_deeply_dupped"
     company = Company.new
     company.description << "foo"
     assert_equal "", Company.new.description
   end
 
   test "scoped can take a values hash" do
+    puts "In base_test scoped can take a values hash"
     klass = Class.new(ActiveRecord::Base)
     assert_equal ['foo'], klass.all.merge!(select: 'foo').select_values
   end
 
   test "connection_handler can be overridden" do
+    puts "In base_test connection_handler can be overridden"
     klass = Class.new(ActiveRecord::Base)
     orig_handler = klass.connection_handler
     new_handler = ActiveRecord::ConnectionAdapters::ConnectionHandler.new
@@ -1606,6 +1610,7 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   test "new threads get default the default connection handler" do
+    puts "In base_test new threads get default the default connection handler"
     klass = Class.new(ActiveRecord::Base)
     orig_handler = klass.connection_handler
     handler = nil
@@ -1621,24 +1626,25 @@ class BasicsTest < ActiveRecord::TestCase
   end
 
   test "changing a connection handler in a main thread does not poison the other threads" do
+    puts "In base_test changing a connection handler in a main thread does not poison the other threads"
     klass = Class.new(ActiveRecord::Base)
     orig_handler = klass.connection_handler
     new_handler = ActiveRecord::ConnectionAdapters::ConnectionHandler.new
     after_handler = nil
-    latch1 = ActiveSupport::Concurrency::Latch.new
-    latch2 = ActiveSupport::Concurrency::Latch.new
+    latch1 = Concurrent::CountDownLatch.new
+    latch2 = Concurrent::CountDownLatch.new
 
     t = Thread.new do
       klass.connection_handler = new_handler
-      latch1.release
-      latch2.await
+      latch1.count_down
+      latch2.wait
       after_handler = klass.connection_handler
     end
 
-    latch1.await
+    latch1.wait
 
     klass.connection_handler = orig_handler
-    latch2.release
+    latch2.count_down
     t.join
 
     assert_equal after_handler, new_handler
@@ -1649,10 +1655,12 @@ class BasicsTest < ActiveRecord::TestCase
   # AR::Base objects. If the future has made this irrelevant, feel free to
   # delete this.
   test "records without an id have unique hashes" do
+    puts "In base_test records without an id have unique hashes"
     assert_not_equal Post.new.hash, Post.new.hash
   end
 
   test "resetting column information doesn't remove attribute methods" do
+    puts "In base_test changing a connection handler in a main thread does not poison the other threads"
     topic = topics(:first)
 
     assert_not topic.id_changed?
@@ -1660,5 +1668,46 @@ class BasicsTest < ActiveRecord::TestCase
     Topic.reset_column_information
 
     assert_not topic.id_changed?
+  end
+
+  test "ignored columns are not present in columns_hash" do
+    puts "In base_test ignored columns are not present in columns_hash"
+    cache_columns = Developer.connection.schema_cache.columns_hash(Developer.table_name)
+    assert_includes cache_columns.keys, "first_name"
+    assert_not_includes Developer.columns_hash.keys, "first_name"
+    assert_not_includes SubDeveloper.columns_hash.keys, "first_name"
+    assert_not_includes SymbolIgnoredDeveloper.columns_hash.keys, "first_name"
+  end
+
+  test "ignored columns have no attribute methods" do
+    puts "In base_test ignored columns have no attribute methods"
+    refute Developer.new.respond_to?(:first_name)
+    refute Developer.new.respond_to?(:first_name=)
+    refute Developer.new.respond_to?(:first_name?)
+    refute SubDeveloper.new.respond_to?(:first_name)
+    refute SubDeveloper.new.respond_to?(:first_name=)
+    refute SubDeveloper.new.respond_to?(:first_name?)
+    refute SymbolIgnoredDeveloper.new.respond_to?(:first_name)
+    refute SymbolIgnoredDeveloper.new.respond_to?(:first_name=)
+    refute SymbolIgnoredDeveloper.new.respond_to?(:first_name?)
+  end
+
+  test "ignored columns don't prevent explicit declaration of attribute methods" do
+    puts "In base_test ignored columns don't prevent explicit declaration of attribute methods"
+    assert Developer.new.respond_to?(:last_name)
+    assert Developer.new.respond_to?(:last_name=)
+    assert Developer.new.respond_to?(:last_name?)
+    assert SubDeveloper.new.respond_to?(:last_name)
+    assert SubDeveloper.new.respond_to?(:last_name=)
+    assert SubDeveloper.new.respond_to?(:last_name?)
+    assert SymbolIgnoredDeveloper.new.respond_to?(:last_name)
+    assert SymbolIgnoredDeveloper.new.respond_to?(:last_name=)
+    assert SymbolIgnoredDeveloper.new.respond_to?(:last_name?)
+  end
+
+  test "ignored columns are stored as an array of string" do
+    puts "In base_test ignored columns are stored as an array of string"
+    assert_equal(%w(first_name last_name), Developer.ignored_columns)
+    assert_equal(%w(first_name last_name), SymbolIgnoredDeveloper.ignored_columns)
   end
 end

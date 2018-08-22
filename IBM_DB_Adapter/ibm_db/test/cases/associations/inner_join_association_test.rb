@@ -11,7 +11,7 @@ require 'models/tag'
 
 class InnerJoinAssociationTest < ActiveRecord::TestCase
   fixtures :authors, :essays, :posts, :comments, :categories, :categories_posts, :categorizations,
-           :taggings, :tags, :author_addresses
+           :taggings, :tags
 
   def test_construct_finder_sql_applies_aliases_tables_on_association_conditions
     result = Author.joins(:thinking_posts, :welcome_posts).to_a
@@ -54,7 +54,7 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
   def test_find_with_implicit_inner_joins_without_select_does_not_imply_readonly
     authors = Author.joins(:posts)
     assert_not authors.empty?, "expected authors to be non-empty"
-    assert authors.none? {|a| a.readonly? }, "expected no authors to be readonly"
+    assert authors.none?(&:readonly?), "expected no authors to be readonly"
   end
 
   def test_find_with_implicit_inner_joins_honors_readonly_with_select
@@ -102,7 +102,7 @@ class InnerJoinAssociationTest < ActiveRecord::TestCase
 
   def test_find_with_conditions_on_reflection
     assert !posts(:welcome).comments.empty?
-    assert Post.joins(:nonexistant_comments).where(:id => posts(:welcome).id).empty? # [sic!]
+    assert Post.joins(:nonexistent_comments).where(:id => posts(:welcome).id).empty? # [sic!]
   end
 
   def test_find_with_conditions_on_through_reflection
