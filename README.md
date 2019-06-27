@@ -25,8 +25,8 @@ Contacts
 
 For any issues or help: https://github.com/ibmdb/ruby-ibmdb/issues
 
-Using the Source Files for Local Development
-============================================
+Local Development
+=================
 
 To easily test changes to the ibm_db gem locally without building 
 a gem package, add to your Rails Gemfile:
