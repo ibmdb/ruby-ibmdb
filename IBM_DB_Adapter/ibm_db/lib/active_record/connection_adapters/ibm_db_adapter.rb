@@ -750,6 +750,7 @@ module ActiveRecord
 
       def initialize(connection, ar3, logger, config, conn_options)
         # Caching database connection configuration (+connect+ or +reconnect+ support)
+        @config           = config
         @connection       = connection
 		@isAr3            = ar3
         @conn_options     = conn_options
@@ -779,7 +780,7 @@ module ActiveRecord
 
         # Calls the parent class +ConnectionAdapters+' initializer
         # which sets @connection, @logger, @runtime and @last_verification
-        super(@connection, logger)
+        super(@connection, logger, config)
 
         if @connection
           server_info = IBM_DB.server_info( @connection )
