@@ -10251,15 +10251,8 @@ VALUE ibm_db_fetch_assoc(int argc, VALUE *argv, VALUE self) {
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
-	ret_val = helper_args->return_value;
-						
-  #else
     ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  #endif
-   
+
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {
     ruby_xfree( helper_args );
@@ -10340,13 +10333,7 @@ VALUE ibm_db_fetch_object(int argc, VALUE *argv, VALUE self)
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                              (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
-	row_res->hash = helper_args->return_value;
-  #else
-    row_res->hash = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  #endif
+  row_res->hash = _ruby_ibm_db_bind_fetch_helper( helper_args );
 
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {
@@ -10423,17 +10410,7 @@ VALUE ibm_db_fetch_array(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_INDEX;
 
-  //Call without thread API to avoid the Thread lock.
   ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  
-  //#ifdef UNICODE_SUPPORT_VERSION    
-  //ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-  //                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
-  //  ret_val = helper_args->return_value;
-  //					
-  //#else
-  //  ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  //#endif
 
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {
@@ -10504,13 +10481,7 @@ VALUE ibm_db_fetch_both(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_BOTH;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
-	 ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
-	ret_val = helper_args->return_value;
-  #else
-    ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
-  #endif
+  ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
 
   /*Free Memory Allocated*/
   if ( helper_args != NULL) {
