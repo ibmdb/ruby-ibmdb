@@ -394,8 +394,8 @@ static void ruby_ibm_db_check_if_cli_func_supported() {
 
 static void ruby_ibm_db_init_globals(struct _ibm_db_globals *ibm_db_globals)
 {
-  /* env handle */
-  ibm_db_globals->bin_mode = 1;
+  /* Default binary conversion mode is to CONVERT binary => hex */
+  ibm_db_globals->bin_mode = CONVERT;
 
   memset(ibm_db_globals->__ruby_conn_err_msg, '\0', DB2_MAX_ERR_MSG_LEN);
   memset(ibm_db_globals->__ruby_stmt_err_msg, '\0', DB2_MAX_ERR_MSG_LEN);
@@ -1314,6 +1314,18 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
 #ifdef UNICODE_SUPPORT_VERSION
   VALUE data_utf16 = Qnil;
 #endif
+
+  /* When IBM_DB::BINARY is set to IBM_DB::CONVERT, bit data
+   * is converted to hex.  When IBM_DB::BINARY => IBM_DB::BINARY,
+   * binary data is returned.
+   */
+  if ( opt_key == BINARY )
+  {
+	if ( type == SQL_HANDLE_STMT)
+	  ((stmt_handle*)handle)->s_bin_mode = NUM2LONG(data);
+	else if ( type == SQL_HANDLE_DBC )
+	  ((conn_handle*)handle)->c_bin_mode = NUM2LONG(data);
+  }
 
   /* First check to see if it is a non-cli attribut */
   if (opt_key == ATTR_CASE) {
