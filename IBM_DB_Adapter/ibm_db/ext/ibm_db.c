@@ -6361,9 +6361,14 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
 #endif /* PASE */
         case SQL_VARBINARY:
         case SQL_XML:
-         /* account for bin_mode settings as well */
           curr->bind_indicator             =  curr->ivalue;
-          valueType                        =  SQL_C_BINARY;
+
+          /* account for bin_mode settings as well */
+          if ( stmt_res->s_bin_mode == CONVERT )
+            valueType                      =  SQL_C_CHAR;
+          else
+            valueType                      =  SQL_C_BINARY;
+
           bindParameter_args->buff_length  =  curr->ivalue;
           paramValuePtr                    =  (SQLPOINTER)curr->svalue;
           break;
