@@ -1645,6 +1645,8 @@ module ActiveRecord
                 # Quoting required for the default value of a column				
                 @servertype.set_binary_default(value)
               end
+          elsif column && column.sql_type.to_s =~ /for bit data/i
+            "x'#{value}'"
           elsif column && column.sql_type.to_s =~ /text|clob/i
               unless caller[0] =~ /add_column_options/i
                 @servertype.set_text_default(quote_string(value))
