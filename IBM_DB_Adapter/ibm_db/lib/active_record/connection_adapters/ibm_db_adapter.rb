@@ -9,8 +9,9 @@
 # |         : Arvind Gupta     <arvindgu@in.ibm.com>                     |
 # +----------------------------------------------------------------------+
 
+
 require 'active_record/connection_adapters/abstract_adapter'
-require 'arel/visitors/bind_visitor'
+require 'arel/visitors/visitor'
 require 'active_support/core_ext/string/strip'
 require 'active_record/type'
 require 'active_record/connection_adapters/sql_type_metadata'
@@ -38,7 +39,6 @@ end
 
 module ActiveRecord
 
-	
 
 	class SchemaMigration < ActiveRecord::Base
 		class << self
@@ -209,18 +209,23 @@ module ActiveRecord
         raise LoadError, "Failed to load IBM_DB Ruby driver."
       end
 
-      #if( config.has_key?(:parameterized) && config[:parameterized] == true )
-      #  require 'active_record/connection_adapters/ibm_db_pstmt'
-      #end
+      if( config.has_key?(:parameterized) && config[:parameterized] == true )
+        require 'active_record/connection_adapters/ibm_db_pstmt'
+      end
 
 	  # Check if class TableDefinition responds to indexes method to determine if we are on AR 3 or AR 4.
 	  # This is a interim hack ti ensure backward compatibility. To remove as we move out of AR 3 support or have a better way to determine which version of AR being run against.
-	  checkClass = ActiveRecord::ConnectionAdapters::TableDefinition.new(nil)
-	  if(checkClass.respond_to?(:indexes))
+puts 'THIS IS before new akhil'
+puts config
+      #checkClass = ActiveRecord::ConnectionAdapters::TableDefinition.new(IBM_DB, nil)
+#	  puts '====THIS IS after akhil===='
+#	  if(checkClass.respond_to?(:indexes))
+#		  puts 'This is inside if'
 	    isAr3 = false
-	  else
-	    isAr3 = true
-	  end
+#	  else
+#		  puts 'This is inside else'
+#	    isAr3= true
+#	  end
       # Converts all +config+ keys to symbols
       config = config.symbolize_keys
 
@@ -302,8 +307,13 @@ module ActiveRecord
           conn_string << "SECURITY=#{config[:security]};" if config.has_key?(:security)
           conn_string << "AUTHENTICATION=#{config[:authentication]};" if config.has_key?(:authentication)
           conn_string << "CONNECTTIMEOUT=#{config[:timeout]};" if config.has_key?(:timeout)
-        
+	  puts '=====This is if IBM_DB.Connect======'
+	  puts conn_string
+	  puts conn_options
+	  puts set_quoted_literal_replacement
           connection = IBM_DB.connect( conn_string, '', '', conn_options, set_quoted_literal_replacement )
+	  puts 'connection'
+	  puts '=====AFTER CONNection=========='
         else
           # No host implies a local catalog-based connection: +database+ represents catalog alias
           connection = IBM_DB.connect( database, username, password, conn_options,  set_quoted_literal_replacement )
@@ -624,6 +634,10 @@ module ActiveRecord
 			return self
 		  end
 
+		  def supports_datetime_with_precision?
+		        true
+		  end
+
 		  #Method to support the new syntax of rails 2.0 migrations (short-hand definitions) for columns of type double
 		  def double(*args)
 			ibm_parse_column_attributes_args('double',*args)
@@ -733,7 +747,8 @@ module ActiveRecord
     # When schema is not specified, the username value is used instead.
     # The default setting of parameterized is false.
     # 
-    class IBM_DBAdapter < AbstractAdapter
+    class IBM_DBAdapter < ActiveRecord::ConnectionAdapters::AbstractAdapter
+	    include ActiveRecord::ConnectionAdapters
       attr_reader :connection, :servertype
       attr_accessor :sql,:handle_lobs_triggered, :sql_parameter_values
       attr_reader :schema, :app_user, :account, :application, :workstation
@@ -741,15 +756,18 @@ module ActiveRecord
 
       # Name of the adapter
       def adapter_name
+	      puts '=========================THIS IS ADAPTER NAME=========================='
         'IBM_DB'
       end
 
-      class BindSubstitution < Arel::Visitors::IBM_DB # :nodoc:
-          include Arel::Visitors::BindVisitor
-      end
+      #class BindSubstitution < Arel::Visitors::IBM_DB # :nodoc:
+        #  include Arel::Visitors
+      #end
 
       def initialize(connection, ar3, logger, config, conn_options)
-        # Caching database connection configuration (+connect+ or +reconnect+ support)
+	      puts '=========================THIS IS INITIALIZE============================'
+        # Caching database connection configuration (+connect+ or +reconnect+ support)\
+	@config = config
         @connection       = connection
 		@isAr3            = ar3
         @conn_options     = conn_options
@@ -779,7 +797,7 @@ module ActiveRecord
 
         # Calls the parent class +ConnectionAdapters+' initializer
         # which sets @connection, @logger, @runtime and @last_verification
-        super(@connection, logger)
+        super(@connection, logger, @config)
 
         if @connection
           server_info = IBM_DB.server_info( @connection )
@@ -933,9 +951,11 @@ module ActiveRecord
 
       def supports_foreign_keys?
         true
+      end	  
+      
+      def supports_datetime_with_precision?
+	true
       end
-
-	    
 	  
       # This Adapter supports DDL transactions.
       # This means CREATE TABLE and other DDL statements can be carried out as a transaction. 
@@ -1019,9 +1039,12 @@ module ActiveRecord
       #==============================================
 
       def create_table(name, options = {})
+	      puts ("This is create_table")
+	      puts servertype
         @servertype.setup_for_lob_table
-        super
-        
+	puts 'This is after server type'
+        super(name)
+        puts 'This is after super'
         #Table definition is complete only when a unique index is created on the primarykey column for DB2 V8 on zOS
         
         #create index on id column if options[:id] is nil or id ==true
@@ -3328,7 +3351,7 @@ end
         arelVersion = 0
       end
 if(arelVersion >= 6)	
-    class ToSql < Arel::Visitors::Reduce #opening and closing the class to ensure backward compatibility
+    class ToSql < Arel::Visitors::Visitor #opening and closing the class to ensure backward compatibility
       # In case when using Rails-2.3.x there is no arel used due to which the constructor has to be defined explicitly
       # to ensure the same code works on any version of Rails
       
