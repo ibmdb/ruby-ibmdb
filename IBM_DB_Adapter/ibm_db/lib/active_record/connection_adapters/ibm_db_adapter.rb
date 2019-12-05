@@ -634,10 +634,6 @@ puts config
 			return self
 		  end
 
-		  def supports_datetime_with_precision?
-		        true
-		  end
-
 		  #Method to support the new syntax of rails 2.0 migrations (short-hand definitions) for columns of type double
 		  def double(*args)
 			ibm_parse_column_attributes_args('double',*args)
@@ -747,8 +743,7 @@ puts config
     # When schema is not specified, the username value is used instead.
     # The default setting of parameterized is false.
     # 
-    class IBM_DBAdapter < ActiveRecord::ConnectionAdapters::AbstractAdapter
-	    include ActiveRecord::ConnectionAdapters
+    class IBM_DBAdapter < AbstractAdapter
       attr_reader :connection, :servertype
       attr_accessor :sql,:handle_lobs_triggered, :sql_parameter_values
       attr_reader :schema, :app_user, :account, :application, :workstation
@@ -760,9 +755,9 @@ puts config
         'IBM_DB'
       end
 
-      #class BindSubstitution < Arel::Visitors::IBM_DB # :nodoc:
-        #  include Arel::Visitors
-      #end
+      class BindSubstitution < Arel::Visitors::IBM_DB # :nodoc:
+          include Arel::Visitors
+      end
 
       def initialize(connection, ar3, logger, config, conn_options)
 	      puts '=========================THIS IS INITIALIZE============================'
@@ -1040,6 +1035,7 @@ puts config
 
       def create_table(name, options = {})
 	      puts ("This is create_table")
+	      puts name
 	      puts servertype
         @servertype.setup_for_lob_table
 	puts 'This is after server type'
