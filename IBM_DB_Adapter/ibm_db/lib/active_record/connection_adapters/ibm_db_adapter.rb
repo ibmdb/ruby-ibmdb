@@ -62,7 +62,8 @@ module ActiveRecord
 	class Relation
 
 		def insert(values)
-			puts 'This is insert ---65'
+			puts '@@@@@@@@@@@@@@@@@@@@@@@This is insert ---65++++++++++++++++++++++++++++++++++++++++++++++'
+			puts values
 			primary_key_value = nil
 
 			if primary_key && Hash === values
@@ -98,7 +99,7 @@ module ActiveRecord
 			else
 				im.insert substitutes
 			end
-                         puts 'This is above conn.insert ---101'
+                         puts '@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@This is above conn.insert ---101'
 			 puts im
 			conn.insert(
 				im,
@@ -348,6 +349,7 @@ module ActiveRecord
   module ConnectionAdapters
 	class Column 
 		def self.binary_to_string(value)
+			puts 'This is self.binary_to_string ---351'
 			# Returns a string removing the eventual BLOB scalar function
 			value.to_s.gsub(/"SYSIBM"."BLOB"\('(.*)'\)/i,'\1')
 		end
@@ -355,8 +357,10 @@ module ActiveRecord
     	
 	module Quoting
 		def lookup_cast_type_from_column(column) # :nodoc:
-          #type_map.lookup(column.oid, column.fmod, column.sql_type)
-		  lookup_cast_type(column.sql_type_metadata)	
+		  puts 'This is lookup_cast_type_from_column --column --358'
+		  puts column
+		  puts lookup_cast_type(column.sql_type_metadata)
+		  lookup_cast_type(column.sql_type_metadata)
         end		
 	end
 	
@@ -442,9 +446,9 @@ module ActiveRecord
         TableDefinition.new self, name, temporary, options
       end
 =end	  
-		def create_table_definition(*args)
-			puts 'This is create_tabledefinations --446 removed **options'
-			TableDefinition.new(self, *args)
+		def create_table_definition(*args, **options)
+			puts 'This is create_tabledefinations --446'
+			TableDefinition.new(self, *args, **options)
 		end
 	  
 		def remove_foreign_key(from_table, options_or_to_table = {})    
@@ -1075,7 +1079,7 @@ module ActiveRecord
       def create_table(name, options = {})
 	      puts 'This is create_table --1074'
         @servertype.setup_for_lob_table
-	super
+	super(name)
         #Table definition is complete only when a unique index is created on the primarykey column for DB2 V8 on zOS
         
         #create index on id column if options[:id] is nil or id ==true
@@ -1262,6 +1266,8 @@ module ActiveRecord
       #hence only markers like @@@IBMBINARY@@@ will be inserted and are not updated to actual data
       def insert_fixture(fixture, table_name)
 	      puts 'This is insert_fixture --1264'
+	      puts fixture
+	      puts table_name
         if(fixture.respond_to?(:keys))
           insert_query = "INSERT INTO #{quote_table_name(table_name)} ( #{fixture.keys.join(', ')})"
         else
@@ -1351,16 +1357,33 @@ module ActiveRecord
         end
       end
 
-      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [] )
-	      puts 'This is insert --1355'
+      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds=[])
+	puts '>>>>>>>>>>This is insert --1355<<<<<<<<<<'
+	puts arel
+        puts "--BINDS-- #{binds}"
+	puts "This is binds in insert"
         if(@arelVersion <  6 )
 		 sql, binds = [to_sql(arel),binds]
-		else
-		 sql, binds = sql_for_insert(to_sql(arel, binds), pk, id_value, sequence_name, binds) #[to_sql(arel),binds]
-		end
+	else
+		 sql, binds = [to_sql(arel),binds] #sql_for_insert(to_sql(arel, binds), binds) #[to_sql(arel),binds]
+	end
+	puts "--SQL-- #{sql}"
+	puts "--BINDS-- #{binds}"
 
         #unless IBM_DBAdapter.respond_to?(:exec_insert)
         if binds.nil? || binds.empty?
+		puts '================================'
+		puts sql
+		puts 'sql'
+		puts name
+		puts 'name'
+		puts pk
+		puts 'pk'
+		puts id_value
+		puts 'id_value'
+		puts sequence_name
+		puts 'sequence_name'
+		puts '================================'
           return insert_direct(sql, name, pk, id_value, sequence_name)
         end
 
@@ -1445,6 +1468,7 @@ module ActiveRecord
       def exec_query(sql, name = 'SQL', binds = [])
 	      puts 'This is exec_query --sql'
 	      puts sql
+	      puts "================This is binds #{binds}===================="
         begin
           param_array = binds.map do |column,value|
             quote_value_for_pstmt(value, column)
@@ -1469,11 +1493,20 @@ module ActiveRecord
       def execute(sql, name = nil)
         # Logs and execute the sql instructions.
         # The +log+ method is defined in the parent class +AbstractAdapter+
-	puts 'This is execute----sql'
+	puts 'This is execute----sql ---1490'
 	puts sql
+	#sql='INSERT INTO ar_internal_metadata (key, value, created_at, updated_at) VALUES ('10', '10', '10', '10')
         log(sql, name) do
           @servertype.execute(sql, name)
         end
+      end
+
+      def exec_insert(sql,name,binds,pk,sequence_name)
+	puts "This is exec_insert() ============================================== #{sql}"
+	puts "This is exec_insert() ============================================== #{name}"
+	puts "This is exec_insert() ============================================== #{binds}"
+	puts "This is exec_insert() ============================================== #{pk}"
+	puts "This is exec_insert() ============================================== #{sequence_name}"
       end
 
       # Executes an "UPDATE" SQL statement
@@ -1670,7 +1703,6 @@ module ActiveRecord
         end
       end
 =end
-
       def quote_value_for_pstmt(value, column=nil)
 	      puts 'this is quote_value_for_pstmt --1672'
 
@@ -1700,30 +1732,36 @@ module ActiveRecord
             end
         end
       end
-
       # Properly quotes the various data types.
       # +value+ contains the data, +column+ is optional and contains info on the field
-      def quote(value, column = nil)
+      def quote(value, column=nil)
 	      puts 'This is quote --1704'
+	      puts '.................VALUE......................'
+	      puts value
+	      puts 'Column'
+	      puts column
         return value.quoted_id if value.respond_to?(:quoted_id)
-
-        case value
+	puts "THIS IS CASE VALUE #{value}"
+	case value.value_before_type_cast
           # If it's a numeric value and the column sql_type is not a string, it shouldn't be quoted
           # (IBM_DB doesn't accept quotes on numeric types)
           when Numeric
+		  puts "===This is in when Numeric column====#{value}"
             # If the column sql_type is text or string, return the quote value
             if (column && ( column.sql_type.to_s =~ /text|char/i ))
               unless caller[0] =~ /insert_fixture/i
-                  "'#{value}'"
+		  "'#{value}'"
               else
                   "#{value}"
               end 
             else
               # value is Numeric, column.sql_type is not a string,
               # therefore it converts the number to string without quoting it
-              value.to_s
+		    puts "THIS IS ELSE IN NUMBERIC #{value.value_before_type_cast}"
+		    value.to_s
             end
           when String, ActiveSupport::Multibyte::Chars
+          puts "===This is in when String, ActiveSupport::Multibyte::Chars column==== #{value}"
           if column && column.sql_type.to_s =~ /binary|blob/i && !(column.sql_type.to_s =~ /for bit data/i)				
             # If quoting is required for the insert/update of a BLOB
               unless caller[0] =~ /add_column_options/i
@@ -1747,48 +1785,59 @@ module ActiveRecord
               end
           else
               unless caller[0] =~ /insert_fixture/i
-                super 
+                super(value) 
               else
                 "#{value}"
               end 
           end
-          when TrueClass then quoted_true    # return '1' for true
-          when FalseClass then quoted_false  # return '0' for false
-          when nil        then "NULL"
-          when Date, Time then "'#{quoted_date(value)}'"
-          when Symbol     then "'#{quote_string(value.to_s)}'"
+          #when TrueClass then quoted_true    # return '1' for true
+	  when TrueClass 
+		  puts "THIS IS TRUE CLASS #{quoted_true}"
+		  quoted_true
+          #when FalseClass then quoted_false  # return '0' for false
+	  when FalseClass
+		  puts "THIS IS FLASE CLASS #{quoted_true}"
+		  quoted_false
+          when nil
+		  puts "THIS IS NIL 'NULL' "
+		  "NULL"
+          when Date
+		  puts "THIS IS DATE"
+		  "'#{quoted_date(value)}'"
+	  when Time
+		  puts "THIS IS TIME"
+		  "'#{quoted_date(value.value_before_type_cast)}'"
+          when Symbol
+		  puts "THIS IS symbol"
+		  "'#{quote_string(value.value_before_type_cast.to_s)}'"
           else
-            unless caller[0] =~ /insert_fixture/i 
+            unless caller[0] =~ /insert_fixture/i
+		    puts "=====THIS IS else unless caller====" 
               "'#{quote_string(YAML.dump(value))}'"
             else
+	      puts "=====This is uless else======"
               "#{quote_string(YAML.dump(value))}"
             end
         end
       end
-
       # Quotes a given string, escaping single quote (') characters.
       def quote_string(string)
-	      puts 'This is quote_string --string --1768'
-	      puts string
-        string.gsub(/'/, "''")
+          #string.gsub(/'/, "''")
+	  string.gsub('\\', '\&\&').gsub("'", "''")
       end
 
       # *true* is represented by a smallint 1, *false*
       # by 0, as no native boolean type exists in DB2.
       # Numerics are not quoted in DB2.
       def quoted_true
-	      puts 'This is quoted_true --1777'
         "1"
       end
 
       def quoted_false
-	      puts 'this is quoted_false --1781'
         "0"
       end
 
       def quote_column_name(name)
-	      puts 'This is quote_column_name --name --1785'
-	      puts name
          @servertype.check_reserved_words(name)
       end
 
@@ -1806,9 +1855,9 @@ module ActiveRecord
           :text        => { :name => "clob" },
           :integer     => { :name => "integer" },
           :float       => { :name => "float" },
-          :datetime    => { :name => @servertype.get_datetime_mapping },
-          :timestamp   => { :name => @servertype.get_datetime_mapping },		  
-          :time        => { :name => @servertype.get_time_mapping },
+          :datetime    => { :name => "timestamp" },
+          :timestamp   => { :name => "timestamp" },		  
+          :time        => { :name => "time" },
           :date        => { :name => "date" },
           :binary      => { :name => "blob" },
 
@@ -1901,7 +1950,8 @@ module ActiveRecord
       # IBM data servers do not support limits on certain data types (unlike MySQL)
       # Limit is supported for the {float, decimal, numeric, varchar, clob, blob, graphic, vargraphic} data types.
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-	      puts 'This is type_to_sql --1900'
+	      puts 'This is type_to_sql --type --1900'
+	      puts type
         if type.to_sym == :decfloat
           sql_segment = native_database_types[type.to_sym][:name].to_s
           sql_segment << "(#{precision})" if !precision.nil?
@@ -1971,6 +2021,8 @@ module ActiveRecord
           end
         end
         # Returns the tables array
+	puts '****************************************************************************************'
+	puts tables
         return tables
       end
 
@@ -2263,12 +2315,13 @@ module ActiveRecord
 	  
 	  
       # Returns an array of Column objects for the table specified by +table_name+
-      def columns(table_name, name = nil)
+      def columns(table_name)
 	      puts 'This is columns --tablename --name --2263'
 	      puts table_name
-              puts name
+     	      puts 'This is after name'
       # to_s required because it may be a symbol.
         table_name = @servertype.set_case(table_name.to_s)
+	puts table_name
 				
         # Checks if a blank table name has been given.
         # If so it returns an empty array
@@ -2285,6 +2338,8 @@ module ActiveRecord
             # +col+ is an hash with keys/value pairs for a column
             while col = IBM_DB.fetch_assoc(stmt)
               column_name = col["column_name"].downcase
+	      puts 'THis is while'
+	      puts column_name
               # Assigns the column default value.
               column_default_value = col["column_def"]
               # If there is no default value, it assigns NIL
@@ -2370,6 +2425,8 @@ module ActiveRecord
           end
         end
         # Returns the columns array
+	puts '=======This is columns qarray'
+	puts columns
         return columns
       end
 	  	  
@@ -2727,7 +2784,7 @@ To remove the column, the table must be dropped and recreated without the #{colu
       end
 
       def execute(sql, name = nil)
-         puts 'This is execute --sql --2725'
+         puts 'This is execute --sql --2760'
          puts sql	 
         begin
           if stmt = IBM_DB.exec(@adapter.connection, sql)
@@ -3571,22 +3628,49 @@ end
       private
 
         
-	 def visit_Arel_Nodes_Limit o,collector
-		 puts 'This is visit_Arel_Nodes_Limit --3562'
+      def visit_Arel_Nodes_Limit o,collector
+        puts 'This is visit_Arel_Nodes_Limit --3562'
         visit o.expr, collector
       end
 
       def visit_Arel_Nodes_Offset o,collector
-	      puts 'This is visit_Arel_Nodes_Offset --collector --3566'
-	      puts collector
+	puts 'This is visit_Arel_Nodes_Offset --collector --3566'
+	puts collector
         visit o.expr,collector
       end
 
+      def visit_Arel_Nodes_ValuesList(o, collector)
+	  puts "######################################THIS IS visit_Arel_Nodes_ValuesList"
+          collector << "VALUES "
+	  puts "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%THIS IS collector #{collector}"
+          o.rows.each_with_index do |row, i|
+            puts "THIS IS rows #{row[0]}"
+            collector << ", " unless i == 0
+            collector << "("
+            row.each_with_index do |value, k|
+              collector << ", " unless k == 0
+              case value
+              when Nodes::SqlLiteral, Nodes::BindParam
+		puts "??????????????????? #{value}"
+                collector = visit(value, collector)
+		puts "THIS IS COLLECTOR #{collector}"
+		#collector << quote(value).to_s
+		puts "#####################THIS IS WHEN #{value}"
+              else
+                collector << quote(value).to_s
+		puts "#####################THIS IS ELSE #{value}"
+              end
+            end
+            collector << ")"
+          end
+          collector
+        end
+
     def visit_Arel_Nodes_SelectStatement o, collector
-	    puts 'This is visit_Arel_Nodes_SelectStatement --3570'
+	puts 'This is visit_Arel_Nodes_SelectStatement --3570'
         if o.with
           collector = visit o.with, collector
-          collector << SPACE
+          collector << " "
         end
 
         collector = o.cores.inject(collector) { |c,x|
@@ -3594,11 +3678,12 @@ end
         }
 
         unless o.orders.empty?          
-          #collector << ORDER_BY
+          collector << " ORDER BY "
+	  puts 'This is ORDER_BY'
           len = o.orders.length - 1
           o.orders.each_with_index { |x, i|
             collector = visit(x, collector)
-            collector << COMMA unless len == i
+            collector << "," unless len == i
           }
         end
 
@@ -3620,6 +3705,8 @@ end
         end
 		
         limOffClause = @connection.get_limit_offset_clauses(limit,offset)
+	puts limOffClause["startSegment"].empty?
+	puts limOffClause["endSegment"].empty?
 		
         if( !limOffClause["startSegment"].empty? ) 
           #collector.changeFirstSegment(limOffClause["startSegment"])	
@@ -3628,7 +3715,7 @@ end
         
         if( !limOffClause["endSegment"].empty? )
           #collector.changeEndSegment(limOffClause["endSegment"])
-          collector << SPACE
+          collector << " "
           collector << limOffClause["endSegment"]
         end
 
@@ -3636,6 +3723,8 @@ end
         #collector.reset(sql)
 					
         collector = maybe_visit o.lock, collector
+	puts 'This is collector in 3640'
+	puts collector
 
 		return collector
      end
