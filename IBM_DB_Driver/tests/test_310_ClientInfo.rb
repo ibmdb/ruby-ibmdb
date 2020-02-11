@@ -8,8 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_310_ClientInfo
     assert_expectf do
-      conn = IBM_DB::connect database, user, password
-      
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')      
       client = IBM_DB::client_info conn
       
       if client

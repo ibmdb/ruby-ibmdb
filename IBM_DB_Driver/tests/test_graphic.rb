@@ -7,7 +7,7 @@
 #
 
 class TestIbmDb < Test::Unit::TestCase
-  def test_vargraphic
+  def test_graphic
     assert_expect do
       nameVal = 'praveen𝄞'
       conn = IBM_DB.connect db,username,password

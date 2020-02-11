@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_000_PrepareDb
    assert_expect do
     # Make a connection
-    conn = IBM_DB::connect database, user, password
+    conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
     # Get the server type
     server = IBM_DB::server_info( conn )
@@ -244,7 +244,7 @@ class TestIbmDb < Test::Unit::TestCase
     drop = 'DROP TABLE emp_photo'
     result = IBM_DB::exec(conn, drop) rescue nil
     # Create the emp_photo table
-    create = 'CREATE TABLE emp_photo (empno CHAR(6) NOT NULL, photo_format VARCHAR(10) NOT NULL, picture BLOB, PRIMARY KEY(empno, photo_format))'
+    create = 'CREATE TABLE emp_photo (empno CHAR(6) NOT NULL, photo_format VARCHAR(10) NOT NULL, picture BLOB)'
     result = IBM_DB::exec(conn, create) rescue nil
     # Populate the emp_photo table
     emp_photo = [

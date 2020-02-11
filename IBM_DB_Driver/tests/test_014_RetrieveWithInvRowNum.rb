@@ -35,38 +35,38 @@ end
 
 __END__
 __LUW_EXPECTED__
-3 : gold fish : Bubbles          : 0.1E0
-4 : budgerigar : Gizmo            : 0.2E0
-1 : dog : Peaches          : 0.123E2
-0 : cat : Pook             : 0.32E1
-5 : goat : Rickety Ride     : 0.97E1
-2 : horse : Smarty           : 0.35E3
-6 : llama : Sweater          : 0.15E3
+3 : gold fish : Bubbles          : 0.1e0
+4 : budgerigar : Gizmo            : 0.2e0
+1 : dog : Peaches          : 0.123e2
+0 : cat : Pook             : 0.32e1
+5 : goat : Rickety Ride     : 0.97e1
+2 : horse : Smarty           : 0.35e3
+6 : llama : Sweater          : 0.15e3
 Requested row number must be a positive value
 __ZOS_EXPECTED__
-3 : gold fish : Bubbles          : 0.1E0
-4 : budgerigar : Gizmo            : 0.2E0
-1 : dog : Peaches          : 0.123E2
-0 : cat : Pook             : 0.32E1
-5 : goat : Rickety Ride     : 0.97E1
-2 : horse : Smarty           : 0.35E3
-6 : llama : Sweater          : 0.15E3
+3 : gold fish : Bubbles          : 0.1e0
+4 : budgerigar : Gizmo            : 0.2e0
+1 : dog : Peaches          : 0.123e2
+0 : cat : Pook             : 0.32e1
+5 : goat : Rickety Ride     : 0.97e1
+2 : horse : Smarty           : 0.35e3
+6 : llama : Sweater          : 0.15e3
 Requested row number must be a positive value
 __SYSTEMI_EXPECTED__
-3 : gold fish : Bubbles          : 0.1E0
-4 : budgerigar : Gizmo            : 0.2E0
-1 : dog : Peaches          : 0.123E2
-0 : cat : Pook             : 0.32E1
-5 : goat : Rickety Ride     : 0.97E1
-2 : horse : Smarty           : 0.35E3
-6 : llama : Sweater          : 0.15E3
+3 : gold fish : Bubbles          : 0.1e0
+4 : budgerigar : Gizmo            : 0.2e0
+1 : dog : Peaches          : 0.123e2
+0 : cat : Pook             : 0.32e1
+5 : goat : Rickety Ride     : 0.97e1
+2 : horse : Smarty           : 0.35e3
+6 : llama : Sweater          : 0.15e3
 Requested row number must be a positive value
 __IDS_EXPECTED__
-3 : gold fish : Bubbles          : 0.1E0
-4 : budgerigar : Gizmo            : 0.2E0
-1 : dog : Peaches          : 0.123E2
-0 : cat : Pook             : 0.32E1
-5 : goat : Rickety Ride     : 0.97E1
-2 : horse : Smarty           : 0.35E3
-6 : llama : Sweater          : 0.15E3
+3 : gold fish : Bubbles          : 0.1e0
+4 : budgerigar : Gizmo            : 0.2e0
+1 : dog : Peaches          : 0.123e2
+0 : cat : Pook             : 0.32e1
+5 : goat : Rickety Ride     : 0.97e1
+2 : horse : Smarty           : 0.35e3
+6 : llama : Sweater          : 0.15e3
 Requested row number must be a positive value
