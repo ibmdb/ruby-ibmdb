@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_014_RetrieveWithInvRowNum
     assert_expect do
-      conn = IBM_DB::connect db, username, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       query = 'SELECT * FROM animals ORDER BY name'
 

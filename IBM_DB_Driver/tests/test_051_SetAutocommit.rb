@@ -10,7 +10,7 @@ class TestIbmDb < Test::Unit::TestCase
     assert_expect do
       options = { IBM_DB::SQL_ATTR_AUTOCOMMIT => IBM_DB::SQL_AUTOCOMMIT_OFF }
       
-      conn = IBM_DB::connect database, user, password, options
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}", '', '', options)
       
       ac = IBM_DB::autocommit conn
       

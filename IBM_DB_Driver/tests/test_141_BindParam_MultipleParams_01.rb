@@ -12,7 +12,7 @@ class TestIbmDb < Test::Unit::TestCase
         FROM animals
         WHERE id < ? AND weight > ?"
       
-      conn = IBM_DB::connect database, user, password
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         stmt = IBM_DB::prepare conn, sql
@@ -41,15 +41,15 @@ __LUW_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 1
 dog
 Peaches         
-0.123E2
+0.123e2
 2
 horse
 Smarty          
-0.35E3
+0.35e3
 __ZOS_EXPECTED__
 0
 cat
@@ -58,34 +58,34 @@ Pook
 1
 dog
 Peaches         
-0.123E2
+0.123e2
 2
 horse
 Smarty          
-0.35E3
+0.35e3
 __SYSTEMI_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 1
 dog
 Peaches         
-0.123E2
+0.123e2
 2
 horse
 Smarty          
-0.35E3
+0.35e3
 __IDS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 1
 dog
 Peaches         
-0.123E2
+0.123e2
 2
 horse
 Smarty          
-0.35E3
+0.35e3

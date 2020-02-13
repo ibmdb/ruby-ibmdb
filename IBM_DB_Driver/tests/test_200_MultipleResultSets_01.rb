@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_200_MultipleResultSets_01
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       serverinfo = IBM_DB::server_info( conn )
       server = serverinfo.DBMS_NAME[0,3]
       if (server == 'IDS')

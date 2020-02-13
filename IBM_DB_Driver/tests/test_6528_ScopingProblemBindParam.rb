@@ -14,7 +14,7 @@ class TestIbmDb < Test::Unit::TestCase
         row.each { |child| puts child }
       end
       
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
       
       if conn

@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_024_ForeignKeys
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
       
       if conn != 0
@@ -27,9 +27,9 @@ class TestIbmDb < Test::Unit::TestCase
         result = IBM_DB::exec conn, statement
       
         if (server.DBMS_NAME[0,3] == 'IDS')
-          stmt = IBM_DB::foreign_keys conn, nil, user, 'test_primary_keys'
+          stmt = IBM_DB::foreign_keys conn, nil, user, 'test_foreign_keys'
         else
-          stmt = IBM_DB::foreign_keys conn, nil, nil, 'TEST_PRIMARY_KEYS'
+          stmt = IBM_DB::foreign_keys conn, nil, nil, 'TEST_FOREIGN_KEYS'
         end
         row = IBM_DB::fetch_array stmt
         puts row[2]

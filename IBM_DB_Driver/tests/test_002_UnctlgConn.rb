@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_002_UnctlgConn
     assert_expect do
-      conn = IBM_DB::connect "DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};PROTOCOL=TCPIP;UID=#{user};PWD=#{password};", '', ''
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         print "Connection succeeded."

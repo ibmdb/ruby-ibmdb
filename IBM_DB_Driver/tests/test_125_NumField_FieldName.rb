@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_125_NumField_FieldName
     assert_expect do
-      conn = IBM_DB::connect db,user,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
 
       result = IBM_DB::exec conn, "SELECT * FROM sales"

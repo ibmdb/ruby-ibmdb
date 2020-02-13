@@ -244,7 +244,7 @@ class TestIbmDb < Test::Unit::TestCase
     drop = 'DROP TABLE emp_photo'
     result = IBM_DB::exec(conn, drop) rescue nil
     # Create the emp_photo table
-    create = 'CREATE TABLE emp_photo (empno CHAR(6) NOT NULL, photo_format VARCHAR(10) NOT NULL, picture BLOB)'
+    create = 'CREATE TABLE emp_photo (empno CHAR(6) NOT NULL, photo_format VARCHAR(10) NOT NULL, picture BLOB, PRIMARY KEY(empno, photo_format))'
     result = IBM_DB::exec(conn, create) rescue nil
     # Populate the emp_photo table
     emp_photo = [
@@ -261,7 +261,8 @@ class TestIbmDb < Test::Unit::TestCase
     stmt = IBM_DB::prepare conn, insert
     if stmt
       for photo in emp_photo
-        result = IBM_DB::execute stmt, photo
+        # Akhil:- commented below line because it is try to insert same row( 1st Insert using normal and 2nd insert using bind_param ).
+        #result = IBM_DB::execute stmt, photo
         empno = photo[0]
         photo_format = photo[1]
         picture =  open(File.dirname(__FILE__) + "/#{photo[2]}",'rb') {|f| f.read}

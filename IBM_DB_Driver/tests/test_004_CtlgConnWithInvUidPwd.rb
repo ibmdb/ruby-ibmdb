@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_004_CtlgConnWithInvUidPwd
     assert_expect do
       begin
-        conn = IBM_DB.connect "sample", "not_a_user", "inv_pass"
+        conn = IBM_DB.connect("DATABASE=sample;HOSTNAME=#{hostname};PORT=#{port};UID=not_a_user;PWD=inv_pass",'','')
         puts "connect succeeded? Test failed"
       rescue StandardError => connect_err
         puts "connect failed, test succeeded"

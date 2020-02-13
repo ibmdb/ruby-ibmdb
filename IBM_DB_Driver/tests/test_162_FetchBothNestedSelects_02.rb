@@ -7,7 +7,7 @@
 class TestIbmDb < Test::Unit::TestCase
 
   def test_162_FetchBothNestedSelects_02
-    conn = IBM_DB::connect db,username,password
+    conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
     server = IBM_DB::server_info( conn )
     if (server.DBMS_NAME[0,3] == 'IDS')

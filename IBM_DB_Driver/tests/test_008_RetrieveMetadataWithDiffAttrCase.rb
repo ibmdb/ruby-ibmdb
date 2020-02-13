@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_008_RetrieveMetadataWithDiffAttrCase
     assert_expect do
       op = {IBM_DB::ATTR_CASE => IBM_DB::CASE_NATURAL}
-      conn = IBM_DB::connect database, user, password, op
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','', op)
       server = IBM_DB::server_info( conn )
 
       if (server.DBMS_NAME[0,3] == 'IDS')

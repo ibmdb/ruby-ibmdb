@@ -27,7 +27,7 @@ class TestIbmDb < Test::Unit::TestCase
 		assert_expectf do
 			# Make a connection
       begin
-			  conn = IBM_DB.connect database, user, password
+			  conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       rescue
         conn = false                          
       end

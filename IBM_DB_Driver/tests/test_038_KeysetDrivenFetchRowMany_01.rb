@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_038_KeysetDrivenFetchRowMany_01
     assert_expect do
-      conn = IBM_DB::connect db,user,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       result = IBM_DB::exec conn, "SELECT * FROM staff WHERE id < 101", {IBM_DB::SQL_ATTR_CURSOR_TYPE => IBM_DB::SQL_CURSOR_KEYSET_DRIVEN}
 

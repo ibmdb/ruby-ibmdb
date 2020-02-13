@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_210_FieldDisplaySize_01
     assert_expect do
-      conn = IBM_DB::connect db,user,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       result = IBM_DB::exec conn, "select * from staff"
       cols = IBM_DB::num_fields result

@@ -7,8 +7,8 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_prepare_and_bind_unicode_data
     assert_expect do
-      if RUBY_VERSION =~ /1.9/
-        conn = IBM_DB.connect(database,username,password, nil, IBM_DB::QUOTED_LITERAL_REPLACEMENT_OFF)
+      if RUBY_VERSION =~ /2/
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}", nil, IBM_DB::QUOTED_LITERAL_REPLACEMENT_OFF)
         table_name =  "test_tab𝄞"
 
         if conn

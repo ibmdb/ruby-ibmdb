@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_157_KeysetDrivenFetchAssoc
     assert_expect do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
 
       if conn
@@ -34,18 +34,18 @@ end
 
 __END__
 __LUW_EXPECTED__
-0     Pook             cat                                  0.32E1
-5     Rickety Ride     goat                                 0.97E1
-2     Smarty           horse                                0.35E3
+0     Pook             cat                                  0.32e1
+5     Rickety Ride     goat                                 0.97e1
+2     Smarty           horse                                0.35e3
 __ZOS_EXPECTED__
-0     Pook             cat                                  0.32E1
-5     Rickety Ride     goat                                 0.97E1
-2     Smarty           horse                                0.35E3
+0     Pook             cat                                  0.32e1
+5     Rickety Ride     goat                                 0.97e1
+2     Smarty           horse                                0.35e3
 __SYSTEMI_EXPECTED__
-0     Pook             cat                                  0.32E1
-5     Rickety Ride     goat                                 0.97E1
-2     Smarty           horse                                0.35E3
+0     Pook             cat                                  0.32e1
+5     Rickety Ride     goat                                 0.97e1
+2     Smarty           horse                                0.35e3
 __IDS_EXPECTED__
-0     Pook             cat                                  0.32E1
-5     Rickety Ride     goat                                 0.97E1
-2     Smarty           horse                                0.35E3
+0     Pook             cat                                  0.32e1
+5     Rickety Ride     goat                                 0.97e1
+2     Smarty           horse                                0.35e3

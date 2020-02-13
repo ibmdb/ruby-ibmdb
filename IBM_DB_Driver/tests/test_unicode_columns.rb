@@ -7,8 +7,8 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_unicode_columns
     assert_expect do
-      if RUBY_VERSION =~ /1.9/
-        conn = IBM_DB.connect database,user,password
+      if RUBY_VERSION =~ /2/
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
         utab = "UNI𝄞TAB"
         col  = "C𝄞L1"

@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_190_ColumnsMetadata_01
     assert_expectf do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
 
       if conn

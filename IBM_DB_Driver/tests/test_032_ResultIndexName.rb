@@ -8,13 +8,13 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_032_ResultIndexName
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
 
       if conn
         stmt = IBM_DB::exec conn, "SELECT id, breed, name, weight FROM animals WHERE id = 6"
         
-        while (IBM_DB::fetch_row(stmt) == TRUE)
+        while (IBM_DB::fetch_row(stmt) == true)
           if (server.DBMS_NAME[0,3] == 'IDS')
             id = IBM_DB::result stmt, "id"
             breed = IBM_DB::result stmt, "breed"

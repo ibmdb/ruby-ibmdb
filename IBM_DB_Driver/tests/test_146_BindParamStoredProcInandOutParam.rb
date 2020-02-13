@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_146_BindParamStoredProcInandOutParam
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
       
       if conn
@@ -51,11 +51,11 @@ Values of bound parameters _after_ CALL:
   1: Peaches 2: TRUE 3: 12
 
 Results:
-  Peaches, dog, 0.123E2
-  Pook, cat, 0.32E1
-  Rickety Ride, goat, 0.97E1
-  Smarty, horse, 0.35E3
-  Sweater, llama, 0.15E3
+  Peaches, dog, 0.123e2
+  Pook, cat, 0.32e1
+  Rickety Ride, goat, 0.97e1
+  Smarty, horse, 0.35e3
+  Sweater, llama, 0.15e3
 __ZOS_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0
@@ -64,11 +64,11 @@ Values of bound parameters _after_ CALL:
   1: Peaches 2: TRUE 3: 12
 
 Results:
-  Peaches, dog, 0.123E2
-  Pook, cat, 0.32E1
-  Rickety Ride, goat, 0.97E1
-  Smarty, horse, 0.35E3
-  Sweater, llama, 0.15E3
+  Peaches, dog, 0.123e2
+  Pook, cat, 0.32e1
+  Rickety Ride, goat, 0.97e1
+  Smarty, horse, 0.35e3
+  Sweater, llama, 0.15e3
 __SYSTEMI_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0
@@ -77,11 +77,11 @@ Values of bound parameters _after_ CALL:
   1: Peaches 2: TRUE 3: 12
 
 Results:
-  Peaches, dog, 0.123E2
-  Pook, cat, 0.32E1
-  Rickety Ride, goat, 0.97E1
-  Smarty, horse, 0.35E3
-  Sweater, llama, 0.15E3
+  Peaches, dog, 0.123e2
+  Pook, cat, 0.32e1
+  Rickety Ride, goat, 0.97e1
+  Smarty, horse, 0.35e3
+  Sweater, llama, 0.15e3
 __IDS_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0

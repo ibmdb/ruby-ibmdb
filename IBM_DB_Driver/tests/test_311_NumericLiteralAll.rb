@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_311_NumericLiteralAll
    assert_expect do
     # Make a connection
-    conn = IBM_DB::connect database, user, password
+    conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
     if conn
        IBM_DB::autocommit conn, IBM_DB::SQL_AUTOCOMMIT_ON 
@@ -69,39 +69,39 @@ __LUW_EXPECTED__
 Number of inserted rows: 1
 11
 33.44
-0.5566E2
+0.5566e2
 Number of updated rows: 1
 77
 33.44
-0.5566E2
+0.5566e2
 Number of deleted rows: 1
 __ZOS_EXPECTED__
 Number of inserted rows: 1
 11
 33.44
-0.5566E2
+0.5566e2
 Number of updated rows: 1
 77
 33.44
-0.5566E2
+0.5566e2
 Number of deleted rows: 1
 __SYSTEMI_EXPECTED__
 Number of inserted rows: 1
 11
 33.44
-0.5566E2
+0.5566e2
 Number of updated rows: 1
 77
 33.44
-0.5566E2
+0.5566e2
 Number of deleted rows: 1
 __IDS_EXPECTED__
 Number of inserted rows: 1
 11
 33.44
-0.5566E2
+0.5566e2
 Number of updated rows: 1
 77
 33.44
-0.5566E2
+0.5566e2
 Number of deleted rows: 1

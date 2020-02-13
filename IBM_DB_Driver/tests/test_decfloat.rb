@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_decfloat
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         IBM_DB::autocommit conn, IBM_DB::SQL_AUTOCOMMIT_OFF
@@ -69,18 +69,18 @@ end
 
 __END__
 __LUW_EXPECTED__
-10  Megadeth  0.1E3  0.990356E3
-20  Zaral  0.1022E3  0.100234E3
-30  Megabyte  0.9865E2  0.1002112E4
-40  Visarsoft  0.12334E3  0.1652345E4
-50  Mailersoft  0.13422E3  0.1643126E4
-60  Kaerci  0.10097E3  0.9876765E4
-70  Nirvana  0.10012E3  0.100567E3
+10  Megadeth  0.1e3  0.990356e3
+20  Zaral  0.1022e3  0.100234e3
+30  Megabyte  0.9865e2  0.1002112e4
+40  Visarsoft  0.12334e3  0.1652345e4
+50  Mailersoft  0.13422e3  0.1643126e4
+60  Kaerci  0.10097e3  0.9876765e4
+70  Nirvana  0.10012e3  0.100567e3
 __ZOS_EXPECTED__
-10  Megadeth  0.1E3  0.990356E3
-20  Zaral  0.1022E3  0.100234E3
-30  Megabyte  0.9865E2  0.1002112E4
-40  Visarsoft  0.12334E3  0.1652345E4
-50  Mailersoft  0.13422E3  0.1643126E4
-60  Kaerci  0.10097E3  0.9876765E4
-70  Nirvana  0.10012E3  0.100567E3
+10  Megadeth  0.1e3  0.990356e3
+20  Zaral  0.1022e3  0.100234e3
+30  Megabyte  0.9865e2  0.1002112e4
+40  Visarsoft  0.12334e3  0.1652345e4
+50  Mailersoft  0.13422e3  0.1643126e4
+60  Kaerci  0.10097e3  0.9876765e4
+70  Nirvana  0.10012e3  0.100567e3

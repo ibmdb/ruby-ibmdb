@@ -5,7 +5,7 @@
 # +----------------------------------------------------------------------+
 
 require 'rake'
-WIN = RUBY_PLATFORM =~ /mswin/
+WIN = RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/
 
 desc 'Run all the tests'
 task :default => [ :test ]
@@ -19,7 +19,7 @@ end
 if WIN
   task :lib => 'ibm_db.so'
   file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
-    sh 'nmake'
+    sh 'ridk exec make'
   end
 else
   task :lib => 'ibm_db.so'
@@ -37,7 +37,7 @@ task :onlytests do
     if !File.exists? 'ibm_db.so'
       task :lib => 'ibm_db.so'
       file 'ibm_db.so' => [:extconf, 'ibm_db.c'] do
-        sh 'nmake'
+        sh 'ridk exec make'
       end
     else
       task :lib => 'ibm_db.so'

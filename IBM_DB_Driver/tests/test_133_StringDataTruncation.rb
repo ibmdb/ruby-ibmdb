@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_133_StringDataTruncation
     assert_expect do
       sql =  "INSERT INTO animals (id, breed, name, weight) VALUES (?, ?, ?, ?)"
-      conn = IBM_DB.connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       if !conn
         print "Connection failed.\n"; return 0

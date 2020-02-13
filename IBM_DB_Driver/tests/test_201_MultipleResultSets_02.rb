@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_201_MultipleResultSets_02
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       serverinfo = IBM_DB::server_info( conn )
       server = serverinfo.DBMS_NAME[0,3]
@@ -124,31 +124,31 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15E3
+0.15e3
 Smarty          
 2
 horse
-0.35E3
+0.35e3
 Rickety Ride    
 5
 goat
-0.97E1
+0.97e1
 Pook            
 0
 cat
-0.32E1
+0.32e1
 Peaches         
 1
 dog
-0.123E2
+0.123e2
 Gizmo           
 4
 budgerigar
-0.2E0
+0.2e0
 Bubbles         
 3
 gold fish
-0.1E0
+0.1e0
 Fetching third result set
 Bubbles         
 Gizmo           
@@ -177,31 +177,31 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15E3
+0.15e3
 Smarty          
 2
 horse
-0.35E3
+0.35e3
 Rickety Ride    
 5
 goat
-0.97E1
+0.97e1
 Pook            
 0
 cat
-0.32E1
+0.32e1
 Peaches         
 1
 dog
-0.123E2
+0.123e2
 Gizmo           
 4
 budgerigar
-0.2E0
+0.2e0
 Bubbles         
 3
 gold fish
-0.1E0
+0.1e0
 Fetching third result set
 Bubbles         
 Gizmo           
@@ -230,31 +230,31 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15E3
+0.15e3
 Smarty          
 2
 horse
-0.35E3
+0.35e3
 Rickety Ride    
 5
 goat
-0.97E1
+0.97e1
 Pook            
 0
 cat
-0.32E1
+0.32e1
 Peaches         
 1
 dog
-0.123E2
+0.123e2
 Gizmo           
 4
 budgerigar
-0.2E0
+0.2e0
 Bubbles         
 3
 gold fish
-0.1E0
+0.1e0
 Fetching third result set
 Bubbles         
 Gizmo           
@@ -283,31 +283,31 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15E3
+0.15e3
 Smarty          
 2
 horse
-0.35E3
+0.35e3
 Rickety Ride    
 5
 goat
-0.97E1
+0.97e1
 Pook            
 0
 cat
-0.32E1
+0.32e1
 Peaches         
 1
 dog
-0.123E2
+0.123e2
 Gizmo           
 4
 budgerigar
-0.2E0
+0.2e0
 Bubbles         
 3
 gold fish
-0.1E0
+0.1e0
 Fetching third result set
 Bubbles         
 Gizmo           

@@ -7,8 +7,8 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_unicode_clob
     assert_expect do
-      if RUBY_VERSION =~ /1.9/
-        conn = IBM_DB.connect database,user,password
+      if RUBY_VERSION =~ /2/
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
         if conn
           server = IBM_DB::server_info( conn )
           drop = 'DROP TABLE table_6755'
@@ -34,12 +34,14 @@ class TestIbmDb < Test::Unit::TestCase
           # First row should contain ASCII characters for 'database' with bytesize 8
           # Second row should contain Unicode characters for 'database' with bytesize 8
           unless res["COL1"].bytesize  == 8
+            puts res["COL1"].bytesize
             puts "Test failed"
           else
             puts "Byte size test for ascii chars passed"
           end
 
           unless res["COL2"].bytesize  == 8
+            puts res["COL2"].bytesize
             puts "Test failed"
           else
             puts "Byte size test for ascii chars passed"
@@ -48,6 +50,7 @@ class TestIbmDb < Test::Unit::TestCase
           res = IBM_DB.fetch_assoc stmt
 
           unless res["COL1"].bytesize  == 12 && res["COL1"].eql?(unicode_val)
+            puts res["COL1"].bytesize
             puts "Test failed"
           else
             puts "Byte size test for unicode chars passed"

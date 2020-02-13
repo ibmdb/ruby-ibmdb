@@ -16,13 +16,13 @@ require 'fileutils'
 
 if (ENV['SINGLE_RUBY_TEST'] != nil && !ENV['SINGLE_RUBY_TEST'].empty?)
 	testfile = "./tests/" + ENV['SINGLE_RUBY_TEST']
-  if RUBY_VERSION =~ /1.9/
+  if RUBY_VERSION =~ /2/
     Dir[testfile].each { |file| require file }
   else
     Dir[testfile].each { |file| require file unless file =~ /unicode/i}
   end
 else
-  if RUBY_VERSION =~ /1.9/
+  if RUBY_VERSION =~ /2/
 	  Dir['./tests/test_*.rb'].each { |file| require file }
   else
 	  Dir['./tests/test_*.rb'].each { |file| require file unless file =~ /unicode/i }
@@ -66,7 +66,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_luw
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/)
       method_caller = caller[1].split(':')[0] + ":"+ caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -76,7 +76,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_zos
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) 
       method_caller = caller[1].split(':')[0] + caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -86,7 +86,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_systemi
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/)
       method_caller = caller[1].split(':')[0] + caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
