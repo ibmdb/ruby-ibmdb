@@ -6,8 +6,8 @@ Rails Adapter/Ruby Driver for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 
 ibm_db gem version 4.0.0
 
 Requirements:
- Ruby : 2.2.6
- Rails : 5.0.7 
+ Ruby should be installed(Ruby version should be >=2.5.x and <= 2.6.5)
+ For developing rails appications Rails should be 6.0.0
 ```
 
  
@@ -18,6 +18,13 @@ Issue the following command to install the ibm_db gem
 
 ```
 gem install ibm_db
+
+```
+
+For Windows please set the below variable:-
+
+```
+set RUBY_DLL_PATH=path\to\clidriver\bin
 ```
 
 Contacts
