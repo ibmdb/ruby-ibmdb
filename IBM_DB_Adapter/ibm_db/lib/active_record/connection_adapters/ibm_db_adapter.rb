@@ -20,9 +20,6 @@ require 'active_record/connection_adapters/sql_type_metadata'
 
 module CallChain
   def self.caller_method(depth=1)
-    # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-    #   f.puts "1"
-    # end
 		parse_caller(caller(depth+1).first).last
 	end
 
@@ -30,9 +27,6 @@ module CallChain
 
 	# Copied from ActionMailer
   def self.parse_caller(at)
-    # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-    #   f.puts "2"
-    # end
 		if /^(.+?):(\d+)(?::in `(.*)')?/ =~ at
 			file   = Regexp.last_match[1]
 			line   = Regexp.last_match[2].to_i
@@ -412,19 +406,13 @@ module ActiveRecord
 
     module SchemaStatements
 	
-    def internal_string_options_for_primary_key # :nodoc:					
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "insert_sting_options_for_primary_key"
-      # end
+    def internal_string_options_for_primary_key # :nodoc:
 			{ primary_key: true}		
 			{ version_options: "PRIMARY KEY NOT NULL"}					
 		 end
 		
     def drop_table(table_name,options={})
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "drop_table === #{table_name} === #{options}"
-      # end
-        execute("DROP TABLE #{quote_table_name(table_name)}", options)
+      execute("DROP TABLE #{quote_table_name(table_name)}", options)
       #execute("DROP TABLE#{' IF EXISTS' if options[:if_exists]} #{quote_table_name(table_name)}"
 		end
 	   
@@ -434,16 +422,10 @@ module ActiveRecord
       end
 =end	  
     def create_table_definition(*args, **options)
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "create_table_defination === #{args} === #{options}"
-      # end
 			TableDefinition.new(self, *args, **options)
 		end
 	  
-    def remove_foreign_key(from_table, options_or_to_table = {})    
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "remove_foregin_key === #{from_table} === #{options_or_to_table}"
-      # end
+    def remove_foreign_key(from_table, options_or_to_table = {})
 			return unless supports_foreign_keys?
 
 			if options_or_to_table.is_a?(Hash)		  
@@ -475,9 +457,6 @@ module ActiveRecord
 	#	delegate :precision, :scale, :limit, :type, :sql_type, to: :sql_type_metadata, allow_nil: true
 	
     def initialize(*)
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "initialize in IBM_DBColumn"
-      # end
         super
 		end 
 		 
@@ -507,9 +486,6 @@ module ActiveRecord
 	module ColumnMethods
 	
       def primary_key(name, type = :primary_key, **options)
-        # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-        #   f.puts "primary_key in ColumnMethods === #{name} === #{type} === #{options}"
-        # end
 			  column(name, type, options.merge(primary_key: true))
 		  end
 	  
@@ -685,9 +661,6 @@ module ActiveRecord
 		  # the DEFAULT option for the native XML datatype
 		  def column(name, type, options ={})
       # construct a column definition where @base is adaptor instance
-      # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-      #   f.puts "column in TableDefinations === #{name} === #{type} === #{options}"
-      # end
 			column = ColumnDefinition.new(name, type)
 			
 			# DB2 does not accept DEFAULT NULL option for XML
@@ -1840,9 +1813,6 @@ module ActiveRecord
       # IBM data servers do not support limits on certain data types (unlike MySQL)
       # Limit is supported for the {float, decimal, numeric, varchar, clob, blob, graphic, vargraphic} data types.
       def type_to_sql(type, limit=nil, precision=nil, scale=nil )
-        # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-        #   f.puts "type_to_sql type #{type} ====limit  #{limit} ===precision #{precision} ===scale #{scale}"
-        # end
         if type.to_sym == :decimal
           if limit.class == Hash
             if limit.has_key?("precision".to_sym)
@@ -2223,9 +2193,6 @@ module ActiveRecord
 	  
       # Returns an array of Column objects for the table specified by +table_name+
       def columns(table_name)
-        # open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-        #   f.puts "def column ==== #{table_name}"
-        # end
       # to_s required because it may be a symbol.
         table_name = @servertype.set_case(table_name.to_s)
 				
@@ -2451,9 +2418,6 @@ module ActiveRecord
       #  change_column(:suppliers, :name, :string, :limit => 80)
       #  change_column(:accounts, :description, :text)
       def change_column(table_name, column_name, type, options = {})
-        open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-          f.puts "change_column 2451 === #{table_name} === #{column_name} === #{type} === #{options}"
-        end
         @servertype.change_column(table_name, column_name, type, options)
       end
 
@@ -2666,9 +2630,6 @@ To remove the column, the table must be dropped and recreated without the #{colu
 
       # Akhil Tcheck for if_exits added so that it will try to drop even if the table does not exit.
       def execute(sql, name = nil)
-        open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-          f.puts "execute === #{sql} === #{name}"
-        end
       if name == nil || name.class == String
         begin
           if stmt = IBM_DB.exec(@adapter.connection, sql)
@@ -2810,9 +2771,6 @@ To remove the column, the table must be dropped and recreated without the #{colu
       end
 
       def change_column(table_name, column_name, type, options)
-        open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-          f.puts "change_column 2811 === #{table_name} === #{column_name} === #{type} === #{options}"
-        end 
         if !options[:default].nil?
            change_column_default(table_name, column_name, options[:default])
       else
@@ -3228,9 +3186,6 @@ SET WITH DEFAULT #{@adapter.quote(default)}"
       end
 
       def change_column(table_name, column_name, type, options)
-        open('C:\Users\rakhil\Desktop\git_commands\debug1.log', 'a') do |f|
-          f.puts "change_column 3225 === #{table_name} === #{column_name} === #{type} === #{options}"
-        end
         if !options[:null].nil? && !options[:null]
           execute "ALTER TABLE #{table_name} MODIFY #{column_name} #{@adapter.type_to_sql(type, options[:limit], options[:precision], options[:scale])} NOT NULL"
         else
