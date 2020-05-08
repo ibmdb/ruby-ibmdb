@@ -10,7 +10,7 @@ require 'pathname'
 SPEC = Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '4.0.0'
+  spec.version  = '5.0.0'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec
@@ -18,7 +18,7 @@ SPEC = Gem::Specification.new do |spec|
   spec.email = 'opendev@us.ibm.com'
   spec.homepage = 'https://github.com/ibmdb/ruby-ibmdb'
   spec.rubyforge_project = 'rubyibm'
-  spec.required_ruby_version = '>= 2.2.2'
+  spec.required_ruby_version = '>= 2.5.0'
   spec.add_dependency('activerecord', '>= 5.0.7')
   spec.requirements << 'ActiveRecord, at least 5.0.7'
 
