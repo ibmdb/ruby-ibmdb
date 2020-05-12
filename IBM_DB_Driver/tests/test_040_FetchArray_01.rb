@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_040_FetchArray_01
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       IBM_DB::autocommit conn, IBM_DB::SQL_AUTOCOMMIT_OFF
       
@@ -41,19 +41,19 @@ __LUW_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __ZOS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __SYSTEMI_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __IDS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1

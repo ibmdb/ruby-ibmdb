@@ -11,7 +11,7 @@ class TestIbmDb < Test::Unit::TestCase
     assert_expect do
       nameVal = 'praveen𝄞'
       
-      conn = IBM_DB.connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       IBM_DB.exec conn, "drop table vargraphictest" rescue nil
 
       IBM_DB.exec conn, "create table vargraphictest(id integer, name vargraphic(15))"

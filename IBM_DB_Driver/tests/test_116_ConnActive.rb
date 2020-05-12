@@ -16,7 +16,7 @@ class TestIbmDb < Test::Unit::TestCase
         puts "Is not active"
       end
 
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       is_alive = IBM_DB::active conn
       if is_alive
         puts "Is active"
@@ -36,7 +36,7 @@ class TestIbmDb < Test::Unit::TestCase
       puts IBM_DB::active(conn)
       puts IBM_DB::active(conn)
       p IBM_DB::active(conn)
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       puts IBM_DB::active(conn)
       puts IBM_DB::active(conn)
       p IBM_DB::active(conn)

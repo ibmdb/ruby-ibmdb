@@ -9,10 +9,10 @@ class TestIbmDb < Test::Unit::TestCase
   def test_createDbNX
     assert_expect do
       dbToCreate = "crtdb"
-      conn_attach_str = "ATTACH=true;UID=#{user};PWD=#{password};"
+      conn_attach_str = "HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password};ATTACH=true"
 	  
       #Attach to the instance where database is to be created
-      ins_conn = IBM_DB.connect conn_attach_str, '', ''
+      ins_conn = IBM_DB.connect(conn_attach_str, '', '')
       
       if ins_conn
         puts "Instance attachment for creation successful"
@@ -23,7 +23,7 @@ class TestIbmDb < Test::Unit::TestCase
 
           #On successful creation try connectiing to the newly created database
           begin
-            conn = IBM_DB.connect dbToCreate, user, password
+            conn = IBM_DB.connect("DATABASE=#{dbToCreate};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
             puts "Connection to newly created database is successful"
             IBM_DB.close conn
           rescue StandardError => e

@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_createDropDb
     assert_expect do
       dbToCreate = "crtdb"
-      conn_attach_str = "ATTACH=true;UID=#{user};PWD=#{password};"
+      conn_attach_str = "ATTACH=true;HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}"
 	  
       #Attach to the instance where database is to be created
       ins_conn = IBM_DB.connect conn_attach_str, '', ''
@@ -22,7 +22,7 @@ class TestIbmDb < Test::Unit::TestCase
           puts "Database creation successful"
           #On successful creation try connectiing to the newly created database
           begin
-            conn = IBM_DB.connect dbToCreate, user, password
+            conn = IBM_DB.connect("DATABASE=#{dbToCreate};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
             puts "Connection to newly created database is successful"
             IBM_DB.close conn
           rescue StandardError => e
@@ -44,7 +44,7 @@ class TestIbmDb < Test::Unit::TestCase
           puts "Database drop successful"
           #On successful drop try connectiing to the database. It should fail
           begin
-            conn = IBM_DB.connect dbToCreate, user, password
+            conn = IBM_DB.connect("DATABASE=#{dbToCreate};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
             puts "Connection to dropped database is successful"
             IBM_DB.close conn
           rescue StandardError => e

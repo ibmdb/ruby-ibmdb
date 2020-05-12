@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_016_InsertDeleteRowCount_02
     assert_expect do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       if conn
         result = IBM_DB::exec conn,"insert into t_string values(123,1.222333,'one to one')"
         if result

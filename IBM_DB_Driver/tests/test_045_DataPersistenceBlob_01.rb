@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_045_DataPersistenceBlob_01
     assert_expect do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       fp = File.new("tests/pic1_out.jpg", "wb");
       result = IBM_DB::exec conn, "SELECT picture FROM animal_pics WHERE name = 'Helmut'";
       row = IBM_DB::fetch_array result

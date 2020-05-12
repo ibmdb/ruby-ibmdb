@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_090_ConnmsgWrngdbalias
     assert_expectf do
       begin
-        conn = IBM_DB.connect("x", user, password)
+        conn = IBM_DB.connect("DATABASE=x;HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
         if conn
           puts "??? No way."

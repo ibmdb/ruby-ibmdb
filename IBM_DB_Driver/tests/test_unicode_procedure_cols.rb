@@ -7,8 +7,8 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_unicode_procedure_cols
     assert_expect do
-      if RUBY_VERSION =~ /1.9/
-        conn = IBM_DB.connect database,user,password
+      if RUBY_VERSION =~ /2/
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
         uproc = "UNI𝄞PROC"
         param = "P𝄞RAM"

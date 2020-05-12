@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_054_GetSetCursorTypes
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       stmt = IBM_DB::exec conn, "SELECT * FROM animals"
       val = IBM_DB::get_option stmt, IBM_DB::SQL_ATTR_CURSOR_TYPE, 0

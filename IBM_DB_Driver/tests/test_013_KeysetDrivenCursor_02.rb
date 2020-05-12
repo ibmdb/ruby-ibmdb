@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_013_KeysetDrivenCursor_02
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         stmt = IBM_DB::prepare conn, "SELECT name FROM animals WHERE weight < 10.0", {IBM_DB::SQL_ATTR_CURSOR_TYPE => IBM_DB::SQL_CURSOR_KEYSET_DRIVEN}

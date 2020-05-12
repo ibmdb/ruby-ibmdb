@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_000_PrepareDb
    assert_expect do
     # Make a connection
-    conn = IBM_DB::connect database, user, password
+    conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
     # Get the server type
     server = IBM_DB::server_info( conn )
@@ -261,7 +261,8 @@ class TestIbmDb < Test::Unit::TestCase
     stmt = IBM_DB::prepare conn, insert
     if stmt
       for photo in emp_photo
-        result = IBM_DB::execute stmt, photo
+        # Akhil:- commented below line because it is try to insert same row( 1st Insert using normal and 2nd insert using bind_param ).
+        #result = IBM_DB::execute stmt, photo
         empno = photo[0]
         photo_format = photo[1]
         picture =  open(File.dirname(__FILE__) + "/#{photo[2]}",'rb') {|f| f.read}

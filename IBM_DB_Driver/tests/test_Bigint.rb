@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_Bigint
     assert_expect do
-      conn = IBM_DB.connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       drop_table_sql = 'drop table table0'
       stmt = IBM_DB.exec(conn,drop_table_sql)  rescue nil
 

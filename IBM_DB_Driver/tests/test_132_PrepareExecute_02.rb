@@ -12,7 +12,7 @@ class TestIbmDb < Test::Unit::TestCase
         FROM animals
         WHERE id = ? AND name = ?"
       
-      conn = IBM_DB::connect database, user, password
+        conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         stmt = IBM_DB::prepare conn, sql
@@ -35,19 +35,19 @@ __LUW_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __ZOS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __SYSTEMI_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __IDS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1

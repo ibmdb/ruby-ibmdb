@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_061_TableMetadata
     assert_expectf do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       create = 'CREATE SCHEMA AUTHORIZATION t'
       result = IBM_DB::exec(conn, create) rescue nil

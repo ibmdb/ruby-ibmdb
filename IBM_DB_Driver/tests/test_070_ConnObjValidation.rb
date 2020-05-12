@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_070_ConnObjValidation
     assert_expectf do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         if conn.class == IBM_DB::Connection

@@ -8,9 +8,9 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_persistenceConn
     assert_expect do
-      pconn = IBM_DB.pconnect(database,user,password)
+      pconn = IBM_DB.pconnect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       IBM_DB.close pconn
-      pconn1 = IBM_DB.pconnect(database,user,password)
+      pconn1 = IBM_DB.pconnect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       unless pconn.eql?(pconn1)
         puts "Connection persistence is broken"
       else

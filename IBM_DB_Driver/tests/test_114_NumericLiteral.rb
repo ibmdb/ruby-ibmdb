@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_114_NumericLiteral
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         drop = "drop table numericliteral"

@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_102_numfieldswithvalues
     assert_expect do
-      conn = IBM_DB::connect db, username, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       if !conn
         print IBM_DB::conn_errormsg

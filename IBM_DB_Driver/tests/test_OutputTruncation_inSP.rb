@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_OutputTruncation_inSP
     assert_expect do
-      conn = IBM_DB::connect db,username,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       drop = "DROP PROCEDURE username.SPROC"
       IBM_DB::exec(conn,drop)
       sql = "create procedure username.SPROC(INOUT input varchar(100),OUT output varchar(100))LANGUAGE SQL SPECIFIC SPROC BEGIN SET output = input ; SET input = 'hello world';END"

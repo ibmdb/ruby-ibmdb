@@ -8,24 +8,24 @@ require 'stringio'
 require 'test/unit'
 require 'fileutils'
 
-unless ENV['DB2INSTANCE']
-  puts 'Database environment is not set up'
-  puts 'Source the DB2 profile (please refer to the "Setup to utilize ibm_db" in the README file) and retry'
-  exit -1
-end
+#unless ENV['DB2INSTANCE']
+ # puts 'Database environment is not set up'
+ # puts 'Source the DB2 profile (please refer to the "Setup to utilize ibm_db" in the README file) and retry'
+ # exit -1
+#end
 
 if (ENV['SINGLE_RUBY_TEST'] != nil && !ENV['SINGLE_RUBY_TEST'].empty?)
-  testfile = "tests/" + ENV['SINGLE_RUBY_TEST']
-  if RUBY_VERSION =~ /1.9/
+	testfile = "./tests/" + ENV['SINGLE_RUBY_TEST']
+  if RUBY_VERSION =~ /2/
     Dir[testfile].each { |file| require file }
   else
     Dir[testfile].each { |file| require file unless file =~ /unicode/i}
   end
 else
-  if RUBY_VERSION =~ /1.9/
-    Dir['tests/test_*.rb'].each { |file| require file }
+  if RUBY_VERSION =~ /2/
+	  Dir['./tests/test_*.rb'].each { |file| require file }
   else
-    Dir['tests/test_*.rb'].each { |file| require file unless file =~ /unicode/i }
+	  Dir['./tests/test_*.rb'].each { |file| require file unless file =~ /unicode/i }
   end
 end
 
@@ -47,7 +47,8 @@ class TestIbmDb < Test::Unit::TestCase
   ####################################################################
 
   def setup
-    prepconn = IBM_DB::connect database, user, password
+    #prepconn = IBM_DB::connect hostname, database, user, password, port
+    prepconn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
     IBM_DB::close prepconn
   end
 
@@ -65,7 +66,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_luw
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/)
       method_caller = caller[1].split(':')[0] + ":"+ caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -75,7 +76,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_zos
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) 
       method_caller = caller[1].split(':')[0] + caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -85,7 +86,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_systemi
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/)
       method_caller = caller[1].split(':')[0] + caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -95,7 +96,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def expected_ids
-    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/) && (RUBY_VERSION =~ /1.9/)
+    if (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/)
       method_caller = caller[1].split(':')[0] + caller[1].split(':')[1]
     else
       method_caller = caller[1].split(':')[0]
@@ -105,7 +106,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def assert_expect &block
-    prepconn = IBM_DB::connect database, user, password
+    prepconn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
     server = IBM_DB::server_info( prepconn )
     IBM_DB::close prepconn
     if (server.DBMS_NAME == 'AS')
@@ -136,7 +137,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def assert_throw_block &block
-    prepconn = IBM_DB::connect database, user, password
+    prepconn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
     server = IBM_DB::server_info( prepconn )
     IBM_DB::close prepconn
     if (server.DBMS_NAME == 'AS')
@@ -175,7 +176,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def assert_expectf &block
-    prepconn = IBM_DB::connect database, user, password
+    prepconn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
     server = IBM_DB::server_info( prepconn )
     IBM_DB::close prepconn
     if (server.DBMS_NAME == 'AS')
@@ -201,7 +202,7 @@ class TestIbmDb < Test::Unit::TestCase
   end
 
   def assert_expectregex &block
-    prepconn = IBM_DB::connect database, user, password
+    prepconn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
     server = IBM_DB::server_info( prepconn )
     IBM_DB::close prepconn
     if (server.DBMS_NAME == 'AS')

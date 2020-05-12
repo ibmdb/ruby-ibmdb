@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_251_FreeResultInvResultSet
     assert_expect do
-      conn = IBM_DB.connect db,user,password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
 
       result99 = nil 
       result = IBM_DB.exec conn, "select * from sales"

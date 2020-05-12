@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_220_PersistenceConn
     assert_expect do
-      conn = IBM_DB::pconnect database, user, password
+      conn = IBM_DB.pconnect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         IBM_DB::autocommit conn, IBM_DB::SQL_AUTOCOMMIT_OFF

@@ -2,11 +2,11 @@ source:
     test_dir: tests 
 
 connection:
-    database: sample
-    user:     db2inst1
-    password: password
+    database: db
+    user:     uname
+    password: pass
     hostname: localhost
-    port:     60000
+    port:     50000
 
 trusted_connection:
     auth_user: auth_user

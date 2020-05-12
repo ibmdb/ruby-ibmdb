@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_048_DataPersistenceBlob_02
     assert_expect do
-      conn = IBM_DB::connect database, username, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       if !conn
        print "Could not make a connection."; return 0
       end

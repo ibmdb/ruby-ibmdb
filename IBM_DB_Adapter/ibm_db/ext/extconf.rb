@@ -3,6 +3,7 @@ require 'net/http'
 require 'open-uri'
 require 'rubygems/package'
 require 'zlib'
+require 'zip'
 require 'fileutils'
 
 
@@ -42,6 +43,7 @@ module Kernel
 end
 
 DOWNLOADLINK = ''
+ZIP = false
 
 if(RUBY_PLATFORM =~ /aix/i)
   #AIX
@@ -94,6 +96,15 @@ elsif (RUBY_PLATFORM =~ /darwin/i)
   else
         puts "Mac OS 32 bit not supported. Please use an x64 architecture."
   end
+elsif (RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/)
+  ZIP = true
+  if(is64Bit)
+    puts "Detected platform - windows 64"
+    DOWNLOADLINK= "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ntx64_odbc_cli.zip"
+  else
+    puts "Detected platform - windows 32"
+    DOWNLOADLINK= "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/nt32_odbc_cli.zip"
+  end
 end
 
 def downloadCLIPackage(destination, link = nil)
@@ -104,7 +115,11 @@ def downloadCLIPackage(destination, link = nil)
   end
 
   uri = URI.parse(downloadLink)
-  filename = "#{destination}/clidriver.tar.gz"
+  if ZIP
+    filename = "#{destination}/clidriver.zip"
+  else
+    filename = "#{destination}/clidriver.tar.gz"
+  end
 
   headers = {
     'Accept-Encoding' => 'identity',
@@ -119,6 +134,18 @@ def downloadCLIPackage(destination, link = nil)
   f.close()
 
   filename
+end
+
+def extract_zip(file, destination)
+  FileUtils.mkdir_p(destination)
+
+  Zip::File.open(file) do |zip_file|
+    zip_file.each do |f|
+      fpath = File.join(destination, f.name)
+      FileUtils.mkdir_p(File.dirname(fpath))
+      zip_file.extract(f, fpath) unless File.exist?(fpath)
+    end
+  end
 end
 
 def untarCLIPackage(archive,destination)
@@ -157,8 +184,12 @@ if(IBM_DB_HOME == nil || IBM_DB_HOME == '')
 		puts "Environment variable IBM_DB_HOME is not set. Downloading and setting up the DB2 client driver\n"
 		destination = "#{File.expand_path(File.dirname(File.dirname(__FILE__)))}/../lib"
 	
-		archive = downloadCLIPackage(destination)
-		untarCLIPackage(archive,destination)
+    archive = downloadCLIPackage(destination)
+    if (ZIP)
+      extract_zip(archive, destination)
+    else 
+      untarCLIPackage(archive,destination)
+    end
 	
 		IBM_DB_HOME="#{destination}/clidriver"
 	

@@ -11,7 +11,7 @@ class TestIbmDb < Test::Unit::TestCase
       drop_sql   = "drop table alientab"
       create_sql = "create table alientab(id integer, n𝄞me varchar(20))"
 
-      conn = IBM_DB.connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       IBM_DB.exec conn, drop_sql rescue nil
 
       stmt = IBM_DB.exec conn, create_sql

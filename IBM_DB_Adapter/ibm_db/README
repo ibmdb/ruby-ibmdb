@@ -1,5 +1,5 @@
 =====================================================================
-README for the IBM_DB Adapter (4.0.0) and Driver (3.0.5) (2018/05/24)
+README for the IBM_DB Adapter (5.0.0) and Driver (3.0.5)
 For ActiveRecord Version >= 5.0.7 (and Rails >= 5.0.7)
 =====================================================================
 
@@ -113,7 +113,7 @@ here only for reference.
   Build the driver:
     - $ cd rubyibm_source/IBM_DB_Adapter/ibm_db/ext
     - $ ruby extconf.rb
-    - $ make
+    - $ ridk exec make
 
   Build the ibm_db gem
     - $ cp rubyibm_source/IBM_DB_Adapter/ibm_db/ext/ibm_db.so rubyibm_source/IBM_DB_Adapter/ibm_db/lib 

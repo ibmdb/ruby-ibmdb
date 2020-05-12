@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_260_FetchArray_03
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         stmt = IBM_DB::exec conn, "SELECT id, breed, name, weight FROM animals WHERE id = 0"
@@ -31,19 +31,19 @@ __LUW_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __ZOS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __SYSTEMI_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1
 __IDS_EXPECTED__
 0
 cat
 Pook            
-0.32E1
+0.32e1

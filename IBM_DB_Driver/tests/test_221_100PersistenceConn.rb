@@ -11,7 +11,7 @@ class TestIbmDb < Test::Unit::TestCase
       pconn = []
       
       for i in (1 .. 100)
-        pconn[i] = IBM_DB::pconnect(database, user, password)
+        pconn[i] = IBM_DB.pconnect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       end
       
       if pconn[33]

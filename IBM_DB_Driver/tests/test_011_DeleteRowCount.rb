@@ -8,7 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_011_DeleteRowCount
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         IBM_DB::autocommit conn, IBM_DB::SQL_AUTOCOMMIT_OFF

@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_144_BindParamFile
     assert_expect do
 
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       
       if conn
         # Drop the test table, in case it exists

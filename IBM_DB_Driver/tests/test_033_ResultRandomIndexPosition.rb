@@ -8,13 +8,13 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_033_ResultRandomIndexPosition
     assert_expect do
-      conn = IBM_DB::connect database, user, password
+      conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       server = IBM_DB::server_info( conn )
       
       if conn
         stmt = IBM_DB::exec conn, "SELECT id, breed, name, weight FROM animals WHERE id = 0"
         
-        while (IBM_DB::fetch_row(stmt) == TRUE)
+        while (IBM_DB::fetch_row(stmt) == true)
           weight = IBM_DB::result stmt, 3
           puts "string(#{weight.length}) #{weight.inspect}"
           breed = IBM_DB::result stmt, 1

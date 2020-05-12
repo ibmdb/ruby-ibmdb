@@ -8,9 +8,7 @@ class TestIbmDb < Test::Unit::TestCase
 
   def test_005_UnCtlgConnWithInvUidPwd
     assert_expect do
-      baduser = "non_user"
-      badpass = "invalid_password"
-      dsn = "DATABASE=#{db};UID=#{baduser};PWD=#{badpass};"
+      dsn = "DATABASE=sample;HOSTNAME=#{hostname};PORT=#{port};UID=not_a_user;PWD=inv_pass"
       begin
         conn = IBM_DB.connect dsn, "", ""
         if conn
