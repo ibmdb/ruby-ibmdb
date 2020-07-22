@@ -31,7 +31,7 @@
 */
 int _ruby_ibm_db_SQLConnect_helper(connect_args *data) {
   if(data->ctlg_conn == 1) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
     return SQLConnect( (SQLHDBC)*(data->hdbc), (SQLCHAR *)data->database,
             (SQLSMALLINT)data->database_len, (SQLCHAR *)data->uid, (SQLSMALLINT)data->uid_len,
             (SQLCHAR *)data->password, (SQLSMALLINT)data->password_len );
@@ -41,7 +41,7 @@ int _ruby_ibm_db_SQLConnect_helper(connect_args *data) {
             data->password, data->password_len );
 #endif
   } else {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
     return SQLDriverConnect( (SQLHDBC) *(data->hdbc), (SQLHWND)NULL,
             (SQLCHAR*)data->database, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT );
 #else
@@ -100,7 +100,7 @@ int _ruby_ibm_db_SQLDescribeCol_helper(describecol_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   rc = SQLDescribeColW( (SQLHSTMT)data->stmt_res->hstmt, (SQLSMALLINT)(data->col_no),
       data->stmt_res->column_info[i].name, data->buff_length, &(data->name_length),
       &(data->stmt_res->column_info[i].type), &(data->stmt_res->column_info[i].size),
@@ -140,7 +140,7 @@ int _ruby_ibm_db_SQLColumnPrivileges_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLColumnPrivileges( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
             data->owner, data->owner_len, data->table_name, data->table_name_len, 
             data->column_name, data->column_name_len );
@@ -164,7 +164,7 @@ int _ruby_ibm_db_SQLColumns_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLColumns( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
             data->owner, data->owner_len, data->table_name, data->table_name_len,
             data->column_name, data->column_name_len );
@@ -187,7 +187,7 @@ int _ruby_ibm_db_SQLPrimaryKeys_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLPrimaryKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
                 data->owner, data->owner_len, data->table_name, data->table_name_len );
 #else
@@ -210,7 +210,7 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
 
   if(!NIL_P(data->table_type))
   {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLForeignKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
                 data->owner, data->owner_len, NULL , SQL_NTS, NULL, SQL_NTS,
                 NULL, SQL_NTS, data->table_name, data->table_name_len );
@@ -222,7 +222,7 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
   }
   else
   {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLForeignKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
                 data->owner, data->owner_len, data->table_name , data->table_name_len, NULL, SQL_NTS,
                 NULL, SQL_NTS, NULL, SQL_NTS );
@@ -247,7 +247,7 @@ int _ruby_ibm_db_SQLProcedureColumns_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLProcedureColumns( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len, data->owner,
           data->owner_len, data->proc_name, data->proc_name_len, data->column_name, data->column_name_len );
 #else
@@ -269,7 +269,7 @@ int _ruby_ibm_db_SQLProcedures_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLProcedures( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len, data->owner,
           data->owner_len, data->proc_name, data->proc_name_len );
 #else
@@ -291,7 +291,7 @@ int _ruby_ibm_db_SQLSpecialColumns_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLSpecialColumns( (SQLHSTMT) data->stmt_res->hstmt, SQL_BEST_ROWID, data->qualifier, data->qualifier_len,
                 data->owner, data->owner_len, data->table_name, data->table_name_len,
                 (SQLUSMALLINT)data->scope, SQL_NULLABLE );
@@ -314,7 +314,7 @@ int _ruby_ibm_db_SQLStatistics_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLStatistics( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len, data->owner,
           data->owner_len, data->table_name, data->table_name_len, (SQLUSMALLINT)data->unique, SQL_QUICK );
 #else
@@ -336,7 +336,7 @@ int _ruby_ibm_db_SQLTablePrivileges_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLTablePrivileges( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,
             data->owner, data->owner_len, data->table_name, data->table_name_len );
 #else
@@ -358,7 +358,7 @@ int _ruby_ibm_db_SQLTables_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLTables( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len, data->owner,
           data->owner_len, data->table_name, data->table_name_len, data->table_type, data->table_type_len );
 #else
@@ -379,7 +379,7 @@ int _ruby_ibm_db_SQLExecDirect_helper(exec_cum_prepare_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLExecDirect( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );  
 #else
   rc = SQLExecDirectW( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );
@@ -395,7 +395,7 @@ int _ruby_ibm_db_SQLExecDirect_helper(exec_cum_prepare_args *data) {
 */
 int _ruby_ibm_db_SQLCreateDB_helper(create_drop_db_args *data) {
   int rc = 0;
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   #ifdef _WIN32
     HINSTANCE cliLib = NULL;
     FARPROC sqlcreatedb;
@@ -450,7 +450,7 @@ int _ruby_ibm_db_SQLCreateDB_helper(create_drop_db_args *data) {
 */
 int _ruby_ibm_db_SQLDropDB_helper(create_drop_db_args *data) {
   int rc = 0;
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   #ifdef _WIN32
     HINSTANCE cliLib = NULL;
     FARPROC sqldropdb;
@@ -506,7 +506,7 @@ int _ruby_ibm_db_SQLPrepare_helper(exec_cum_prepare_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLPrepare( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );
 #else
   rc = SQLPrepareW( (SQLHSTMT) data->stmt_res->hstmt, data->stmt_string, (SQLINTEGER)data->stmt_string_len );
@@ -742,7 +742,7 @@ int _ruby_ibm_db_SQLRowCount_helper(sql_row_count_args *data) {
    This function calls SQLGetInfo cli call to get general information about DBMS, which the app is connected to
 */
 int _ruby_ibm_db_SQLGetInfo_helper(get_info_args *data) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   return SQLGetInfo( data->conn_res->hdbc, data->infoType, data->infoValue, data->buff_length, data->out_length);
 #else
   return SQLGetInfoW( data->conn_res->hdbc, data->infoType, data->infoValue, data->buff_length, data->out_length);
@@ -753,7 +753,7 @@ int _ruby_ibm_db_SQLGetInfo_helper(get_info_args *data) {
    This function calls SQLGetDiagRec cli call to get the current values of a diagnostic record that contains error
 */
 int _ruby_ibm_db_SQLGetDiagRec_helper(get_diagRec_args *data) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   int rc= SQLGetDiagRecW( data->hType, data->handle, data->recNum, data->SQLState, data->NativeErrorPtr,
                               data->msgText, data->buff_length, data->text_length_ptr );
   data->return_code=rc;
@@ -768,7 +768,7 @@ int _ruby_ibm_db_SQLGetDiagRec_helper(get_diagRec_args *data) {
    This function calls SQLSetStmtAttr cli call to set attributes related to a statement
 */
 int _ruby_ibm_db_SQLSetStmtAttr_helper(set_handle_attr_args *data) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   return SQLSetStmtAttr( (SQLHSTMT) *(data->handle), data->attribute, data->valuePtr, data->strLength );
 #else
   return SQLSetStmtAttrW( (SQLHSTMT) *(data->handle), data->attribute, data->valuePtr, data->strLength );
@@ -779,7 +779,7 @@ int _ruby_ibm_db_SQLSetStmtAttr_helper(set_handle_attr_args *data) {
    This function calls SQLSetConnectAttr cli call to set attributes that govern aspects of connections
 */
 int _ruby_ibm_db_SQLSetConnectAttr_helper(set_handle_attr_args *data) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   return SQLSetConnectAttr( (SQLHDBC) *(data->handle), data->attribute, data->valuePtr, data->strLength );
 #else
   return SQLSetConnectAttrW( (SQLHDBC) *(data->handle), data->attribute, data->valuePtr, data->strLength );
@@ -809,7 +809,7 @@ int _ruby_ibm_db_SQLGetStmtAttr_helper(get_handle_attr_args *data) {
    This function calls SQLGetConnectAttr cli call to set an environment attribute
 */
 int _ruby_ibm_db_SQLGetConnectAttr_helper(get_handle_attr_args *data) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   return SQLGetConnectAttr( (SQLHDBC) *(data->handle), data->attribute, data->valuePtr, 
             data->buff_length, data->out_length);
 #else

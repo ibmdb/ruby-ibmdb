@@ -45,7 +45,7 @@ LIBRUBYARG_STATIC = $(LIBRUBY_A)
 OUTFLAG = -Fe
 COUTFLAG = -Fo
 
-RUBY_EXTCONF_H = unicode_support_version
+RUBY_EXTCONF_H = unicode_support_version.h
 cflags   = 
 optflags = 
 debugflags = 

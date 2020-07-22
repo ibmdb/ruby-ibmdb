@@ -20,7 +20,7 @@
 
 #include "ruby.h"
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   #include "ruby/encoding.h"
 #endif
 
@@ -119,7 +119,7 @@ static VALUE id_id2name;
 
  
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   const int _check_i = 1;
   #define arch_is_bigendian() ( (*(char*)&_check_i) == 0 ) /* returns 0 if the machine is of little endian architecture, 1 if the machine is of bigendian architecture*/
 
@@ -414,7 +414,7 @@ char *estrdup(char *data) {
   return dup;
 }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR *esqlwchardup(SQLWCHAR *data, int len) {
     SQLWCHAR *dup  =  ALLOC_N(SQLWCHAR, len + 1 );
     memset(dup, '\0', (len * sizeof(SQLWCHAR)) + 2 );
@@ -435,7 +435,7 @@ char *estrndup(char *data, int max) {
 }
 
 void strtolower(char *data, int max) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   rb_encoding *enc;
     
   if ( arch_is_bigendian() ){
@@ -447,7 +447,7 @@ void strtolower(char *data, int max) {
 
   if( max > 0 ) {
     while (max--) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       data[max] = rb_enc_tolower((int)data[max], enc);
 #else
       data[max] = tolower(data[max]);
@@ -457,7 +457,7 @@ void strtolower(char *data, int max) {
 }
 
 void strtoupper(char *data, int max) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   rb_encoding *enc;
 
   if ( arch_is_bigendian() ){
@@ -468,7 +468,7 @@ void strtoupper(char *data, int max) {
 #endif
   if( max > 0 ) {
     while (max--) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       data[max] = rb_enc_toupper((int)data[max], enc);
 #else
       data[max] = toupper(data[max]);
@@ -969,7 +969,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
   SQLSMALLINT       length;
   SQLSMALLINT       to_decrement       =  0;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE             print_str          =  Qnil;
 #else
   char*             print_str          =  NULL;
@@ -988,7 +988,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
     stmt_res  =  (stmt_handle *) conn_or_stmt;
   }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   errMsg    =  ALLOC_N( SQLWCHAR, DB2_MAX_ERR_MSG_LEN );
   memset(errMsg, '\0', DB2_MAX_ERR_MSG_LEN * sizeof(SQLWCHAR) );
 
@@ -1025,7 +1025,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
 
   if( release_gil == 1 ){
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLGetDiagRec_helper, get_DiagRec_args,
                                 (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 	  return_code  =get_DiagRec_args->return_code; 						
@@ -1045,7 +1045,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
 
   if ( return_code == SQL_SUCCESS) {
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     while ((p = memchr( (char *)msg, '\n', length * sizeof(SQLWCHAR) ))) {
       to_decrement  =  1;
       *p            = '\0';
@@ -1087,7 +1087,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                 This copying into global should be removed once the deprecated methods 
                 conn_errormsg and conn_error are removed
               */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               memset(IBM_DB_G( __ruby_conn_err_msg), '\0', DB2_MAX_ERR_MSG_LEN * sizeof(SQLWCHAR) );
               memset(IBM_DB_G( __ruby_conn_err_state), '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
 
@@ -1107,7 +1107,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
               conn_res->errorType  =  1;
 
               if( conn_res->ruby_error_state == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                 conn_res->ruby_error_state = ALLOC_N( SQLWCHAR, SQL_SQLSTATE_SIZE + 1 );
 #else
                 conn_res->ruby_error_state = ALLOC_N( char, SQL_SQLSTATE_SIZE + 1 );
@@ -1115,14 +1115,14 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
               }
 
               if( conn_res->ruby_error_msg == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                 conn_res->ruby_error_msg = ALLOC_N( SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
 #else
                 conn_res->ruby_error_msg = ALLOC_N( char, DB2_MAX_ERR_MSG_LEN + 1 );
 #endif
               }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               memset( conn_res->ruby_error_state, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
               memset( conn_res->ruby_error_msg, '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 
@@ -1148,7 +1148,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                   conn_res->errorType  =  0;
 
                   if( conn_res->ruby_error_state == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     conn_res->ruby_error_state = ALLOC_N( SQLWCHAR, SQL_SQLSTATE_SIZE + 1 );
 #else
                     conn_res->ruby_error_state = ALLOC_N(char, SQL_SQLSTATE_SIZE + 1 );
@@ -1156,14 +1156,14 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                   }
 
                   if( conn_res->ruby_error_msg == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     conn_res->ruby_error_msg = ALLOC_N( SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
 #else
                     conn_res->ruby_error_msg = ALLOC_N( char, DB2_MAX_ERR_MSG_LEN + 1 );
 #endif
                   }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                   memset( conn_res->ruby_error_state, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
                   memset( conn_res->ruby_error_msg, '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 
@@ -1186,7 +1186,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                   }
 
                   if( stmt_res->ruby_stmt_err_state == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     stmt_res->ruby_stmt_err_state = ALLOC_N( SQLWCHAR, SQL_SQLSTATE_SIZE + 1 );
 #else
                     stmt_res->ruby_stmt_err_state = ALLOC_N( char, SQL_SQLSTATE_SIZE + 1 );
@@ -1194,14 +1194,14 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                   }
 
                   if( stmt_res->ruby_stmt_err_msg == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     stmt_res->ruby_stmt_err_msg = ALLOC_N( SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
 #else
                     stmt_res->ruby_stmt_err_msg = ALLOC_N( char, DB2_MAX_ERR_MSG_LEN + 1 );
 #endif
                   }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                   memset( stmt_res->ruby_stmt_err_state, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
                   memset( stmt_res->ruby_stmt_err_msg, '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 
@@ -1224,7 +1224,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
                 This copying into global should be removed once the deprecated methods 
                 conn_errormsg and conn_error are removed
               */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               memset( IBM_DB_G(__ruby_stmt_err_state), '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
               memset( IBM_DB_G(__ruby_stmt_err_msg), '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 
@@ -1248,7 +1248,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
         switch (API) {
           case DB_ERR_STATE:
             if ( ret_str != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               memcpy( ret_str, sqlstate, (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
               if( ret_str_len != NULL ) {
                 *ret_str_len = (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR);
@@ -1263,7 +1263,7 @@ static void _ruby_ibm_db_check_sql_errors( void *conn_or_stmt, int resourceType,
             break;
           case DB_ERRMSG:
             if ( ret_str != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               memcpy( ret_str, msg, length );
 #else
               memcpy( ret_str, msg, length );
@@ -1311,7 +1311,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
 
   set_handle_attr_args *handleAttr_args = NULL;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE data_utf16 = Qnil;
 #endif
 
@@ -1330,7 +1330,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           ((stmt_handle*)handle)->s_case_mode = CASE_NATURAL;
           break;
         default:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("ATTR_CASE attribute must be one of CASE_LOWER, CASE_UPPER, or CASE_NATURAL");
 #else
           *error = rb_str_new2("ATTR_CASE attribute must be one of CASE_LOWER, CASE_UPPER, or CASE_NATURAL");
@@ -1349,7 +1349,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           ((conn_handle*)handle)->c_case_mode = CASE_NATURAL;
           break;
         default:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("ATTR_CASE attribute must be one of CASE_LOWER, CASE_UPPER, or CASE_NATURAL");
 #else
           *error = rb_str_new2("ATTR_CASE attribute must be one of CASE_LOWER, CASE_UPPER, or CASE_NATURAL");
@@ -1357,7 +1357,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           return Qfalse;
       }
     } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = _ruby_ibm_db_export_char_to_utf8_rstr("Connection or statement handle must be passed in");
 #else
       *error = rb_str_new2("Connection or statement handle must be passed in");
@@ -1373,7 +1373,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
 
     if (TYPE(data) == T_STRING) {
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
       option_str  =  RSTRING_PTR(data);
 #else
       data_utf16  =  _ruby_ibm_db_export_str_to_utf16(data);
@@ -1396,7 +1396,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
         ruby_xfree( handleAttr_args );
         handleAttr_args = NULL;
         if( handle != NULL && ((stmt_handle *)handle)->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Setting of statement attribute failed: "), 
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(((stmt_handle *)handle)->ruby_stmt_err_msg, 
                                ((stmt_handle *)handle)->ruby_stmt_err_msg_len) 
@@ -1405,7 +1405,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           *error = rb_str_cat2(rb_str_new2("Setting of statement attribute failed: "), ((stmt_handle *)handle)->ruby_stmt_err_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Setting of statement attribute failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Setting of statement attribute failed: <error message could not be retrieved>");
@@ -1438,7 +1438,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
         ruby_xfree( handleAttr_args );
         handleAttr_args = NULL;
         if( handle != NULL && ((stmt_handle *)handle)->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Setting of statement attribute failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(((stmt_handle *)handle)->ruby_stmt_err_msg,
                                ((stmt_handle *)handle)->ruby_stmt_err_msg_len)
@@ -1447,7 +1447,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           *error = rb_str_cat2(rb_str_new2("Setting of statement attribute failed: "), ((stmt_handle *)handle)->ruby_stmt_err_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Setting of statement attribute failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Setting of statement attribute failed: <error message could not be retrieved>");
@@ -1465,7 +1465,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
     handleAttr_args->attribute   =  opt_key;
 
     if (TYPE(data) == T_STRING) {
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
       option_str                   =  RSTRING_PTR(data);
       handleAttr_args->strLength   =  RSTRING_LEN(data);
 #else
@@ -1488,7 +1488,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
         ruby_xfree( handleAttr_args );
         handleAttr_args = NULL;
         if( handle != NULL && ((conn_handle *)handle)->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Setting of connection attribute failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(((conn_handle *)handle)->ruby_error_msg,
                                ((conn_handle *)handle)->ruby_error_msg_len)
@@ -1497,7 +1497,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           *error = rb_str_cat2(rb_str_new2("Setting of connection attribute failed: "), ((conn_handle *)handle)->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Setting of connection attribute failed: <error message could not be retrieved>");
 #else
           *error =  rb_str_new2("Setting of connection attribute failed: <error message could not be retrieved>");
@@ -1521,7 +1521,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
         ruby_xfree( handleAttr_args );
         handleAttr_args = NULL;
         if( handle != NULL && ((conn_handle *)handle)->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Setting of connection attribute failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( ((stmt_handle *)handle)->ruby_stmt_err_msg,
                                ((stmt_handle *)handle)->ruby_stmt_err_msg_len)
@@ -1530,7 +1530,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
           *error = rb_str_cat2(rb_str_new2("Setting of connection attribute failed: "), ((conn_handle *)handle)->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Setting of connection attribute failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Setting of connection attribute failed: <error message could not be retrieved>");
@@ -1547,7 +1547,7 @@ static VALUE _ruby_ibm_db_assign_options( void *handle, int type, long opt_key, 
       }
     }
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = _ruby_ibm_db_export_char_to_utf8_rstr("Connection or statement handle must be passed in");
 #else
       *error = rb_str_new2("Connection or statement handle must be passed in");
@@ -1612,7 +1612,7 @@ static int _ruby_ibm_db_parse_options ( VALUE options, int type, void *handle, V
 static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
 {
   int rc = -1, i;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR  tmp_name[BUFSIZ];
 #else
   SQLCHAR   tmp_name[BUFSIZ];
@@ -1653,7 +1653,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
     stmt_res->column_info[i].loc_type = 0;
 
     stmt_res->column_info[i].name = tmp_name;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     memset(stmt_res->column_info[i].name, '\0', BUFSIZ * sizeof(SQLWCHAR));
 #else
     memset(stmt_res->column_info[i].name, '\0', BUFSIZ);
@@ -1678,7 +1678,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
       return -1;
     }
     if ( describecolargs->name_length <= 0 ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       stmt_res->column_info[i].name        = esqlwchardup((SQLWCHAR*)"", 0);
       stmt_res->column_info[i].name_length = 0;
 #else
@@ -1687,7 +1687,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
     } else if ( describecolargs->name_length >= BUFSIZ ) {
       /* column name is longer than BUFSIZ, free the previously allocate memory and reallocate new*/
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       stmt_res->column_info[i].name         =  (SQLWCHAR*)ALLOC_N(SQLWCHAR, describecolargs->name_length+1);
       stmt_res->column_info[i].name_length  =  describecolargs->name_length ;
 #else
@@ -1711,7 +1711,7 @@ static int _ruby_ibm_db_get_result_set_info(stmt_handle *stmt_res)
         return -1;
       }
     } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       stmt_res->column_info[i].name         =  (SQLWCHAR*) esqlwchardup( tmp_name, describecolargs->name_length );
       stmt_res->column_info[i].name_length  =  describecolargs->name_length;
 #else
@@ -1771,7 +1771,7 @@ static int _ruby_ibm_db_bind_column_helper(stmt_handle *stmt_res)
       case SQL_LONGVARCHAR:
       case SQL_WLONGVARCHAR:
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         bindCol_args->TargetType      =  SQL_C_WCHAR;
         bindCol_args->buff_length     =  (stmt_res->column_info[i].size+1) * sizeof(SQLWCHAR);
         row_data->str_val             =  ALLOC_N(char, bindCol_args->buff_length);
@@ -2017,7 +2017,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
   int           reused       =  0;
   SQLSMALLINT   out_length   =  0;
   VALUE         entry        =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR *server      =  NULL;
   VALUE    iserver      =  Qnil;
   VALUE    idsserver    =  Qnil;
@@ -2089,7 +2089,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         ruby_xfree( handleAttr_args );
         handleAttr_args = NULL;
         if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Allocation of environment handle failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(conn_res->ruby_error_msg, conn_res->ruby_error_msg_len )
                    );
@@ -2097,7 +2097,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
           *error = rb_str_cat2(rb_str_new2("Allocation of environment handle failed: "), conn_res->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Allocation of environment handle failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Allocation of environment handle failed: <error message could not be retrieved>");
@@ -2121,7 +2121,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       if (rc != SQL_SUCCESS) {
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->henv, SQL_HANDLE_ENV, rc, 1, NULL, NULL, -1, 1, 0 );
         if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Setting of Environemnt Attribute during connection failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(conn_res->ruby_error_msg, conn_res->ruby_error_msg_len )
                    );
@@ -2129,7 +2129,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
           *error = rb_str_cat2(rb_str_new2("Setting of Environemnt Attribute during connection failed: "),conn_res->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Setting of Environemnt Attribute during connection failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Setting of Environemnt Attribute during connection failed: <error message could not be retrieved>");
@@ -2149,14 +2149,14 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       if (rc != SQL_SUCCESS) {
         _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->henv, SQL_HANDLE_ENV, rc, 1, NULL, NULL, -1, 1, 0 );
         if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Allocation of connection handle failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_msg, conn_res->ruby_error_msg_len) );
 #else
           *error = rb_str_cat2(rb_str_new2("Allocation of connection handle failed: "),conn_res->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Allocation of connection handle failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Allocation of connection handle failed: <error message could not be retrieved>");
@@ -2232,14 +2232,14 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc );
         SQLFreeHandle( SQL_HANDLE_ENV, conn_res->henv );
         if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Connection failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(conn_res->ruby_error_msg, conn_res->ruby_error_msg_len));
 #else
           *error = rb_str_cat2(rb_str_new2("Connection failed: "),conn_res->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Connection failed: <error message could not be retrieved>");
 #else	
           *error = rb_str_new2("Connection failed: <error message could not be retrieved>");
@@ -2268,14 +2268,14 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         SQLFreeHandle( SQL_HANDLE_DBC, conn_res->hdbc );
         SQLFreeHandle( SQL_HANDLE_ENV, conn_res->henv );		
         if( conn_res != NULL && conn_res->ruby_error_msg != NULL ) {			
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Failed to retrieve autocommit status during connection: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(conn_res->ruby_error_msg, conn_res->ruby_error_msg_len));
 #else
           *error = rb_str_cat2(rb_str_new2("Connection failed: "),conn_res->ruby_error_msg);
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Failed to retrieve autocommit status during connection: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Connection failed: <error message could not be retrieved>");
@@ -2299,7 +2299,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
 #endif
 #endif
       /* Get the server name */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       server = ALLOC_N(SQLWCHAR, 2048);
       memset(server, 0, sizeof(server));
       iserver   =  _ruby_ibm_db_export_char_to_utf16_rstr("AS");
@@ -2315,14 +2315,14 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
       getInfo_args->infoType     =  SQL_DBMS_NAME;
       getInfo_args->infoValue    =  (SQLPOINTER)server;
 	  
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       getInfo_args->buff_length  =  2048 * sizeof(SQLWCHAR);
 #else
       getInfo_args->buff_length  =  2048;
 #endif
       rc = _ruby_ibm_db_SQLGetInfo_helper( getInfo_args );
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
       if (!strcmp((char *)server, "AS")) {
         is_systemi = 1;
       }
@@ -2445,7 +2445,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   VALUE r_db, r_uid, r_passwd, options,return_value;
   VALUE r_literal_replacement = Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_db_utf16, r_uid_utf16, r_passwd_utf16, r_db_ascii;
 #endif
 
@@ -2459,7 +2459,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   conn_args = ALLOC( connect_args );
   memset(conn_args,'\0',sizeof(struct _ibm_db_connect_args_struct));
   
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   conn_args->database      =  (SQLCHAR *)   RSTRING_PTR( r_db );
   conn_args->database_len  =  (SQLSMALLINT) RSTRING_LEN( r_db );
 
@@ -2486,7 +2486,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
 #endif
 
   /* If the string contains a =, set ctlg_conn = 0, to use SQLDriverConnect */
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   if ( strstr( (char *) conn_args->database, "=") != NULL ) {
 #else
   if ( RARRAY_LEN(rb_str_split(r_db_ascii,"=")) > 1) { /*There is no direct API like strstr, hence split string with delimiter as '=' if the returned RARRAY has more than 1 element then set ctlg_conn = 0*/
@@ -2508,7 +2508,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   
   if( isPersistent ) { 
   /*If making a persistent connection calculate the hash key to cache the connection in persistence list*/
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
     helper_args->hKey = rb_str_concat(rb_str_dup(r_uid), r_db); /*A duplicate of r_uid is made so that initial value is intact*/
     helper_args->hKey = rb_str_concat(helper_args->hKey, r_passwd);
     helper_args->hKey = rb_str_concat(rb_str_new2("__ibm_db_"),helper_args->hKey);
@@ -2526,7 +2526,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
     helper_args->literal_replacement  =  SET_QUOTED_LITERAL_REPLACEMENT_ON; /*QUOTED LITERAL replacemnt is ON by default*/
   }
   /* Call the function where the actual logic is being run*/
-  #ifdef UNICODE_SUPPORT_VERSION
+  #ifdef UNICODE_SUPPORT_VERSION_H
 	
 	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_connect_helper2, helper_args, (void *)_ruby_ibm_db_Connection_level_UBF, NULL);	
 	
@@ -2596,7 +2596,7 @@ static int _ruby_ibm_db_set_decfloat_rounding_mode_client_helper(_rounding_mode 
   exec_cum_prepare_args *exec_direct_args  =  NULL;
   bind_col_args         *bindCol_args      =  NULL;
   fetch_data_args       *fetch_args        =  NULL;
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   SQLCHAR *stmt = (SQLCHAR *)"values current decfloat rounding mode";
 #else
   VALUE stmt  =  Qnil;
@@ -2606,7 +2606,7 @@ static int _ruby_ibm_db_set_decfloat_rounding_mode_client_helper(_rounding_mode 
   exec_direct_args = ALLOC( exec_cum_prepare_args );
   memset(exec_direct_args,'\0',sizeof(struct _ibm_db_exec_direct_args_struct));
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   exec_direct_args->stmt_string       =  (SQLWCHAR *)RSTRING_PTR( stmt );
 #else
   exec_direct_args->stmt_string       =  stmt;
@@ -2902,7 +2902,7 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
 
   
   VALUE return_value    =  Qfalse;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE dbName_utf16    = Qnil;
   VALUE codeSet_utf16   = Qnil;
   VALUE mode_utf16      = Qnil;
@@ -2930,7 +2930,7 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
       create_db_args = ALLOC( create_drop_db_args );
 	  memset(create_db_args,'\0',sizeof(struct _ibm_db_create_drop_db_args_struct));
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dbName_utf16               =  _ruby_ibm_db_export_str_to_utf16(dbName);
 
 	  create_db_args->dbName     =  (SQLWCHAR*)RSTRING_PTR(dbName_utf16);
@@ -2973,7 +2973,7 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
 
 	_ruby_ibm_db_clear_conn_err_cache();
 
-#ifdef UNICODE_SUPPORT_VERSION        
+#ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLCreateDB_helper, create_db_args,
                        (void *)_ruby_ibm_db_Connection_level_UBF, NULL );
 		rc = create_db_args->rc;
@@ -2988,7 +2988,7 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
 		if(conn_res->sqlcode == -1005 && 1 == createNX) {
           return_value = Qtrue; /*Return true if database already exists and Create if not existing called*/
 		  /*Clear the error messages*/
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           memset( conn_res->ruby_error_state, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
           memset( conn_res->ruby_error_msg, '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 #else
@@ -3058,7 +3058,7 @@ VALUE ibm_db_createDB(int argc, VALUE *argv, VALUE self)
  *  DropDb helper
  */
 VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE dbName_utf16    = Qnil;
 #endif
 
@@ -3086,7 +3086,7 @@ VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
       drop_db_args = ALLOC( create_drop_db_args );
 	  memset(drop_db_args,'\0',sizeof(struct _ibm_db_create_drop_db_args_struct));
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dbName_utf16             =  _ruby_ibm_db_export_str_to_utf16(dbName);
 
 	  drop_db_args->dbName     =  (SQLWCHAR*)RSTRING_PTR(dbName_utf16);
@@ -3103,7 +3103,7 @@ VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
 
 	_ruby_ibm_db_clear_conn_err_cache();
 
-#ifdef UNICODE_SUPPORT_VERSION        
+#ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDropDB_helper, drop_db_args,
                        (void *)_ruby_ibm_db_Connection_level_UBF, NULL );
 		rc = drop_db_args->rc;
@@ -3451,7 +3451,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
   int   rc            =  0;
   VALUE return_value  =  Qtrue;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   char  *err_str      =  NULL;
 #endif
 
@@ -3461,7 +3461,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
     case 3:
       param_type = SQL_PARAM_INPUT;
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 	  
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
@@ -3483,7 +3483,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 4:
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		rc = data->rc;
@@ -3504,7 +3504,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 5:
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = data->rc;
@@ -3526,7 +3526,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
 
     case 6:
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = data->rc;
@@ -3568,7 +3568,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
   /* end Switch */
 
   if( rc == SQL_ERROR ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         /*String in SQLWCHAR(utf16) format will contain '\0' due to which the err string will be printed wrong, 
          * hence convert it to utf8 format
          */
@@ -3656,7 +3656,7 @@ VALUE ibm_db_bind_param(int argc, VALUE *argv, VALUE self)
   rb_scan_args(argc, argv, "35", &stmt, &r_param_no, &r_varname, 
     &r_param_type, &r_data_type, &r_precision, &r_scale, &r_size);
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   varname     = RSTRING_PTR(r_varname);
   varname_len = RSTRING_LEN(r_varname);
 #else
@@ -3761,7 +3761,7 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
         end_X_args->handleType      =  SQL_HANDLE_DBC;
         end_X_args->completionType  =  SQL_ROLLBACK;        /*Remeber you are rolling back the transaction*/
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                          (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 		  rc = end_X_args->rc;
@@ -3780,7 +3780,7 @@ VALUE ibm_db_close(int argc, VALUE *argv, VALUE self)
         }
       }
 
-      #ifdef UNICODE_SUPPORT_VERSION
+      #ifdef UNICODE_SUPPORT_VERSION_H
 	    rc = ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDisconnect_helper, &(conn_res->hdbc),
                        (void *)_ruby_ibm_db_Connection_level_UBF, NULL);		
       #else
@@ -3868,7 +3868,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
   VALUE r_table_name         =  Qnil;
   VALUE r_column_name        =  Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16    =  Qnil;
   VALUE r_owner_utf16        =  Qnil;
   VALUE r_table_name_utf16   =  Qnil;
@@ -3916,7 +3916,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
           return_value = Qfalse;
         } else {
           if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             r_qualifier_utf16                     =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
             col_privileges_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
             col_privileges_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -3926,7 +3926,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
 #endif
           }
           if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             r_owner_utf16                         =   _ruby_ibm_db_export_str_to_utf16( r_owner  );
             col_privileges_args->owner            =   (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
             col_privileges_args->owner_len        =   (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -3936,7 +3936,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
 #endif
           }
           if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             r_table_name_utf16                    =   _ruby_ibm_db_export_str_to_utf16( r_table_name );
             col_privileges_args->table_name       =   (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
             col_privileges_args->table_name_len   =   (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -3946,7 +3946,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
 #endif
           }
           if (!NIL_P(r_column_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             r_column_name_utf16                   =   _ruby_ibm_db_export_str_to_utf16( r_column_name );
             col_privileges_args->column_name      =   (SQLWCHAR*)   RSTRING_PTR( r_column_name_utf16 );
             col_privileges_args->column_name_len  =   (SQLSMALLINT) RSTRING_LEN( r_column_name_utf16 )/sizeof(SQLWCHAR);
@@ -3957,7 +3957,7 @@ VALUE ibm_db_column_privileges(int argc, VALUE *argv, VALUE self)
           }
           col_privileges_args->stmt_res  =  stmt_res;
 
-          #ifdef UNICODE_SUPPORT_VERSION            
+          #ifdef UNICODE_SUPPORT_VERSION_H
 			ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumnPrivileges_helper, col_privileges_args,
                            (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 			rc = col_privileges_args->rc;
@@ -4048,7 +4048,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
   VALUE r_column_name       =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -4096,7 +4096,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                   =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4106,7 +4106,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4116,7 +4116,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           col_metadata_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           col_metadata_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -4126,7 +4126,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_column_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_column_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_column_name );
           col_metadata_args->column_name       =  (SQLWCHAR*)   RSTRING_PTR( r_column_name_utf16 );
           col_metadata_args->column_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_column_name_utf16 )/sizeof(SQLWCHAR);
@@ -4137,7 +4137,7 @@ VALUE ibm_db_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		  rc = col_metadata_args->rc;
@@ -4228,7 +4228,7 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
   VALUE r_table_name        =  Qnil;
   VALUE r_is_fk_table 		=  Qfalse;
   
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -4277,7 +4277,7 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                   =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4287,7 +4287,7 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4297,7 +4297,7 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           col_metadata_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           col_metadata_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -4309,7 +4309,7 @@ VALUE ibm_db_foreign_keys(int argc, VALUE *argv, VALUE self)
 
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLForeignKeys_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		  rc = col_metadata_args->rc;
@@ -4388,7 +4388,7 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -4434,7 +4434,7 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                   =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4444,7 +4444,7 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4454,7 +4454,7 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           col_metadata_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           col_metadata_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -4465,7 +4465,7 @@ VALUE ibm_db_primary_keys(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrimaryKeys_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		  rc = col_metadata_args->rc;
@@ -4566,7 +4566,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
   VALUE r_proc_name          =  Qnil;
   VALUE r_column_name        =  Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16    =  Qnil;
   VALUE r_owner_utf16        =  Qnil;
   VALUE r_proc_name_utf16    =  Qnil;
@@ -4615,7 +4615,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier       =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len   =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4625,7 +4625,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                      =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner           =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len       =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4635,7 +4635,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_proc_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_proc_name_utf16                      =  _ruby_ibm_db_export_str_to_utf16( r_proc_name );
           col_metadata_args->proc_name           =  (SQLWCHAR*)   RSTRING_PTR( r_proc_name_utf16 );
           col_metadata_args->proc_name_len       =  (SQLSMALLINT) RSTRING_LEN( r_proc_name_utf16 )/sizeof(SQLWCHAR);
@@ -4645,7 +4645,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_column_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_column_name_utf16                    =  _ruby_ibm_db_export_str_to_utf16( r_column_name );
           col_metadata_args->column_name         =  (SQLWCHAR*)   RSTRING_PTR( r_column_name_utf16 );
           col_metadata_args->column_name_len     =  (SQLSMALLINT) RSTRING_LEN( r_column_name_utf16 )/sizeof(SQLWCHAR);
@@ -4656,7 +4656,7 @@ VALUE ibm_db_procedure_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res  =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedureColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		  rc = col_metadata_args->rc;
@@ -4736,7 +4736,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
   VALUE r_owner      =  Qnil;
   VALUE r_proc_name  =  Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16  =  Qnil;
   VALUE r_owner_utf16      =  Qnil;
   VALUE r_proc_name_utf16  =  Qnil;
@@ -4782,7 +4782,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           proc_metadata_args->qualifier      =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           proc_metadata_args->qualifier_len  =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4792,7 +4792,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                      =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           proc_metadata_args->owner          =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           proc_metadata_args->owner_len      =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4802,7 +4802,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_proc_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_proc_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_proc_name );
           proc_metadata_args->proc_name      =  (SQLWCHAR*)   RSTRING_PTR( r_proc_name_utf16 );
           proc_metadata_args->proc_name_len  =  (SQLSMALLINT) RSTRING_LEN( r_proc_name_utf16 )/sizeof(SQLWCHAR);
@@ -4813,7 +4813,7 @@ VALUE ibm_db_procedures(int argc, VALUE *argv, VALUE self)
         }
         proc_metadata_args->stmt_res     =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLProcedures_helper, proc_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		  rc = proc_metadata_args->rc;
@@ -4908,7 +4908,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -4956,7 +4956,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                   =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -4966,7 +4966,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -4976,7 +4976,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           col_metadata_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           col_metadata_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -4990,7 +4990,7 @@ VALUE ibm_db_special_columns(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res       =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLSpecialColumns_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		  rc = col_metadata_args->rc;				 
@@ -5106,7 +5106,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
   VALUE r_unique            =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -5152,7 +5152,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                   =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           col_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           col_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -5162,7 +5162,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           col_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           col_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -5172,7 +5172,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                  =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           col_metadata_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           col_metadata_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -5186,7 +5186,7 @@ VALUE ibm_db_statistics(int argc, VALUE *argv, VALUE self)
         }
         col_metadata_args->stmt_res      =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLStatistics_helper, col_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		   rc = col_metadata_args->rc;
@@ -5268,7 +5268,7 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
   VALUE r_qualifier         =  Qnil;
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -5313,7 +5313,7 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                       =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           table_privileges_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           table_privileges_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -5323,7 +5323,7 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                           =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           table_privileges_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           table_privileges_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -5333,7 +5333,7 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                      =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           table_privileges_args->table_name       =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           table_privileges_args->table_name_len   =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -5345,7 +5345,7 @@ VALUE ibm_db_table_privileges(int argc, VALUE *argv, VALUE self)
 
         table_privileges_args->stmt_res       =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTablePrivileges_helper, table_privileges_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		  rc = table_privileges_args->rc;
@@ -5428,7 +5428,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
   VALUE r_owner             =  Qnil;
   VALUE r_table_name        =  Qnil;
   VALUE r_table_type        =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE r_qualifier_utf16   =  Qnil;
   VALUE r_owner_utf16       =  Qnil;
   VALUE r_table_name_utf16  =  Qnil;
@@ -5477,7 +5477,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
         return_value = Qfalse;
       } else {
         if (!NIL_P(r_qualifier)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_qualifier_utf16                     =  _ruby_ibm_db_export_str_to_utf16( r_qualifier );
           table_metadata_args->qualifier        =  (SQLWCHAR*)   RSTRING_PTR( r_qualifier_utf16 );
           table_metadata_args->qualifier_len    =  (SQLSMALLINT) RSTRING_LEN( r_qualifier_utf16 )/sizeof(SQLWCHAR);
@@ -5487,7 +5487,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_owner)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_owner_utf16                         =  _ruby_ibm_db_export_str_to_utf16( r_owner );
           table_metadata_args->owner            =  (SQLWCHAR*)   RSTRING_PTR( r_owner_utf16 );
           table_metadata_args->owner_len        =  (SQLSMALLINT) RSTRING_LEN( r_owner_utf16 )/sizeof(SQLWCHAR);
@@ -5497,7 +5497,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_name)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_name_utf16                     =  _ruby_ibm_db_export_str_to_utf16( r_table_name );
           table_metadata_args->table_name        =  (SQLWCHAR*)   RSTRING_PTR( r_table_name_utf16 );
           table_metadata_args->table_name_len    =  (SQLSMALLINT) RSTRING_LEN( r_table_name_utf16 )/sizeof(SQLWCHAR);
@@ -5507,7 +5507,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 #endif
         }
         if (!NIL_P(r_table_type)) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           r_table_type_utf16                     =  _ruby_ibm_db_export_str_to_utf16( r_table_type );
           table_metadata_args->table_type        =  (SQLWCHAR*)   RSTRING_PTR( r_table_type_utf16 );
           table_metadata_args->table_type_len    =  (SQLSMALLINT) RSTRING_LEN( r_table_type_utf16 )/sizeof(SQLWCHAR);
@@ -5519,7 +5519,7 @@ VALUE ibm_db_tables(int argc, VALUE *argv, VALUE self)
 
         table_metadata_args->stmt_res      =  stmt_res;
 
-        #ifdef UNICODE_SUPPORT_VERSION          
+        #ifdef UNICODE_SUPPORT_VERSION_H
 		  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLTables_helper, table_metadata_args,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		  rc = table_metadata_args->rc;
@@ -5601,7 +5601,7 @@ VALUE ibm_db_commit(int argc, VALUE *argv, VALUE self)
     end_X_args->handleType      =  SQL_HANDLE_DBC;
     end_X_args->completionType  =  SQL_COMMIT;        /*Remeber you are Commiting the transaction*/
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                      (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 	  rc = end_X_args->rc;
@@ -5637,7 +5637,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
 
   VALUE  error         =  Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE  stmt_utf16   =  Qnil;
 #endif
 
@@ -5647,7 +5647,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
   if ( !NIL_P(stmt) ) {
     prepare_args = ALLOC( exec_cum_prepare_args );
     memset(prepare_args,'\0',sizeof(struct _ibm_db_exec_direct_args_struct));
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     stmt_utf16                     =  _ruby_ibm_db_export_str_to_utf16(stmt);
     prepare_args->stmt_string      =  (SQLWCHAR*) RSTRING_PTR(stmt_utf16);
     prepare_args->stmt_string_len  =  RSTRING_LEN(stmt_utf16)/sizeof(SQLWCHAR);
@@ -5681,7 +5681,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
     prepare_args->stmt_res    =  stmt_res;
 
     /* Prepare the stmt. The cursor type requested has already been set in _ruby_ibm_db_assign_options */
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLPrepare_helper, prepare_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  rc = prepare_args->rc;
@@ -5747,7 +5747,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
 VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
 {
   VALUE stmt         =  Qnil;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE stmt_utf16   =  Qnil;
 #endif
   VALUE connection   =  Qnil;
@@ -5779,7 +5779,7 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
       exec_direct_args = ALLOC( exec_cum_prepare_args );
       memset(exec_direct_args,'\0',sizeof(struct _ibm_db_exec_direct_args_struct));
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       stmt_utf16                        =  _ruby_ibm_db_export_str_to_utf16(stmt);
       exec_direct_args->stmt_string     =  (SQLWCHAR*)RSTRING_PTR(stmt_utf16);
       exec_direct_args->stmt_string_len =  RSTRING_LEN(stmt_utf16)/sizeof(SQLWCHAR); /*RSTRING_LEN returns number of bytes*/
@@ -5823,7 +5823,7 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
       exec_direct_args->stmt_res    =  stmt_res;
 
 	  
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLExecDirect_helper, exec_direct_args,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = exec_direct_args->rc;
@@ -5882,7 +5882,7 @@ VALUE ibm_db_free_result(int argc, VALUE *argv, VALUE self)
   stmt_handle         *stmt_res       =  NULL;
   free_stmt_args      *freeStmt_args  =  NULL;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   char                *err_str        =  NULL;
 #endif
 
@@ -5897,7 +5897,7 @@ VALUE ibm_db_free_result(int argc, VALUE *argv, VALUE self)
       freeStmt_args->stmt_res  =  stmt_res;
       freeStmt_args->option    =  SQL_CLOSE;
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLFreeStmt_helper, freeStmt_args, 
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = freeStmt_args->rc;
@@ -5910,7 +5910,7 @@ VALUE ibm_db_free_result(int argc, VALUE *argv, VALUE self)
 
       if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 1 );
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         err_str = RSTRING_PTR(
                     _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                       stmt_res->ruby_stmt_err_msg_len )
@@ -5988,7 +5988,7 @@ VALUE ibm_db_prepare(int argc, VALUE *argv, VALUE self)
   conn_handle *conn_res;
   stmt_handle *stmt_res;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   char *err_str  =  NULL;
 #endif
 
@@ -6022,7 +6022,7 @@ VALUE ibm_db_prepare(int argc, VALUE *argv, VALUE self)
       _ruby_ibm_db_free_stmt_struct(stmt_res);
       stmt_res = NULL;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       err_str = RSTRING_PTR( _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_msg,
                                           DB2_MAX_ERR_MSG_LEN * sizeof(SQLWCHAR) )
                            );
@@ -6088,13 +6088,13 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
   int rc;
   int origlen       = 0;
   int is_known_type = 1;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   int is_binary     = 0; /*Indicates if the column is either SQL_BLOB, SQL_BINARY, SQL_VARBINARY or SQL_LONGVARBINARY*/
 #endif
 
   SQLPOINTER  tmp_str;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE    bindData_utf16;
   VALUE    tmpBuff;
 #endif
@@ -6116,7 +6116,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
 
   switch(TYPE(*bind_data)) {
     case T_BIGNUM:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       tmpBuff      =  rb_big2str(*bind_data,10);
       tmp_str      =  (SQLCHAR *) RSTRING_PTR(tmpBuff);
       curr->ivalue =  RSTRING_LEN(tmpBuff);
@@ -6196,7 +6196,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
       break;
 
     case T_STRING:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
      if( curr->data_type == SQL_BLOB || curr->data_type == SQL_LONGVARBINARY || curr->data_type == SQL_VARBINARY ||
            curr->data_type == SQL_BINARY || curr->data_type == SQL_XML ){
        is_binary = 1;
@@ -6223,7 +6223,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
          * given then use BUFSIZ to return the string.
          */
         if ( curr->size <= 0 ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           if( is_binary ) {
             if (curr->ivalue < curr->param_size ) {
               curr->ivalue = curr->param_size;
@@ -6247,7 +6247,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
 #endif
         } else {
           if( curr->param_type == SQL_PARAM_INPUT_OUTPUT ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             if( is_binary ) {
               if( curr->size > curr->ivalue ) {
                 curr->ivalue = curr->size + 1;
@@ -6269,7 +6269,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
             }
 #endif
           } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               if( is_binary ) {
                 curr->ivalue = curr->size + 1;
               } else {
@@ -6288,7 +6288,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
         }
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       if( is_binary ){
         curr->svalue  = (SQLCHAR *) ALLOC_N(SQLCHAR, curr->ivalue);
       } else {
@@ -6320,7 +6320,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
             paramValuePtr  = (SQLPOINTER)&(curr);
 #endif
           }
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             valueType = SQL_C_WCHAR;
 #else
             valueType = SQL_C_CHAR;
@@ -6369,7 +6369,7 @@ static int _ruby_ibm_db_bind_parameter_helper(stmt_handle *stmt_res, param_node 
             }
           }
           bindParameter_args->buff_length  =  curr->ivalue;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           valueType = SQL_C_WCHAR;
 #else
           valueType = SQL_C_CHAR;
@@ -6431,7 +6431,7 @@ static int _ruby_ibm_db_bind_data( stmt_handle *stmt_res, param_node *curr, VALU
     }
     curr->bind_indicator  =  0;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     curr->svalue          =  (SQLCHAR *) RSTRING_PTR(*bind_data);
     curr->ivalue          =  RSTRING_LEN(*bind_data);
 #else
@@ -6472,7 +6472,7 @@ static int _ruby_ibm_db_bind_param_list(stmt_handle *stmt_res, VALUE *error ) {
 
     if ( rc == SQL_ERROR ) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 1: "),
                    _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                 stmt_res->ruby_stmt_err_msg_len )
@@ -6481,7 +6481,7 @@ static int _ruby_ibm_db_bind_param_list(stmt_handle *stmt_res, VALUE *error ) {
         *error = rb_str_cat2(rb_str_new2("Binding Error 1: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 1: <error message could not be retrieved>");
 #else
         *error = rb_str_new2("Binding Error 1: <error message could not be retrieved>");
@@ -6543,7 +6543,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
         if ( rc == SQL_ERROR ) {
           _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
           if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr( "Describe Param Failed: " ),
                        _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                     stmt_res->ruby_stmt_err_msg_len )
@@ -6552,7 +6552,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
             *error = rb_str_cat2(rb_str_new2("Describe Param Failed: "), stmt_res->ruby_stmt_err_msg );
 #endif
           } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             *error = _ruby_ibm_db_export_char_to_utf8_rstr("Describe Param Failed: <error message could not be retrieved>");
 #else
             *error = rb_str_new2("Describe Param Failed: <error message could not be retrieved>");
@@ -6579,7 +6579,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
 
         if ( rc == SQL_ERROR ) {
           if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 2: "),
                        _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                     stmt_res->ruby_stmt_err_msg_len )
@@ -6588,7 +6588,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
             *error = rb_str_cat2(rb_str_new2("Binding Error 2: "), stmt_res->ruby_stmt_err_msg );
 #endif
           } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             *error = _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 2: <error message could not be retrieved>");
 #else
             *error = rb_str_new2("Binding Error 2: <error message could not be retrieved>");
@@ -6609,7 +6609,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
 
           if ( rc == SQL_ERROR ) {
             if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 2: "),
                        _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                     stmt_res->ruby_stmt_err_msg_len )
@@ -6618,7 +6618,7 @@ static int _ruby_ibm_db_execute_helper2(stmt_handle *stmt_res, VALUE *data, int 
               *error = rb_str_cat2(rb_str_new2("Binding Error 2: "), stmt_res->ruby_stmt_err_msg );
 #endif
             } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               *error = _ruby_ibm_db_export_char_to_utf8_rstr("Binding Error 2: <error message could not be retrieved>");
 #else
               *error = rb_str_new2("Binding Error 2: <error message could not be retrieved>");
@@ -6649,7 +6649,7 @@ void var_assign(char *name, VALUE value) {
   inspect   =  rb_intern("inspect");
   value     =  rb_funcall(value, inspect, 0);
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   expr      =  RSTRING_PTR(value);
   expr_len  =  RSTRING_LEN(value);
 #else
@@ -6687,7 +6687,7 @@ static VALUE _ruby_ibm_db_desc_and_bind_param_list(stmt_bind_array *bind_array, 
     numOpts = bind_array->num;
   } else if (numOpts < bind_array->num) {
     /* If there are less params passed in, than are present -- Error */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     *error = _ruby_ibm_db_export_char_to_utf8_rstr("Number of params passed in are less than bound parameters");
 #else
     *error = rb_str_new2("Number of params passed in are less than bound parameters");
@@ -6757,7 +6757,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
     ruby_xfree( num_params_args );
     num_params_args = NULL;
     if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Execute Failed due to: "),
                  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg, 
                               stmt_res->ruby_stmt_err_msg_len )
@@ -6766,7 +6766,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       *error = rb_str_cat2(rb_str_new2("Execute Failed due to: "), stmt_res->ruby_stmt_err_msg );
 #endif
     } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = _ruby_ibm_db_export_char_to_utf8_rstr("Execute Failed due to: <error message could not be retrieved>");
 #else
       *error = rb_str_new2("Execute Failed due to: <error message could not be retrieved>");
@@ -6790,7 +6790,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       /* Make sure IBM_DB.bind_param has been called */
       /* If the param list is NULL -- ERROR */
       if (TYPE( *(bind_array->parameters_array) ) != T_ARRAY) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Param is not an array");
 #else
         *error = rb_str_new2("Param is not an array");
@@ -6815,7 +6815,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       /* No additional params passed in. Use values already bound. */
       if ( num > stmt_res->num_params ) {
         /* More parameters than we expected */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Number of params passed are more than bound parameters");
 #else
         *error = rb_str_new2("Number of params passed are more than bound parameters");
@@ -6824,7 +6824,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
         return Qnil;
       } else if ( num < stmt_res->num_params ) {
         /* Fewer parameters than we expected */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Number of params passed are less than bound parameters");
 #else
         *error = rb_str_new2("Number of params passed are less than bound parameters");
@@ -6835,7 +6835,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
 
       /* Param cache node list is empty -- No params bound */
       if ( stmt_res->head_cache_list == NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Parameters not bound");
 #else
         *error = rb_str_new2("Parameters not bound");
@@ -6862,7 +6862,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
   if ( rc == SQL_ERROR ) {
     _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
     if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Statement Execute Failed: "),
                  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                               stmt_res->ruby_stmt_err_msg_len )
@@ -6871,7 +6871,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       *error = rb_str_cat2(rb_str_new2("Statement Execute Failed: "), stmt_res->ruby_stmt_err_msg );
 #endif
     } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *error = _ruby_ibm_db_export_char_to_utf8_rstr("Statement Execute Failed: <error message could not be retrieved>");
 #else
       *error = rb_str_new2("Statement Execute Failed: <error message could not be retrieved>");
@@ -6897,7 +6897,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
       if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
         if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr( "Sending data failed: "),
                      _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                   stmt_res->ruby_stmt_err_msg_len )
@@ -6906,7 +6906,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
           *error = rb_str_cat2(rb_str_new2("Sending data failed: "), stmt_res->ruby_stmt_err_msg );
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           *error = _ruby_ibm_db_export_char_to_utf8_rstr("Sending data failed: <error message could not be retrieved>");
 #else
           *error = rb_str_new2("Sending data failed: <error message could not be retrieved>");
@@ -6931,7 +6931,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
     if ( rc == SQL_ERROR ) {
         _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr( "Sending data failed: "),
                    _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                   stmt_res->ruby_stmt_err_msg_len )
@@ -6940,7 +6940,7 @@ static VALUE _ruby_ibm_db_execute_helper(stmt_bind_array *bind_array) {
         *error = rb_str_cat2(rb_str_new2("Sending data failed: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *error = _ruby_ibm_db_export_char_to_utf8_rstr("Sending data failed: <error message could not be retrieved>");
 #else
         *error = rb_str_new2("Sending data failed: <error message could not be retrieved>");
@@ -7015,7 +7015,7 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
     bind_array->num               =  0;
     bind_array->error             =  &error;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_execute_helper, bind_array,
                             (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  ret_value = bind_array->return_value;
@@ -7081,7 +7081,7 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
                   var_assign(tmp_curr->varname, rb_float_new(tmp_curr->fvalue));
                   break;
                 case SQL_XML:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     var_assign(tmp_curr->varname,rb_str_new2((char *) "")); /*Ensure it is a string object*/
                     if( tmp_curr-> size > 0 && tmp_curr->bind_indicator > tmp_curr->size ){
                       rb_funcall(rb_eval_string(tmp_curr->varname), rb_intern("replace"), 1, _ruby_ibm_db_export_sqlchar_to_utf8_rstr( (SQLCHAR *) tmp_curr->svalue, tmp_curr->size ));
@@ -7103,7 +7103,7 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
                    }
                    break;
                 default:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
                     var_assign(tmp_curr->varname,rb_str_new2((char *) "")); /*Ensure it is a string object*/
                     if( tmp_curr-> size > 0 && tmp_curr->bind_indicator > (tmp_curr->size * sizeof(SQLWCHAR))+ 2 ){
                       rb_funcall(rb_eval_string(tmp_curr->varname), rb_intern("replace"), 1, _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( (SQLWCHAR *) tmp_curr->svalue, (tmp_curr->size * sizeof(SQLWCHAR)) + 2 ));
@@ -7186,7 +7186,7 @@ VALUE ibm_db_conn_errormsg(int argc, VALUE *argv, VALUE self)
       return Qnil;
     }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return_str = ALLOC_N( SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
     memset(return_str, '\0', (DB2_MAX_ERR_MSG_LEN + 1 ) * sizeof(SQLWCHAR) );
 #else
@@ -7201,7 +7201,7 @@ VALUE ibm_db_conn_errormsg(int argc, VALUE *argv, VALUE self)
 
     conn_res->errormsg_recno_tracker++;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     ret_val  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( (SQLWCHAR *)return_str, return_str_len );
 #else
     ret_val  =  rb_str_new2(return_str);
@@ -7210,7 +7210,7 @@ VALUE ibm_db_conn_errormsg(int argc, VALUE *argv, VALUE self)
 
     return ret_val;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( IBM_DB_G(__ruby_conn_err_msg), DB2_MAX_ERR_MSG_LEN * sizeof(SQLWCHAR) );
 #else
     return rb_str_new2(IBM_DB_G(__ruby_conn_err_msg));
@@ -7256,7 +7256,7 @@ VALUE ibm_db_stmt_errormsg(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(stmt)) {
     Data_Get_Struct(stmt, stmt_handle, stmt_res);
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return_str = ALLOC_N(SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
     memset(return_str, '\0', (DB2_MAX_ERR_MSG_LEN + 1 ) * sizeof(SQLWCHAR) );
 #else
@@ -7272,7 +7272,7 @@ VALUE ibm_db_stmt_errormsg(int argc, VALUE *argv, VALUE self)
 
     stmt_res->errormsg_recno_tracker++;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     ret_val  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, return_str_len );
 #else
     ret_val  =  rb_str_new2( return_str );
@@ -7281,7 +7281,7 @@ VALUE ibm_db_stmt_errormsg(int argc, VALUE *argv, VALUE self)
 
     return ret_val;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( IBM_DB_G(__ruby_stmt_err_msg), DB2_MAX_ERR_MSG_LEN * sizeof(SQLWCHAR) );
 #else
     return rb_str_new2(IBM_DB_G(__ruby_stmt_err_msg));
@@ -7340,7 +7340,7 @@ VALUE ibm_db_conn_error(int argc, VALUE *argv, VALUE self)
       return Qnil;
     }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return_str = ALLOC_N(SQLWCHAR, SQL_SQLSTATE_SIZE + 1);
     memset(return_str, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
 #else
@@ -7357,7 +7357,7 @@ VALUE ibm_db_conn_error(int argc, VALUE *argv, VALUE self)
 
     conn_res->error_recno_tracker++;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     ret_val = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) );
 #else
     ret_val = rb_str_new2( return_str );
@@ -7366,7 +7366,7 @@ VALUE ibm_db_conn_error(int argc, VALUE *argv, VALUE self)
 
     return ret_val;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( IBM_DB_G(__ruby_conn_err_state),
               SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR)
            );
@@ -7416,7 +7416,7 @@ VALUE ibm_db_stmt_error(int argc, VALUE *argv, VALUE self)
   if (!NIL_P(stmt)) {
     Data_Get_Struct(stmt, stmt_handle, stmt_res);
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return_str = ALLOC_N(SQLWCHAR, SQL_SQLSTATE_SIZE + 1);
     memset(return_str, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
 #else
@@ -7433,7 +7433,7 @@ VALUE ibm_db_stmt_error(int argc, VALUE *argv, VALUE self)
 
     stmt_res->error_recno_tracker++;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     ret_val = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) );
 #else
     ret_val = rb_str_new2( return_str );
@@ -7442,7 +7442,7 @@ VALUE ibm_db_stmt_error(int argc, VALUE *argv, VALUE self)
 
     return ret_val;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     return _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( IBM_DB_G(__ruby_stmt_err_state), 
              SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) 
            );
@@ -7508,7 +7508,7 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
 
       if( conn_res->errorType != 1 ) {
         if( conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_msg, conn_res->ruby_error_msg_len );
 #else
           return_value  =  rb_str_new2( conn_res->ruby_error_msg );
@@ -7519,13 +7519,13 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
       } else {
 
         if( conn_res->errormsg_recno_tracker == 1 && conn_res->ruby_error_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_msg, conn_res->ruby_error_msg_len );
 #else
           return_value  =  rb_str_new2( conn_res->ruby_error_msg );
 #endif
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_str = ALLOC_N(SQLWCHAR, DB2_MAX_ERR_MSG_LEN+1);
           memset(return_str, '\0', (DB2_MAX_ERR_MSG_LEN + 1) * sizeof(SQLWCHAR) );
 #else
@@ -7540,7 +7540,7 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
              conn_res->error_recno_tracker = conn_res->errormsg_recno_tracker;
           }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_value = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, return_str_len );
 #else
           return_value = rb_str_new2( return_str );
@@ -7553,13 +7553,13 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
       Data_Get_Struct(conn_or_stmt, stmt_handle, stmt_res);
 
       if( stmt_res->errormsg_recno_tracker == 1 && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg, stmt_res->ruby_stmt_err_msg_len );
 #else
         return_value  =  rb_str_new2( stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_str = ALLOC_N(SQLWCHAR, DB2_MAX_ERR_MSG_LEN + 1 );
         memset(return_str, '\0', (DB2_MAX_ERR_MSG_LEN + 1 ) * sizeof(SQLWCHAR) );
 #else
@@ -7574,7 +7574,7 @@ VALUE ibm_db_getErrormsg(int argc, VALUE *argv, VALUE self)
           stmt_res->error_recno_tracker = stmt_res->errormsg_recno_tracker;
         }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, return_str_len );
 #else
         return_value = rb_str_new2( return_str );
@@ -7650,7 +7650,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
 
       if( conn_res->errorType != 1 ) {
           if( conn_res->ruby_error_state != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_state,
                                 SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) 
                              );
@@ -7663,7 +7663,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
       } else {
 
         if( conn_res->error_recno_tracker == 1 && conn_res->ruby_error_state != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( conn_res->ruby_error_state, 
                               SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR)
                            );
@@ -7672,7 +7672,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
 #endif
         } else {
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_str = ALLOC_N(SQLWCHAR, SQL_SQLSTATE_SIZE + 1 );
           memset(return_str, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
 #else
@@ -7687,7 +7687,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
              conn_res->errormsg_recno_tracker = conn_res->error_recno_tracker;
           }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           return_value = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str, SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) );
 #else
           return_value = rb_str_new2( return_str );
@@ -7700,7 +7700,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
       Data_Get_Struct(conn_or_stmt, stmt_handle, stmt_res);
 
       if( stmt_res->error_recno_tracker == 1 && stmt_res->ruby_stmt_err_state != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_value  =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_state, 
                             SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR) 
                          );
@@ -7709,7 +7709,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
 #endif
       } else {
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_str = ALLOC_N(SQLWCHAR, SQL_SQLSTATE_SIZE + 1 );
         memset(return_str, '\0', (SQL_SQLSTATE_SIZE + 1) * sizeof(SQLWCHAR) );
 #else
@@ -7723,7 +7723,7 @@ VALUE ibm_db_getErrorstate(int argc, VALUE *argv, VALUE self)
         if(stmt_res->error_recno_tracker - stmt_res->errormsg_recno_tracker >= 1) {
           stmt_res->errormsg_recno_tracker = stmt_res->error_recno_tracker;
         }
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_value = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( return_str,
                           SQL_SQLSTATE_SIZE * sizeof(SQLWCHAR)
                        );
@@ -7801,7 +7801,7 @@ VALUE ibm_db_next_result(int argc, VALUE *argv, VALUE self)
       nextresultparams->stmt_res  =  stmt_res;
       nextresultparams->new_hstmt =  &new_hstmt;
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNextResult_helper, nextresultparams,
                        (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = nextresultparams->rc;
@@ -7885,7 +7885,7 @@ VALUE ibm_db_num_fields(int argc, VALUE *argv, VALUE self)
   stmt_handle *stmt_res;
   int rc = 0;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   char *err_str  =  NULL;
 #endif
 
@@ -7902,7 +7902,7 @@ VALUE ibm_db_num_fields(int argc, VALUE *argv, VALUE self)
     result_cols_args->stmt_res  =  stmt_res;
     result_cols_args->count     =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLNumResultCols_helper, result_cols_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  rc = result_cols_args->rc;
@@ -7912,7 +7912,7 @@ VALUE ibm_db_num_fields(int argc, VALUE *argv, VALUE self)
 
     if ( rc == SQL_ERROR ) {
       _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 1 );
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       err_str = RSTRING_PTR( _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->ruby_stmt_err_msg,
                                           stmt_res->ruby_stmt_err_msg_len )
                            );
@@ -7980,7 +7980,7 @@ VALUE ibm_db_num_rows(int argc, VALUE *argv, VALUE self)
 
   sql_row_count_args *row_count_args = NULL;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   char *err_str  =  NULL;
 #endif
 
@@ -7995,7 +7995,7 @@ VALUE ibm_db_num_rows(int argc, VALUE *argv, VALUE self)
     row_count_args->stmt_res  =  stmt_res;
     row_count_args->count     =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLRowCount_helper, row_count_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  rc = row_count_args->rc;
@@ -8006,7 +8006,7 @@ VALUE ibm_db_num_rows(int argc, VALUE *argv, VALUE self)
     if ( rc == SQL_ERROR ) {
       _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 1 );
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       err_str = RSTRING_PTR( _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->ruby_stmt_err_msg,
                                           stmt_res->ruby_stmt_err_msg_len )
                            );
@@ -8041,7 +8041,7 @@ static int _ruby_ibm_db_get_column_by_name(stmt_handle *stmt_res, VALUE column, 
   int rc;
   int index;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   VALUE col_name  =  Qnil;
 #else
   char *col_name  =  NULL;
@@ -8052,7 +8052,7 @@ static int _ruby_ibm_db_get_column_by_name(stmt_handle *stmt_res, VALUE column, 
   if ( stmt_res->column_info == NULL ) {
     if ( release_gil == 1 ) {
 
-      #ifdef UNICODE_SUPPORT_VERSION        
+      #ifdef UNICODE_SUPPORT_VERSION_H
 		ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_get_result_set_info, stmt_res,
                       (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 		rc = stmt_res->rc;
@@ -8072,14 +8072,14 @@ static int _ruby_ibm_db_get_column_by_name(stmt_handle *stmt_res, VALUE column, 
   if ( TYPE(column) == T_FIXNUM ) {
     col = FIX2LONG( column );
   } else if (RTEST( column )) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     col_name = _ruby_ibm_db_export_str_to_utf16( column );
 #else
     col_name = STR2CSTR( column );
 #endif
   }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   if ( col_name == Qnil ) {
 #else
   if ( col_name == NULL ) {
@@ -8095,7 +8095,7 @@ static int _ruby_ibm_db_get_column_by_name(stmt_handle *stmt_res, VALUE column, 
   /* should start from 0 */
   index = 0;
   while (index < stmt_res->num_columns) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     if ( rb_str_equal(_ruby_ibm_db_export_sqlwchar_to_utf16_rstr(stmt_res->column_info[index].name, stmt_res->column_info[index].name_length * sizeof(SQLWCHAR)), _ruby_ibm_db_export_str_to_utf16(col_name) ) ) {
 #else
     if (strcmp((char*)stmt_res->column_info[index].name,col_name) == 0) {
@@ -8151,7 +8151,7 @@ VALUE ibm_db_field_name(int argc, VALUE *argv, VALUE self)
   if ( col < 0 ) {
     return Qfalse;
   }
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   return _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->column_info[col].name, stmt_res->column_info[col].name_length * sizeof(SQLWCHAR));
 #else
   return rb_str_new2((char*)stmt_res->column_info[col].name);
@@ -8216,7 +8216,7 @@ VALUE ibm_db_field_display_size(int argc, VALUE *argv, VALUE self)
     colattr_args->col_num         =  col+1;
     colattr_args->FieldIdentifier =  SQL_DESC_DISPLAY_SIZE;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  rc = colattr_args->rc;
@@ -8467,7 +8467,7 @@ VALUE ibm_db_field_type(int argc, VALUE *argv, VALUE self)
       str_val = "string";
       break;
   }
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   return _ruby_ibm_db_export_char_to_utf8_rstr(str_val);
 #else
   return rb_str_new2( str_val );
@@ -8537,7 +8537,7 @@ VALUE ibm_db_field_width(int argc, VALUE *argv, VALUE self)
     colattr_args->col_num          =  col+1;
     colattr_args->FieldIdentifier  =  SQL_DESC_LENGTH;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLColAttributes_helper, colattr_args,
                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	  rc = colattr_args->rc;
@@ -8639,7 +8639,7 @@ VALUE ibm_db_rollback(int argc, VALUE *argv, VALUE self)
     end_X_args->hdbc            =  &(conn_res->hdbc);
     end_X_args->handleType      =  SQL_HANDLE_DBC;
     end_X_args->completionType  =  SQL_ROLLBACK;    /*Remeber you are Rollingback the transaction*/
-    #ifdef UNICODE_SUPPORT_VERSION
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLEndTran, end_X_args,
                      (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 	  rc = end_X_args->rc;
@@ -8833,7 +8833,7 @@ int isNullLOB(VALUE *return_value,int i,stmt_handle *stmt_res,int op)
     VALUE colName;
     if (stmt_res->column_info[i].loc_ind == SQL_NULL_DATA) {
         if ( op & FETCH_ASSOC ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           colName = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->column_info[i].name, stmt_res->column_info[i].name_length * sizeof(SQLWCHAR) );
 #else
           colName = rb_str_new2( (char*)stmt_res->column_info[i].name );
@@ -8885,7 +8885,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
   if ( stmt_res->column_info == NULL ) {
     if (_ruby_ibm_db_get_result_set_info(stmt_res)<0) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: "),
                            _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                      stmt_res->ruby_stmt_err_msg_len)
@@ -8894,7 +8894,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         *(data->error) = rb_str_cat2(rb_str_new2("Column information cannot be retrieved: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: <error message could not be retrieved>");
 #else
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
@@ -8906,7 +8906,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
   }
 
   if(col_num < 0 || col_num >= stmt_res->num_columns) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Column ordinal out of range" );
 #else
     *(data->error) = rb_str_new2("Column ordinal out of range" );
@@ -8930,7 +8930,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
     case SQL_WLONGVARCHAR:
       in_length = stmt_res->column_info[col_num].size + 1;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       out_ptr = (SQLPOINTER)ALLOC_N(SQLWCHAR,in_length);
       memset(out_ptr, '\0', in_length * sizeof(SQLWCHAR) );
 #else
@@ -8959,7 +8959,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         return Qnil;
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rc = _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_WCHAR, out_ptr, in_length * sizeof(SQLWCHAR) , &out_length);
 #else
       rc = _ruby_ibm_db_get_data(stmt_res, col_num+1, SQL_C_CHAR, out_ptr, in_length, &out_length);
@@ -8974,7 +8974,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
 		data->return_value = Qnil;
         return Qnil;
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         return_value = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(out_ptr, out_length);
 #else
         return_value = rb_str_new((char*)out_ptr, out_length);
@@ -9076,7 +9076,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         return Qnil;
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       out_ptr = (char*)ALLOC_N(SQLWCHAR,in_length+1);
       memset(out_ptr, '\0', (in_length + 1) * sizeof(SQLWCHAR)  );
 #else
@@ -9090,7 +9090,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         return Qnil;
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rc = _ruby_ibm_db_get_data2(stmt_res, col_num+1, SQL_C_WCHAR, out_ptr, in_length, (in_length + 1) * sizeof(SQLWCHAR) , &out_length);
 #else
       rc = _ruby_ibm_db_get_data2(stmt_res, col_num+1, SQL_C_CHAR, (void*)out_ptr, in_length, in_length+1, &out_length);
@@ -9101,7 +9101,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         return Qfalse;
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       return_value = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(out_ptr, out_length);
 #else
       return_value = rb_str_new2(out_ptr);
@@ -9201,7 +9201,7 @@ static VALUE _ruby_ibm_db_result_helper(ibm_db_result_args *data) {
         return Qfalse;
       }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       return_value = _ruby_ibm_db_export_sqlchar_to_utf8_rstr(out_ptr, out_length);
 #else
       return_value = rb_str_new((char*)out_ptr,out_length);
@@ -9261,7 +9261,7 @@ VALUE ibm_db_result(int argc, VALUE *argv, VALUE self)
   if ( !NIL_P( stmt ) ) {
     Data_Get_Struct(stmt, stmt_handle, result_args->stmt_res);
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_result_helper, result_args,
                           (void *)_ruby_ibm_db_Statement_level_UBF, result_args->stmt_res );
 	  ret_val = result_args->return_value;
@@ -9325,7 +9325,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
   if ( stmt_res->column_info == NULL ) {
     if (_ruby_ibm_db_get_result_set_info(stmt_res)<0) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: "),
                            _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->ruby_stmt_err_msg,
                                      stmt_res->ruby_stmt_err_msg_len)
@@ -9334,7 +9334,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         *(data->error) = rb_str_cat2(rb_str_new2("Column information cannot be retrieved: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: <error message could not be retrieved>");
 #else
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
@@ -9350,7 +9350,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
     rc = _ruby_ibm_db_bind_column_helper(stmt_res);
     if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO ) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Column binding cannot be done: "),
                            _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->ruby_stmt_err_msg,
                                      stmt_res->ruby_stmt_err_msg_len)
@@ -9359,7 +9359,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         *(data->error) = rb_str_cat2(rb_str_new2("Column binding cannot be done: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Column binding cannot be done: <error message could not be retrieved>");
 #else
         *(data->error) = rb_str_new2("Column binding cannot be done: <error message could not be retrieved>");
@@ -9410,7 +9410,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
     }
 #endif /*PASE*/
   } else if (data->arg_count == 2 && row_number < 0) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Requested row number must be a positive value");
 #else
     *(data->error) = rb_str_new2("Requested row number must be a positive value");
@@ -9439,7 +9439,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
   } else if ( rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO) {
     _ruby_ibm_db_check_sql_errors( stmt_res, DB_STMT, stmt_res->hstmt, SQL_HANDLE_STMT, rc, 1, NULL, NULL, -1, 1, 0 );
     if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Fetch Failure: "),
                          _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                       stmt_res->ruby_stmt_err_msg_len )
@@ -9448,7 +9448,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
       *(data->error) = rb_str_cat2(rb_str_new2("Fetch Failure: "), stmt_res->ruby_stmt_err_msg );
 #endif
     } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Fetch Failure: <error message could not be retrieved>");
 #else
       *(data->error) = rb_str_new2("Fetch Failure: <error message could not be retrieved>");
@@ -9471,14 +9471,14 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 
     switch(stmt_res->s_case_mode) {
       case CASE_LOWER:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         strtolower((char*)stmt_res->column_info[i].name, stmt_res->column_info[i].name_length * sizeof(SQLWCHAR));
 #else
         strtolower((char*)stmt_res->column_info[i].name, strlen((char*)stmt_res->column_info[i].name));
 #endif
         break;
       case CASE_UPPER:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         strtoupper((char*)stmt_res->column_info[i].name, stmt_res->column_info[i].name_length * sizeof(SQLWCHAR) );
 #else
         strtoupper((char*)stmt_res->column_info[i].name, strlen((char*)stmt_res->column_info[i].name));
@@ -9489,7 +9489,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         break;
     }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     colName = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->column_info[i].name, stmt_res->column_info[i].name_length * sizeof(SQLWCHAR) );
 #else
     colName = rb_str_new2((char*)stmt_res->column_info[i].name);
@@ -9516,20 +9516,20 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         case SQL_LONGVARCHAR:
         case SQL_WLONGVARCHAR:
           if ( op & FETCH_ASSOC ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             rb_hash_aset(return_value, colName, _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(row_data->str_val, out_length ));
 #else
             rb_hash_aset(return_value, colName, rb_str_new((char *)row_data->str_val, out_length));
 #endif
           }
           if ( op == FETCH_INDEX ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             rb_ary_store(return_value, i, _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(row_data->str_val, out_length ));
 #else
             rb_ary_store(return_value, i, rb_str_new((char *)row_data->str_val, out_length));
 #endif
           } else if ( op == FETCH_BOTH ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             rb_hash_aset(return_value, INT2NUM(i), _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(row_data->str_val, out_length ));
 #else
             rb_hash_aset(return_value, INT2NUM(i), rb_str_new((char *)row_data->str_val, out_length));
@@ -9772,7 +9772,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
 
           if ( rc == SQL_ERROR ) {
             if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Failed to Determine XML Size: "),
                                  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                            stmt_res->ruby_stmt_err_msg_len)
@@ -9781,7 +9781,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
               *(data->error) = rb_str_cat2(rb_str_new2("Failed to Determine XML Size: "), stmt_res->ruby_stmt_err_msg );
 #endif
             } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Failed to Determine XML Size: <error message could not be retrieved>");
 #else
               *(data->error) = rb_str_new2("Failed to Determine XML Size: <error message could not be retrieved>");
@@ -9820,20 +9820,20 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
             }
 
             if ( op & FETCH_ASSOC ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_hash_aset(return_value, colName, _ruby_ibm_db_export_sqlchar_to_utf8_rstr( (SQLCHAR *) out_ptr, out_length));
 #else
               rb_hash_aset(return_value, colName, rb_str_new((char *)out_ptr, out_length));
 #endif
             }
             if ( op == FETCH_INDEX ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_ary_store(return_value, i, _ruby_ibm_db_export_sqlchar_to_utf8_rstr( (SQLCHAR *) out_ptr, out_length));
 #else
               rb_ary_store(return_value, i, rb_str_new((char *)out_ptr, out_length));
 #endif
             } else if ( op == FETCH_BOTH ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_hash_aset(return_value, INT2NUM(i), _ruby_ibm_db_export_sqlchar_to_utf8_rstr( (SQLCHAR *) out_ptr, out_length));
 #else
               rb_hash_aset(return_value, INT2NUM(i), rb_str_new((char *)out_ptr, out_length));
@@ -9866,7 +9866,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
             }
           } else {
             if (rc == SQL_ERROR) tmp_length = 0;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             out_ptr    = (SQLPOINTER)ALLOC_N(SQLWCHAR, tmp_length + 1);
             memset(out_ptr, '\0', (tmp_length+1) * sizeof(SQLWCHAR));
 #else
@@ -9881,7 +9881,7 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
               return Qnil;
             }
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
             rc = _ruby_ibm_db_get_data2(stmt_res, i+1, SQL_C_WCHAR, out_ptr, tmp_length , (tmp_length + 1) * sizeof(SQLWCHAR) , &out_length);
 #else
             rc = _ruby_ibm_db_get_data2(stmt_res, i+1, SQL_C_CHAR, out_ptr, tmp_length, tmp_length+1, &out_length);
@@ -9895,20 +9895,20 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
             }
 
             if ( op & FETCH_ASSOC ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_hash_aset(return_value, colName, _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(out_ptr, out_length));
 #else
               rb_hash_aset(return_value, colName, rb_str_new((char*)out_ptr, out_length));
 #endif
             }
             if ( op == FETCH_INDEX ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_ary_store(return_value, i, _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(out_ptr, out_length));
 #else
               rb_ary_store(return_value, i, rb_str_new((char*)out_ptr, out_length));
 #endif
             } else if ( op == FETCH_BOTH ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
               rb_hash_aset(return_value, INT2NUM(i), _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(out_ptr, out_length));
 #else
               rb_hash_aset(return_value, INT2NUM(i), rb_str_new((char*)out_ptr, out_length));
@@ -9949,7 +9949,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
   if ( stmt_res->column_info == NULL ) {
     if (_ruby_ibm_db_get_result_set_info(stmt_res)<0) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: "),
                            _ruby_ibm_db_export_sqlwchar_to_utf8_rstr( stmt_res->ruby_stmt_err_msg,
                                      stmt_res->ruby_stmt_err_msg_len)
@@ -9958,7 +9958,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
         *(data->error) = rb_str_cat2(rb_str_new2("Column information cannot be retrieved: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: <error message could not be retrieved>");
 #else
         *(data->error) = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
@@ -9996,7 +9996,7 @@ static int _ruby_ibm_db_fetch_row_helper( ibm_db_fetch_helper_args *data) {
     }
 #endif /*PASE*/
   } else if (data->arg_count == 2 && row_number < 0) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     *(data->error) = _ruby_ibm_db_export_char_to_utf8_rstr("Requested row number must be a positive value");
 #else
     *(data->error) = rb_str_new2("Requested row number must be a positive value");
@@ -10082,7 +10082,7 @@ VALUE ibm_db_fetch_row(int argc, VALUE *argv, VALUE self)
   helper_args->arg_count   =  argc;
   helper_args->error       =  &error;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
+  #ifdef UNICODE_SUPPORT_VERSION_H
 	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	ret_val = helper_args->return_value;
@@ -10145,7 +10145,7 @@ VALUE ibm_db_result_cols(int argc, VALUE *argv, VALUE self) {
   if ( stmt_res->column_info == NULL ) {
     if (_ruby_ibm_db_get_result_set_info(stmt_res)<0) {
       if( stmt_res != NULL && stmt_res->ruby_stmt_err_msg != NULL ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         error = rb_str_concat( _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: "),
                            _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->ruby_stmt_err_msg,
                                      stmt_res->ruby_stmt_err_msg_len)
@@ -10154,7 +10154,7 @@ VALUE ibm_db_result_cols(int argc, VALUE *argv, VALUE self) {
         error = rb_str_cat2(rb_str_new2("Column information cannot be retrieved: "), stmt_res->ruby_stmt_err_msg );
 #endif
       } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         error = _ruby_ibm_db_export_char_to_utf8_rstr("Column information cannot be retrieved: <error message could not be retrieved>");
 #else
         error = rb_str_new2("Column information cannot be retrieved: <error message could not be retrieved>");
@@ -10169,14 +10169,14 @@ VALUE ibm_db_result_cols(int argc, VALUE *argv, VALUE self) {
   for (index=0; index<stmt_res->num_columns; index++) {
         switch(stmt_res->s_case_mode) {
       case CASE_LOWER:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         strtolower((char*)stmt_res->column_info[index].name, stmt_res->column_info[index].name_length * sizeof(SQLWCHAR));
 #else
         strtolower((char*)stmt_res->column_info[index].name, strlen((char*)stmt_res->column_info[index].name));
 #endif
         break;
       case CASE_UPPER:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         strtoupper((char*)stmt_res->column_info[index].name, stmt_res->column_info[index].name_length * sizeof(SQLWCHAR) );
 #else
         strtoupper((char*)stmt_res->column_info[index].name, strlen((char*)stmt_res->column_info[index].name));
@@ -10186,7 +10186,7 @@ VALUE ibm_db_result_cols(int argc, VALUE *argv, VALUE self) {
       default:
         break;
     }
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     colName = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(stmt_res->column_info[index].name, stmt_res->column_info[index].name_length * sizeof(SQLWCHAR) );
 #else
     colName = rb_str_new2((char*)stmt_res->column_info[index].name);
@@ -10251,7 +10251,7 @@ VALUE ibm_db_fetch_assoc(int argc, VALUE *argv, VALUE self) {
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
+  #ifdef UNICODE_SUPPORT_VERSION_H
 	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	ret_val = helper_args->return_value;
@@ -10340,7 +10340,7 @@ VALUE ibm_db_fetch_object(int argc, VALUE *argv, VALUE self)
   helper_args->error      =  &error;
   helper_args->funcType   =  FETCH_ASSOC;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
+  #ifdef UNICODE_SUPPORT_VERSION_H
 	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                               (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	row_res->hash = helper_args->return_value;
@@ -10426,7 +10426,7 @@ VALUE ibm_db_fetch_array(int argc, VALUE *argv, VALUE self)
   //Call without thread API to avoid the Thread lock.
   ret_val = _ruby_ibm_db_bind_fetch_helper( helper_args );
   
-  //#ifdef UNICODE_SUPPORT_VERSION    
+  //#ifdef UNICODE_SUPPORT_VERSION_H
   //ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
   //                      (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
   //  ret_val = helper_args->return_value;
@@ -10504,7 +10504,7 @@ VALUE ibm_db_fetch_both(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
   helper_args->funcType    =  FETCH_BOTH;
 
-  #ifdef UNICODE_SUPPORT_VERSION    
+  #ifdef UNICODE_SUPPORT_VERSION_H
 	 ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
                         (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res );
 	ret_val = helper_args->return_value;
@@ -10604,7 +10604,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
   int         rc          =  0;
   SQLSMALLINT out_length  =  0;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   char buffer11[11];
   char buffer255[255];
   char buffer3k[3072]; /*Informix server returns SQL_KEYWORDS data, which requires 2608*/
@@ -10637,7 +10637,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     return Qfalse;
   } else {
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DBMS_NAME", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DBMS_NAME", rb_str_new2(buffer255));
@@ -10657,7 +10657,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DBMS_VER", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer11, out_length));
 #else
     rb_iv_set(return_value, "@DBMS_VER", rb_str_new2(buffer11));
@@ -10697,7 +10697,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
    rb_iv_set(return_value, "@DB_NAME", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DB_NAME", rb_str_new2(buffer255));
@@ -10719,7 +10719,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@INST_NAME", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@INST_NAME", rb_str_new2(buffer255));
@@ -10740,7 +10740,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@SPECIAL_CHARS", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@SPECIAL_CHARS", rb_str_new2(buffer255));
@@ -10763,7 +10763,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     return Qfalse;
   } else {
     VALUE keywordsStr, keywordsArray;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     keywordsStr   =  _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer3k, out_length);
     keywordsArray =  rb_str_split(keywordsStr, RSTRING_PTR(_ruby_ibm_db_export_char_to_utf8_rstr(",")) );
 #else
@@ -10789,35 +10789,35 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
   } else {
     VALUE dft_isolation = Qnil;
     if( bitmask & SQL_TXN_READ_UNCOMMITTED ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
      dft_isolation = _ruby_ibm_db_export_char_to_utf8_rstr("UR");
 #else
       dft_isolation = rb_str_new2("UR");
 #endif
     }
     if( bitmask & SQL_TXN_READ_COMMITTED ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dft_isolation = _ruby_ibm_db_export_char_to_utf8_rstr("CS");
 #else
       dft_isolation = rb_str_new2("CS");
 #endif
     }
     if( bitmask & SQL_TXN_REPEATABLE_READ ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dft_isolation = _ruby_ibm_db_export_char_to_utf8_rstr("RS");
 #else
       dft_isolation = rb_str_new2("RS");
 #endif
     }
     if( bitmask & SQL_TXN_SERIALIZABLE ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dft_isolation = _ruby_ibm_db_export_char_to_utf8_rstr("RR");
 #else
       dft_isolation = rb_str_new2("RR");
 #endif
     }
     if( bitmask & SQL_TXN_NOCOMMIT ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       dft_isolation = _ruby_ibm_db_export_char_to_utf8_rstr("NC");
 #else
       dft_isolation = rb_str_new2("NC");
@@ -10843,35 +10843,35 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 
     array = rb_ary_new();
     if( bitmask & SQL_TXN_READ_UNCOMMITTED ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
      rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("UR"));
 #else
       rb_ary_push(array, rb_str_new2("UR"));
 #endif
     }
     if( bitmask & SQL_TXN_READ_COMMITTED ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("CS"));
 #else
       rb_ary_push(array, rb_str_new2("CS"));
 #endif
     }
     if( bitmask & SQL_TXN_REPEATABLE_READ ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("RS"));
 #else
       rb_ary_push(array, rb_str_new2("RS"));
 #endif
     }
     if( bitmask & SQL_TXN_SERIALIZABLE ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("RR"));
 #else
       rb_ary_push(array, rb_str_new2("RR"));
 #endif
     }
     if( bitmask & SQL_TXN_NOCOMMIT ) {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
       rb_ary_push(array, _ruby_ibm_db_export_char_to_utf8_rstr("NC"));
 #else
       rb_ary_push(array, rb_str_new2("NC"));
@@ -10897,28 +10897,28 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
     VALUE conformance = Qnil;
     switch (bufferint32) {
       case SQL_SC_SQL92_ENTRY:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         conformance = _ruby_ibm_db_export_char_to_utf8_rstr("ENTRY");
 #else
         conformance = rb_str_new2("ENTRY");
 #endif
         break;
       case SQL_SC_FIPS127_2_TRANSITIONAL:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         conformance = _ruby_ibm_db_export_char_to_utf8_rstr("FIPS127");
 #else
         conformance = rb_str_new2("FIPS127");
 #endif
         break;
       case SQL_SC_SQL92_FULL:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         conformance = _ruby_ibm_db_export_char_to_utf8_rstr("FULL");
 #else
         conformance = rb_str_new2("FULL");
 #endif
         break;
       case SQL_SC_SQL92_INTERMEDIATE:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         conformance = _ruby_ibm_db_export_char_to_utf8_rstr("INTERMEDIATE");
 #else
         conformance = rb_str_new2("INTERMEDIATE");
@@ -10943,7 +10943,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     if( rb_str_equal(_ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer11, out_length), _ruby_ibm_db_export_char_to_utf8_rstr("Y")) ) {
 #else
      if( strcmp((char *)buffer11, "Y") == 0 ) {
@@ -10967,7 +10967,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@IDENTIFIER_QUOTE_CHAR", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer11, out_length));
 #else
     rb_iv_set(return_value, "@IDENTIFIER_QUOTE_CHAR", rb_str_new2(buffer11));
@@ -10988,7 +10988,7 @@ static VALUE ibm_db_server_info_helper( get_info_args *getInfo_args ) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     if( rb_str_equal(_ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer11, out_length), _ruby_ibm_db_export_char_to_utf8_rstr("Y")) ) {
 #else
     if( strcmp(buffer11, "Y") == 0 ) {
@@ -11271,7 +11271,7 @@ VALUE ibm_db_server_info(int argc, VALUE *argv, VALUE self)
     getInfo_args->infoType     =  0;
     getInfo_args->infoValue    =  NULL;
     getInfo_args->buff_length  =  0;
-    #ifdef UNICODE_SUPPORT_VERSION
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)ibm_db_server_info_helper, getInfo_args,
                                  (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 	  return_value  = getInfo_args->return_value;
@@ -11298,7 +11298,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
   int          rc          =  0;
   SQLSMALLINT  out_length  =  0;
 
-#ifndef UNICODE_SUPPORT_VERSION
+#ifndef UNICODE_SUPPORT_VERSION_H
   char         buffer255[255];
 #else
   SQLWCHAR buffer255[255];
@@ -11325,7 +11325,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DRIVER_NAME", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DRIVER_NAME", rb_str_new2(buffer255));
@@ -11346,7 +11346,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DRIVER_VER", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DRIVER_VER", rb_str_new2(buffer255));
@@ -11367,7 +11367,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DATA_SOURCE_NAME", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DATA_SOURCE_NAME", rb_str_new2(buffer255));
@@ -11388,7 +11388,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@DRIVER_ODBC_VER", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@DRIVER_ODBC_VER", rb_str_new2(buffer255));
@@ -11410,7 +11410,7 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
 	getInfo_args->return_value = Qfalse;
     return Qfalse;
   } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
     rb_iv_set(return_value, "@ODBC_VER", _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(buffer255, out_length));
 #else
     rb_iv_set(return_value, "@ODBC_VER", rb_str_new2(buffer255));
@@ -11435,21 +11435,21 @@ static VALUE ibm_db_client_info_helper( get_info_args *getInfo_args) {
     VALUE conformance = Qnil;
     switch (bufferint16) {
       case SQL_OSC_MINIMUM:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
        conformance = _ruby_ibm_db_export_char_to_utf8_rstr("MINIMUM");
 #else
        conformance = rb_str_new2("MINIMUM");
 #endif
         break;
       case SQL_OSC_CORE:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
        conformance = _ruby_ibm_db_export_char_to_utf8_rstr("CORE");
 #else
        conformance = rb_str_new2("CORE");
 #endif
         break;
       case SQL_OSC_EXTENDED:
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
        conformance = _ruby_ibm_db_export_char_to_utf8_rstr("EXTENDED");
 #else
        conformance = rb_str_new2("EXTENDED");
@@ -11568,7 +11568,7 @@ VALUE ibm_db_client_info(int argc, VALUE *argv, VALUE self)
     getInfo_args->infoValue    =  NULL;
     getInfo_args->buff_length  =  0;
 
-    #ifdef UNICODE_SUPPORT_VERSION      
+    #ifdef UNICODE_SUPPORT_VERSION_H
 	  ibm_Ruby_Thread_Call ( (void *)ibm_db_client_info_helper, getInfo_args,
                                (void *)_ruby_ibm_db_Connection_level_UBF, NULL);
 	  return_value = getInfo_args->return_value;
@@ -11686,7 +11686,7 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
   VALUE r_type              =  Qnil;
   VALUE ret_val             =  Qnil;
 
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR   *value        =  NULL;
 #else
   SQLCHAR    *value        =  NULL;
@@ -11722,7 +11722,7 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
       if (!NIL_P(option)) {
         op_integer=(SQLINTEGER)FIX2INT(option);
         /* ACCTSTR_LEN is the largest possible length of the options to retrieve */
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         value = (SQLWCHAR *)ALLOC_N(SQLWCHAR, ACCTSTR_LEN + 1);
         memset(value,'\0', (ACCTSTR_LEN + 1)*sizeof(SQLWCHAR));
 #else
@@ -11735,7 +11735,7 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
         get_handleAttr_args->handle      =  &( conn_res->hdbc );
         get_handleAttr_args->attribute   =  op_integer;
         get_handleAttr_args->valuePtr    =  (SQLPOINTER)value;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
         get_handleAttr_args->buff_length =  (ACCTSTR_LEN+1)*sizeof(SQLWCHAR);
 #else
         get_handleAttr_args->buff_length =  (ACCTSTR_LEN+1);
@@ -11749,7 +11749,7 @@ VALUE ibm_db_get_option(int argc, VALUE *argv, VALUE self)
           _ruby_ibm_db_check_sql_errors( conn_res, DB_CONN, conn_res->hdbc, SQL_HANDLE_DBC, rc, 1, NULL, NULL, -1, 1, 1 );
           ret_val = Qfalse;
         } else {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
           ret_val = _ruby_ibm_db_export_sqlwchar_to_utf8_rstr(value, out_length);
 #else
           ret_val = rb_str_new2((char *)value);
