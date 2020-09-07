@@ -1739,8 +1739,8 @@ module ActiveRecord
           :char        => { :name => "char" },
           :double      => { :name => @servertype.get_double_mapping },
           :decfloat    => { :name => "decfloat"},
-          :graphic     => { :name => "graphic", :limit => 1},
-          :vargraphic  => { :name => "vargraphic", :limit => 1},
+          :graphic     => { :name => "graphic"},
+          :vargraphic  => { :name => "vargraphic"},
           :bigint      => { :name => "bigint"}
         }
       end
@@ -1840,6 +1840,34 @@ module ActiveRecord
           sql_segment << "(#{precision})" if !precision.nil?
           return sql_segment
         end
+
+	if type.to_sym == :vargraphic
+         sql_segment = native_database_types[type.to_sym][:name].to_s
+         if limit.class == Hash
+             if limit.has_key?("limit".to_sym)
+                limit1 = limit[:limit]
+                sql_segment << "(#{limit1})"
+             else
+                return "vargraphic(1)"
+             end
+         end
+         return sql_segment
+        end
+
+	if type.to_sym == :graphic
+         sql_segment = native_database_types[type.to_sym][:name].to_s
+         if limit.class == Hash
+             if limit.has_key?("limit".to_sym)
+                limit1 = limit[:limit]
+                sql_segment << "(#{limit1})"
+             else
+                return "graphic(1)"
+             end
+         end
+         return sql_segment
+        end
+
+
 
         if limit.class == Hash
           return super if limit.has_key?("limit".to_sym).nil?
