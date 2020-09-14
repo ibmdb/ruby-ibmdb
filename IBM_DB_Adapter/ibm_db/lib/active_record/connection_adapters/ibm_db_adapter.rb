@@ -1850,6 +1850,12 @@ module ActiveRecord
              else
                 return "vargraphic(1)"
              end
+	 else 
+	     if limit != nil
+                sql_segment << "(#{limit})"
+             else
+                return "vargraphic(1)"
+             end
          end
          return sql_segment
         end
@@ -1860,6 +1866,12 @@ module ActiveRecord
              if limit.has_key?("limit".to_sym)
                 limit1 = limit[:limit]
                 sql_segment << "(#{limit1})"
+             else
+                return "graphic(1)"
+             end
+	 else
+             if limit != nil
+                sql_segment << "(#{limit})"
              else
                 return "graphic(1)"
              end
