@@ -105,7 +105,7 @@ typedef struct {
 } ibm_db_row_type;
 
 typedef struct _ibm_db_result_set_info_struct {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR     *name;
   long         name_length;
 #else
@@ -157,7 +157,7 @@ typedef struct _stmt_handle_struct {
     Structure holding the data to be passed to SQLConnect or SQLDriverConnect CLI call 
 */
 typedef struct _ibm_db_connect_args_struct {
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR          *database;
   SQLWCHAR          *uid;
   SQLWCHAR          *password;
@@ -211,7 +211,7 @@ typedef struct _ibm_db_describecol_args_struct {
 */
 typedef struct _ibm_db_metadata_args_struct {
   stmt_handle   *stmt_res;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR      *qualifier;
   SQLWCHAR      *owner;
   SQLWCHAR      *table_name;
@@ -243,7 +243,7 @@ typedef struct _ibm_db_metadata_args_struct {
 */
 typedef struct _ibm_db_exec_direct_args_struct {
   stmt_handle   *stmt_res;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR      *stmt_string;
 #else
   SQLCHAR       *stmt_string;
@@ -257,7 +257,7 @@ typedef struct _ibm_db_exec_direct_args_struct {
 */
 typedef struct _ibm_db_create_drop_db_args_struct {
   conn_handle   *conn_res;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR      *dbName;
   SQLWCHAR      *codeSet;
   SQLWCHAR      *mode;

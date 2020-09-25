@@ -212,8 +212,8 @@ def crash(str)
 end
 
 if( RUBY_VERSION =~ /1.9/ || RUBY_VERSION =~ /2./)
-  create_header('gil_release_version')
-  create_header('unicode_support_version')
+  create_header('gil_release_version.h')
+  create_header('unicode_support_version.h')
 end
 
 unless (have_library(WIN ? 'db2cli' : 'db2','SQLConnect') or find_library(WIN ? 'db2cli' : 'db2','SQLConnect', IBM_DB_LIB))
@@ -285,7 +285,7 @@ def libpathflag(libpath)
 	end
 end
 
-have_header('gil_release_version')
-have_header('unicode_support_version')
+have_header('gil_release_version.h')
+have_header('unicode_support_version.h')
 
 create_makefile('ibm_db')

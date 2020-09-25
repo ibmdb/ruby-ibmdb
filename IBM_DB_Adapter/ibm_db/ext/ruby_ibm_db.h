@@ -206,7 +206,7 @@ VALUE ibm_db_active(int argc, VALUE *argv, VALUE self);
 */
 struct _ibm_db_globals {
   int  bin_mode;
-#ifdef UNICODE_SUPPORT_VERSION
+#ifdef UNICODE_SUPPORT_VERSION_H
   SQLWCHAR  __ruby_conn_err_msg[DB2_MAX_ERR_MSG_LEN];
   SQLWCHAR  __ruby_stmt_err_msg[DB2_MAX_ERR_MSG_LEN];
   SQLWCHAR  __ruby_conn_err_state[SQL_SQLSTATE_SIZE + 1];
