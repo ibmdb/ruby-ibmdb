@@ -10,7 +10,7 @@ require 'pathname'
 SPEC = Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '5.0.5'
+  spec.version  = '5.1.0'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec

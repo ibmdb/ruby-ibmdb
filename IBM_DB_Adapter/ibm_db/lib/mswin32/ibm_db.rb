@@ -87,5 +87,9 @@ machine_bits = ['ibm'].pack('p').size * 8
 if machine_bits == 64		
 	raise NotImplementedError, "ibm_db with Ruby 64-bit on Windows platform is not supported. Refer to README for more details"
 else		
-	require 'rb2x/i386/ibm_db.so'
+	if (RUBY_VERSION =~ /2.7/)
+		require 'rb2x/i386/ruby27/ibm_db.so'
+	else 
+		require 'rb2x/i386/ruby26/ibm_db.so'
+	end
 end	
