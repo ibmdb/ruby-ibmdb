@@ -800,6 +800,10 @@ module ActiveRecord
                     @servertype = IBM_DB2_ZOS.new(self, @isAr3)
                   when /10/
                     @servertype = IBM_DB2_ZOS.new(self, @isAr3)
+		  when /11/
+                    @servertype = IBM_DB2_ZOS.new(self, @isAr3)
+                  when /12/
+                    @servertype = IBM_DB2_ZOS.new(self, @isAr3)
                   when /08/             # DB2 for zOS version 8
                     @servertype = IBM_DB2_ZOS_8.new(self, @isAr3)
                   else                  # DB2 for zOS version 7
