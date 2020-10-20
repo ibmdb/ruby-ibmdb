@@ -3491,7 +3491,9 @@ end
 
         
       def visit_Arel_Nodes_Limit o,collector
+	collector << " FETCH FIRST "
         visit o.expr, collector
+	collector << " ROWS ONLY "
       end
 
       def visit_Arel_Nodes_Offset o,collector
@@ -3536,40 +3538,54 @@ end
         end
 
 		
-        if o.limit
-          limcoll = Arel::Collectors::SQLString.new
-          visit(o.limit,limcoll)
-          limit = limcoll.value.to_i
-        else
-          limit = nil
-        end
-				
-        if o.offset
-          offcoll = Arel::Collectors::SQLString.new
-          visit(o.offset,offcoll)
-          offset = offcoll.value.to_i
-        else
-          offset = nil
-        end
-		
-        limOffClause = @connection.get_limit_offset_clauses(limit,offset)
-		
-        if( !limOffClause["startSegment"].empty? ) 
-          #collector.changeFirstSegment(limOffClause["startSegment"])	
-          collector.value.prepend(limOffClause["startSegment"])		  
-        end
-        
-        if( !limOffClause["endSegment"].empty? )
-          #collector.changeEndSegment(limOffClause["endSegment"])
-          collector << " "
-          collector << limOffClause["endSegment"]
-        end
+#        if o.limit
+#          limcoll = Arel::Collectors::SQLString.new
+#          visit(o.limit,limcoll)
+#          limit = limcoll.value.to_i
+#        else
+#          limit = nil
+#        end
+#				
+#        if o.offset
+#          offcoll = Arel::Collectors::SQLString.new
+#          visit(o.offset,offcoll)
+#          offset = offcoll.value.to_i
+#        else
+#          offset = nil
+#        end
+#		
+#        limOffClause = @connection.get_limit_offset_clauses(limit,offset)
+#		
+#        if( !limOffClause["startSegment"].empty? ) 
+#          #collector.changeFirstSegment(limOffClause["startSegment"])	
+#          collector.value.prepend(limOffClause["startSegment"])		  
+#        end
+#        
+#        if( !limOffClause["endSegment"].empty? )
+#          #collector.changeEndSegment(limOffClause["endSegment"])
+#          collector << " "
+#          collector << limOffClause["endSegment"]
+#        end
 
         #Initialize a new Collector and set its value to the sql string built so far with any limit and ofset modifications
         #collector.reset(sql)
-					
-        collector = maybe_visit o.lock, collector
-		return collector
+       if (o.limit && o.offset.nil?)
+         visit(o.limit, collector)
+       end
+              if (o.offset && o.limit.nil?)
+         collector.value.prepend(" SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( ")
+         collector << (" ) AS I) AS O WHERE sys_row_num > ")
+         visit(o.offset, collector)
+       end
+
+       if (o.offset && o.limit)
+         collector.value.prepend(" SELECT O.* FROM (SELECT I.*, ROW_NUMBER() OVER () sys_row_num FROM ( ")
+         collector << (" ) AS I) AS O WHERE sys_row_num > ")
+         visit(o.offset, collector)
+         visit(o.limit, collector)
+       end 
+       collector = maybe_visit o.lock, collector
+       return collector
       end
 	
     end
