@@ -242,7 +242,7 @@ def crash(str)
   exit 1
 end
 
-if( RUBY_VERSION =~ /1.9/ || RUBY_VERSION =~ /2./)
+if( RUBY_VERSION =~ /1.9/ || RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
   create_header('gil_release_version.h')
   create_header('unicode_support_version.h')
 end
@@ -266,14 +266,14 @@ step 3: - Retry gem install
 EOL
 end
 
-if(RUBY_VERSION =~ /2./)
+if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
 	require 'rbconfig'
 end
 
 alias :libpathflag0 :libpathflag
 def libpathflag(libpath)
 	if(RUBY_PLATFORM =~ /darwin/i)
-		if(RUBY_VERSION =~ /2./)	
+		if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)	
 			libpathflag0 + case RbConfig::CONFIG["arch"]	
 			when /solaris2/
 			  libpath[0..-2].map {|path| " -R#{path}"}.join
@@ -293,7 +293,7 @@ def libpathflag(libpath)
 			end
 		end  
 	else
-		if(RUBY_VERSION =~ /2./)	
+		if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)	
 			ldflags =  case RbConfig::CONFIG["arch"]	
 			when /solaris2/
 			  libpath[0..-2].map {|path| " -R#{path}"}.join

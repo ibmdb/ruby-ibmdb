@@ -16,13 +16,13 @@ require 'fileutils'
 
 if (ENV['SINGLE_RUBY_TEST'] != nil && !ENV['SINGLE_RUBY_TEST'].empty?)
 	testfile = "./tests/" + ENV['SINGLE_RUBY_TEST']
-  if RUBY_VERSION =~ /2/
+  if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
     Dir[testfile].each { |file| require file }
   else
     Dir[testfile].each { |file| require file unless file =~ /unicode/i}
   end
 else
-  if RUBY_VERSION =~ /2/
+  if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
 	  Dir['./tests/test_*.rb'].each { |file| require file }
   else
 	  Dir['./tests/test_*.rb'].each { |file| require file unless file =~ /unicode/i }
