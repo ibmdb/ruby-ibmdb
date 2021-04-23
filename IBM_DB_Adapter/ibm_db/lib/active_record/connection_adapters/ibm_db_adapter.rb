@@ -2279,7 +2279,7 @@ module ActiveRecord
                      column_length == '' || 
                      column_type.sub!(/ \(\) for bit data/i,"(#{column_length}) FOR BIT DATA") || 
                      !column_type =~ /char|lob|graphic/i
-                if column_type =~ /decimal/i
+                if column_type =~ /decimal|numeric/i
                   column_type << "(#{column_length},#{column_scale})"
                 elsif column_type =~ /smallint|integer|double|date|time|timestamp|xml|bigint/i
                   column_type << ""  # override native limits incompatible with table create
