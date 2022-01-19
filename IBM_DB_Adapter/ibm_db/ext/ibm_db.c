@@ -28,10 +28,7 @@
 #include "ruby_ibm_db.h"
 #include <ctype.h>
 
-#ifdef RUBY_THREAD_H
-	#include <ruby/thread.h>
-#endif
-
+#include <ruby/thread.h>
 #include <ruby/version.h>
 
 /* True global resources - no need for thread safety here */
@@ -686,29 +683,12 @@ static void _ruby_ibm_db_mark_stmt_struct(stmt_handle *handle)
 {
 }
 
-
+static inline
 VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock_function_t *ubf, void *data2)
 {
-	#ifdef RUBY_API_VERSION_MAJOR	
-		if( RUBY_API_VERSION_MAJOR >=2 && RUBY_API_VERSION_MINOR >=2) 
-		{	
-			#ifdef _WIN32
-				void *(*f)(void*) = (void *(*)(void*))func;
-				return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
-			#elif __APPLE__
-				return rb_thread_call_without_gvl(func, data1, ubf, data2);                	   
-			#else
-				rb_thread_call_without_gvl(func, data1, ubf, data2);
-	                #endif	
-		}		
-		else	
-		{
-			rb_thread_call_without_gvl(func, data1, ubf, data2);
-		}
-	#else
-		rb_thread_call_without_gvl(func, data1, ubf, data2);
-	#endif
-  }
+	void *(*f)(void*) = (void *(*)(void*))func;
+	return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+}
   
 
 /*  */
