@@ -5665,7 +5665,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
       if ( rc == SQL_ERROR ) {
         ruby_xfree( prepare_args );
         prepare_args = NULL;
-        rb_warn( RSTRING_PTR(error) );
+        rb_warn( "%s", RSTRING_PTR(error) );
         return rc;
       }
     }
@@ -5805,7 +5805,7 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
           stmt_res = NULL;
           ruby_xfree( exec_direct_args );
           exec_direct_args = NULL;
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }
@@ -7016,7 +7016,7 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
     #endif
 
     if( ret_value == Qnil || ret_value == Qfalse ) {
-      rb_warn( RSTRING_PTR(error) );
+      rb_warn( "%s", RSTRING_PTR(error) );
       ruby_xfree( bind_array );
       bind_array = NULL;
       return Qfalse;
@@ -9273,7 +9273,7 @@ VALUE ibm_db_result(int argc, VALUE *argv, VALUE self)
   }
 
   if( error != Qnil && ret_val == Qnil) {
-    rb_warn( RSTRING_PTR(error) );
+    rb_warn( "%s", RSTRING_PTR(error) );
     ret_val = Qnil;
   }
 
@@ -10564,7 +10564,7 @@ VALUE ibm_db_set_option(int argc, VALUE *argv, VALUE self)
       if ( !NIL_P(r_options) ) {
         rc = _ruby_ibm_db_parse_options( r_options, SQL_HANDLE_DBC, conn_res, &error );
         if (rc == SQL_ERROR) {
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }
@@ -10574,7 +10574,7 @@ VALUE ibm_db_set_option(int argc, VALUE *argv, VALUE self)
       if ( !NIL_P(r_options) ) {
         rc = _ruby_ibm_db_parse_options( r_options, SQL_HANDLE_STMT, stmt_res, &error );
         if (rc == SQL_ERROR) {
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }
