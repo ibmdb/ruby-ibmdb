@@ -17,7 +17,6 @@ SPEC = Gem::Specification.new do |spec|
   spec.author = 'IBM'
   spec.email = 'opendev@us.ibm.com'
   spec.homepage = 'https://github.com/ibmdb/ruby-ibmdb'
-  spec.rubyforge_project = 'rubyibm'
   spec.required_ruby_version = '>= 2.5.0'
   spec.add_dependency('activerecord', '>= 5.0.7', '<=6.0.3')
   spec.requirements << 'ActiveRecord, at least 5.0.7'
@@ -53,7 +52,6 @@ SPEC = Gem::Specification.new do |spec|
   end
 
   spec.test_file = 'test/ibm_db_test.rb'
-  spec.has_rdoc = true
   spec.extra_rdoc_files = ["CHANGES", "README", "MANIFEST"]
   spec.post_install_message = "\n*****************************************************************************\nSuccessfully installed ibm_db, the Ruby gem for IBM DB2/Informix.  The Ruby gem is licensed under the MIT License.   The package also includes IBM ODBC and CLI Driver from IBM, which could have been automatically downloaded as the Ruby gem is installed on your system/device.   The license agreement to the IBM driver is available in the folder \"$GEM_HOME/ibm_db-*/lib/clidriver/license\".  Check for additional dependencies, which may come with their own license agreement(s). Your use of the components of the package and dependencies constitutes your acceptance of their respective license agreements.  If you do not accept the terms of any license agreement(s), then delete the relevant component(s) from your system/device.\n*****************************************************************************\n\n FOR WINDOWS PLEASE SET RUBY_DLL_PATH=/path/to/clidriver/bin \n\n **************************************************** \n\n"
 end
