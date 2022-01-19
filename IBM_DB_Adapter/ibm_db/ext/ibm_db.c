@@ -2337,7 +2337,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         handleAttr_args->handle      =  &( conn_res->hdbc );
         handleAttr_args->strLength   =  SQL_IS_INTEGER;
         handleAttr_args->attribute   =  SQL_ATTR_REPLACE_QUOTED_LITERALS;
-        handleAttr_args->valuePtr    =  (SQLPOINTER)(enable_numeric_literals);
+        handleAttr_args->valuePtr    =  (SQLPOINTER)(size_t)(enable_numeric_literals);
         rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
         if (rc != SQL_SUCCESS) {
           handleAttr_args->attribute =  SQL_ATTR_REPLACE_QUOTED_LITERALS_OLDVALUE;
@@ -2514,7 +2514,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
 	
 	if(helper_args->isPersistent)
 	{
-		if(helper_args-> entry == NULL)
+		if(helper_args-> entry == (VALUE)0)
 		{
 			return_value = Qnil;
 		}
@@ -3302,7 +3302,7 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
         handleAttr_args->attribute   =  SQL_ATTR_AUTOCOMMIT;
 
 #ifndef PASE
-        handleAttr_args->valuePtr = (SQLPOINTER)autocommit;
+        handleAttr_args->valuePtr = (SQLPOINTER)(size_t)autocommit;
 #else
         handleAttr_args->valuePtr = (SQLPOINTER)&autocommit;
 #endif
