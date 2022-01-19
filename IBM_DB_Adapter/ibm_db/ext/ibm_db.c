@@ -100,10 +100,12 @@ typedef struct _ibm_db_fetch_helper_struct {
 void ruby_init_ibm_db();
 
 /* equivalent functions on different platforms */
-#ifdef _WIN32
-#define STRCASECMP stricmp
-#else
-#define STRCASECMP strcasecmp
+#ifndef STRCASECMP
+#  ifdef _WIN32
+#    define STRCASECMP stricmp
+#  else
+#    define STRCASECMP strcasecmp
+#  endif
 #endif
 
 static VALUE mDB;
