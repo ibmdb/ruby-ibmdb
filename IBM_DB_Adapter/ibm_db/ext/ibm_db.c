@@ -3456,7 +3456,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
     case 3:
       param_type = SQL_PARAM_INPUT;
       
-      #ifdef UNICODE_SUPPORT_VERSIO
+      #ifdef UNICODE_SUPPORT_VERSION_H
                	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		rc = data->rc;
