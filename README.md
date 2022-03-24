@@ -32,6 +32,31 @@ Contacts
 
 For any issues or help: https://github.com/ibmdb/ruby-ibmdb/issues
 
+Local Development
+=================
+
+To easily test changes to the ibm_db gem locally without building 
+a gem package, add to your Rails Gemfile:
+
+```
+gem 'ibm_db', path: "/path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db"
+```
+
+Then build the ibm_db.so library:
+
+```bash
+$ cd /path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db/ext"
+$ ruby extconf.rb
+$ make
+```
+
+Then bundle install in your rails app:
+
+```
+$ bundle install
+...
+Using ibm_db 4.0.0 from source at `ruby-ibmdb/IBM_DB_Adapter/ibm_db`
+```
 
 License
 =======

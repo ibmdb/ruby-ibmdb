@@ -1,0 +1,5 @@
+Makefile
+gil_release_version
+unicode_support_version
+*.o
+*.so
