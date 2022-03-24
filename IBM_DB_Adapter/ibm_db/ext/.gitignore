@@ -1,0 +1,6 @@
+*.o
+*.so
+*.log
+Makefile
+gil_release_version.h
+unicode_support_version.h
