@@ -1,30 +1,37 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'models/author'
-require 'models/post'
-require 'models/person'
-require 'models/reference'
-require 'models/job'
-require 'models/reader'
-require 'models/comment'
-require 'models/tag'
-require 'models/tagging'
-require 'models/subscriber'
-require 'models/book'
-require 'models/subscription'
-require 'models/rating'
-require 'models/member'
-require 'models/member_detail'
-require 'models/member_type'
-require 'models/sponsor'
-require 'models/club'
-require 'models/organization'
-require 'models/category'
-require 'models/categorization'
-require 'models/membership'
-require 'models/essay'
+require "models/author"
+require "models/post"
+require "models/person"
+require "models/reference"
+require "models/job"
+require "models/reader"
+require "models/comment"
+require "models/tag"
+require "models/tagging"
+require "models/subscriber"
+require "models/book"
+require "models/subscription"
+require "models/rating"
+require "models/member"
+require "models/member_detail"
+require "models/member_type"
+require "models/sponsor"
+require "models/club"
+require "models/organization"
+require "models/category"
+require "models/categorization"
+require "models/membership"
+require "models/essay"
+require "models/hotel"
+require "models/department"
+require "models/chef"
+require "models/cake_designer"
+require "models/drink_designer"
 
 class NestedThroughAssociationsTest < ActiveRecord::TestCase
-  fixtures :authors, :books, :posts, :subscriptions, :subscribers, :tags, :taggings,
+  fixtures :authors, :author_addresses, :books, :posts, :subscriptions, :subscribers, :tags, :taggings,
            :people, :readers, :references, :jobs, :ratings, :comments, :members, :member_details,
            :member_types, :sponsors, :clubs, :organizations, :categories, :categories_posts,
            :categorizations, :memberships, :essays
@@ -55,23 +62,23 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_has_many_with_has_many_through_source_reflection_preload
-    authors = assert_queries(5) { Author.includes(:tags).to_a }
+    author = assert_queries(5) { Author.includes(:tags).first }
     general = tags(:general)
 
     assert_no_queries do
-      assert_equal [general, general], authors.first.tags
+      assert_equal [general, general], author.tags
     end
   end
 
   def test_has_many_through_has_many_with_has_many_through_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Author.where('tags.id' => tags(:general).id),
+      Author.where("tags.id" => tags(:general).id),
       [authors(:david)], :tags
     )
 
     # This ensures that the polymorphism of taggings is being observed correctly
-    authors = Author.joins(:tags).where('taggings.taggable_type' => 'FakeModel')
-    assert authors.empty?
+    authors = Author.joins(:tags).where("taggings.taggable_type" => "FakeModel")
+    assert_empty authors
   end
 
   # has_many through
@@ -79,21 +86,21 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   # Through: has_many through
   def test_has_many_through_has_many_through_with_has_many_source_reflection
     luke, david = subscribers(:first), subscribers(:second)
-    assert_equal [luke, david, david], authors(:david).subscribers.order('subscribers.nick')
+    assert_equal [luke, david, david], authors(:david).subscribers.order("subscribers.nick")
   end
 
   def test_has_many_through_has_many_through_with_has_many_source_reflection_preload
     luke, david = subscribers(:first), subscribers(:second)
-    authors = assert_queries(4) { Author.includes(:subscribers).to_a }
+    author = assert_queries(4) { Author.includes(:subscribers).first }
     assert_no_queries do
-      assert_equal [luke, david, david], authors.first.subscribers.sort_by(&:nick)
+      assert_equal [luke, david, david], author.subscribers.sort_by(&:nick)
     end
   end
 
   def test_has_many_through_has_many_through_with_has_many_source_reflection_preload_via_joins
     # All authors with subscribers where one of the subscribers' nick is 'alterself'
     assert_includes_and_joins_equal(
-      Author.where('subscribers.nick' => 'alterself'),
+      Author.where("subscribers.nick" => "alterself"),
       [authors(:david)], :subscribers
     )
   end
@@ -106,16 +113,16 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_has_one_with_has_one_through_source_reflection_preload
-    members = assert_queries(4) { Member.includes(:nested_member_types).to_a }
+    member = assert_queries(4) { Member.includes(:nested_member_types).first }
     founding = member_types(:founding)
     assert_no_queries do
-      assert_equal [founding], members.first.nested_member_types
+      assert_equal [founding], member.nested_member_types
     end
   end
 
   def test_has_many_through_has_one_with_has_one_through_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('member_types.id' => member_types(:founding).id),
+      Member.where("member_types.id" => member_types(:founding).id),
       [members(:groucho)], :nested_member_types
     )
   end
@@ -128,16 +135,16 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_has_one_through_with_has_one_source_reflection_preload
-    members = assert_queries(4) { Member.includes(:nested_sponsors).to_a }
+    member = assert_queries(4) { Member.includes(:nested_sponsors).first }
     mustache = sponsors(:moustache_club_sponsor_for_groucho)
-    assert_no_queries(ignore_none: false) do
-      assert_equal [mustache], members.first.nested_sponsors
+    assert_no_queries do
+      assert_equal [mustache], member.nested_sponsors
     end
   end
 
   def test_has_many_through_has_one_through_with_has_one_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('sponsors.id' => sponsors(:moustache_club_sponsor_for_groucho).id),
+      Member.where("sponsors.id" => sponsors(:moustache_club_sponsor_for_groucho).id),
       [members(:groucho)], :nested_sponsors
     )
   end
@@ -149,28 +156,27 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     groucho_details, other_details = member_details(:groucho), member_details(:some_other_guy)
 
     assert_equal [groucho_details, other_details],
-                 members(:groucho).organization_member_details.order('member_details.id')
+                 members(:groucho).organization_member_details.order("member_details.id")
   end
 
   def test_has_many_through_has_one_with_has_many_through_source_reflection_preload
     ActiveRecord::Base.connection.table_alias_length  # preheat cache
-    members = assert_queries(4) { Member.includes(:organization_member_details).to_a.sort_by(&:id) }
+    member = assert_queries(4) { Member.includes(:organization_member_details).first }
     groucho_details, other_details = member_details(:groucho), member_details(:some_other_guy)
 
     assert_no_queries do
-      assert_equal [groucho_details, other_details], members.first.organization_member_details.sort_by(&:id)
+      assert_equal [groucho_details, other_details], member.organization_member_details.sort_by(&:id)
     end
   end
 
   def test_has_many_through_has_one_with_has_many_through_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('member_details.id' => member_details(:groucho).id).order('member_details.id'),
+      Member.where("member_details.id" => member_details(:groucho).id).order("member_details.id"),
       [members(:groucho), members(:some_other_guy)], :organization_member_details
     )
 
-    members = Member.joins(:organization_member_details).
-                     where('member_details.id' => 9)
-    assert members.empty?
+    members = Member.joins(:organization_member_details).where("member_details.id" => 9)
+    assert_empty members
   end
 
   # has_many through
@@ -180,29 +186,28 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     groucho_details, other_details = member_details(:groucho), member_details(:some_other_guy)
 
     assert_equal [groucho_details, other_details],
-                 members(:groucho).organization_member_details_2.order('member_details.id')
+                 members(:groucho).organization_member_details_2.order("member_details.id")
   end
 
   def test_has_many_through_has_one_through_with_has_many_source_reflection_preload
-    members = assert_queries(4) { Member.includes(:organization_member_details_2).to_a.sort_by(&:id) }
+    member = assert_queries(4) { Member.includes(:organization_member_details_2).first }
     groucho_details, other_details = member_details(:groucho), member_details(:some_other_guy)
 
     # postgresql test if randomly executed then executes "SHOW max_identifier_length". Hence
     # the need to ignore certain predefined sqls that deal with system calls.
-    assert_no_queries(ignore_none: false) do
-      assert_equal [groucho_details, other_details], members.first.organization_member_details_2.sort_by(&:id)
+    assert_no_queries do
+      assert_equal [groucho_details, other_details], member.organization_member_details_2.sort_by(&:id)
     end
   end
 
   def test_has_many_through_has_one_through_with_has_many_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('member_details.id' => member_details(:groucho).id).order('member_details.id'),
+      Member.where("member_details.id" => member_details(:groucho).id).order("member_details.id"),
       [members(:groucho), members(:some_other_guy)], :organization_member_details_2
     )
 
-    members = Member.joins(:organization_member_details_2).
-                     where('member_details.id' => 9)
-    assert members.empty?
+    members = Member.joins(:organization_member_details_2).where("member_details.id" => 9)
+    assert_empty members
   end
 
   # has_many through
@@ -211,15 +216,15 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_has_many_with_has_and_belongs_to_many_source_reflection
     general, cooking = categories(:general), categories(:cooking)
 
-    assert_equal [general, cooking], authors(:bob).post_categories.order('categories.id')
+    assert_equal [general, cooking], authors(:bob).post_categories.order("categories.id")
   end
 
   def test_has_many_through_has_many_with_has_and_belongs_to_many_source_reflection_preload
-    authors = assert_queries(4) { Author.includes(:post_categories).to_a.sort_by(&:id) }
+    author = assert_queries(4) { Author.includes(:post_categories).third }
     general, cooking = categories(:general), categories(:cooking)
 
     assert_no_queries do
-      assert_equal [general, cooking], authors[2].post_categories.sort_by(&:id)
+      assert_equal [general, cooking], author.post_categories.sort_by(&:id)
     end
   end
 
@@ -228,7 +233,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     Author.joins(:post_categories).first
 
     assert_includes_and_joins_equal(
-      Author.where('categories.id' => categories(:cooking).id),
+      Author.where("categories.id" => categories(:cooking).id),
       [authors(:bob)], :post_categories
     )
   end
@@ -239,16 +244,16 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_has_and_belongs_to_many_with_has_many_source_reflection
     greetings, more = comments(:greetings), comments(:more_greetings)
 
-    assert_equal [greetings, more], categories(:technology).post_comments.order('comments.id')
+    assert_equal [greetings, more], categories(:technology).post_comments.order("comments.id")
   end
 
   def test_has_many_through_has_and_belongs_to_many_with_has_many_source_reflection_preload
     Category.includes(:post_comments).to_a # preheat cache
-    categories = assert_queries(4) { Category.includes(:post_comments).to_a.sort_by(&:id) }
+    category = assert_queries(4) { Category.includes(:post_comments).second }
     greetings, more = comments(:greetings), comments(:more_greetings)
 
     assert_no_queries do
-      assert_equal [greetings, more], categories[1].post_comments.sort_by(&:id)
+      assert_equal [greetings, more], category.post_comments.sort_by(&:id)
     end
   end
 
@@ -257,7 +262,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     Category.joins(:post_comments).first
 
     assert_includes_and_joins_equal(
-      Category.where('comments.id' => comments(:more_greetings).id).order('categories.id'),
+      Category.where("comments.id" => comments(:more_greetings).id).order("categories.id"),
       [categories(:general), categories(:technology)], :post_comments
     )
   end
@@ -268,15 +273,15 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   def test_has_many_through_has_many_with_has_many_through_habtm_source_reflection
     greetings, more = comments(:greetings), comments(:more_greetings)
 
-    assert_equal [greetings, more], authors(:bob).category_post_comments.order('comments.id')
+    assert_equal [greetings, more], authors(:bob).category_post_comments.order("comments.id")
   end
 
   def test_has_many_through_has_many_with_has_many_through_habtm_source_reflection_preload
-    authors = assert_queries(6) { Author.includes(:category_post_comments).to_a.sort_by(&:id) }
+    author = assert_queries(6) { Author.includes(:category_post_comments).third }
     greetings, more = comments(:greetings), comments(:more_greetings)
 
     assert_no_queries do
-      assert_equal [greetings, more], authors[2].category_post_comments.sort_by(&:id)
+      assert_equal [greetings, more], author.category_post_comments.sort_by(&:id)
     end
   end
 
@@ -285,7 +290,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     Author.joins(:category_post_comments).first
 
     assert_includes_and_joins_equal(
-      Author.where('comments.id' => comments(:does_it_hurt).id).order('authors.id'),
+      Author.where("comments.id" => comments(:does_it_hurt).id).order("authors.id"),
       [authors(:david), authors(:mary)], :category_post_comments
     )
   end
@@ -298,17 +303,17 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_many_through_has_many_through_with_belongs_to_source_reflection_preload
-    authors = assert_queries(5) { Author.includes(:tagging_tags).to_a }
+    author = assert_queries(5) { Author.includes(:tagging_tags).first }
     general = tags(:general)
 
     assert_no_queries do
-      assert_equal [general, general], authors.first.tagging_tags
+      assert_equal [general, general], author.tagging_tags
     end
   end
 
   def test_has_many_through_has_many_through_with_belongs_to_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Author.where('tags.id' => tags(:general).id),
+      Author.where("tags.id" => tags(:general).id),
       [authors(:david)], :tagging_tags
     )
   end
@@ -320,21 +325,21 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     welcome_general, thinking_general = taggings(:welcome_general), taggings(:thinking_general)
 
     assert_equal [welcome_general, thinking_general],
-                 categorizations(:david_welcome_general).post_taggings.order('taggings.id')
+                 categorizations(:david_welcome_general).post_taggings.order("taggings.id")
   end
 
   def test_has_many_through_belongs_to_with_has_many_through_source_reflection_preload
-    categorizations = assert_queries(4) { Categorization.includes(:post_taggings).to_a.sort_by(&:id) }
+    categorization = assert_queries(4) { Categorization.includes(:post_taggings).first }
     welcome_general, thinking_general = taggings(:welcome_general), taggings(:thinking_general)
 
     assert_no_queries do
-      assert_equal [welcome_general, thinking_general], categorizations.first.post_taggings.sort_by(&:id)
+      assert_equal [welcome_general, thinking_general], categorization.post_taggings.sort_by(&:id)
     end
   end
 
   def test_has_many_through_belongs_to_with_has_many_through_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Categorization.where('taggings.id' => taggings(:welcome_general).id).order('taggings.id'),
+      Categorization.where("taggings.id" => taggings(:welcome_general).id).order("taggings.id"),
       [categorizations(:david_welcome_general)], :post_taggings
     )
   end
@@ -347,17 +352,17 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_one_through_has_one_with_has_one_through_source_reflection_preload
-    members = assert_queries(4) { Member.includes(:nested_member_type).to_a.sort_by(&:id) }
+    member = assert_queries(4) { Member.includes(:nested_member_type).first }
     founding = member_types(:founding)
 
     assert_no_queries do
-      assert_equal founding, members.first.nested_member_type
+      assert_equal founding, member.nested_member_type
     end
   end
 
   def test_has_one_through_has_one_with_has_one_through_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('member_types.id' => member_types(:founding).id),
+      Member.where("member_types.id" => member_types(:founding).id),
       [members(:groucho)], :nested_member_type
     )
   end
@@ -373,7 +378,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     prev_default_scope = Club.default_scopes
 
     [:includes, :preload, :joins, :eager_load].each do |q|
-      Club.default_scopes = [proc { Club.send(q, :category) }]
+      Club.default_scopes = [proc { Club.public_send(q, :category) }]
       assert_equal categories(:general), members(:groucho).reload.club_category
     end
   ensure
@@ -381,17 +386,17 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_has_one_through_has_one_through_with_belongs_to_source_reflection_preload
-    members = assert_queries(4) { Member.includes(:club_category).to_a.sort_by(&:id) }
+    member = assert_queries(4) { Member.includes(:club_category).first }
     general = categories(:general)
 
     assert_no_queries do
-      assert_equal general, members.first.club_category
+      assert_equal general, member.club_category
     end
   end
 
   def test_has_one_through_has_one_through_with_belongs_to_source_reflection_preload_via_joins
     assert_includes_and_joins_equal(
-      Member.where('categories.id' => categories(:technology).id),
+      Member.where("categories.id" => categories(:technology).id),
       [members(:blarpy_winkup)], :club_category
     )
   end
@@ -404,7 +409,7 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   def test_distinct_has_many_through_a_has_many_through_association_on_through_reflection
     author = authors(:david)
     assert_equal [subscribers(:first), subscribers(:second)],
-                 author.distinct_subscribers.order('subscribers.nick')
+                 author.distinct_subscribers.order("subscribers.nick")
   end
 
   def test_nested_has_many_through_with_a_table_referenced_multiple_times
@@ -413,26 +418,31 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
                  author.similar_posts.sort_by(&:id)
 
     # Mary and Bob both have posts in misc, but they are the only ones.
-    authors = Author.joins(:similar_posts).where('posts.id' => posts(:misc_by_bob).id)
+    authors = Author.joins(:similar_posts).where("posts.id" => posts(:misc_by_bob).id)
     assert_equal [authors(:mary), authors(:bob)], authors.distinct.sort_by(&:id)
 
     # Check the polymorphism of taggings is being observed correctly (in both joins)
-    authors = Author.joins(:similar_posts).where('taggings.taggable_type' => 'FakeModel')
-    assert authors.empty?
-    authors = Author.joins(:similar_posts).where('taggings_authors_join.taggable_type' => 'FakeModel')
-    assert authors.empty?
+    authors = Author.joins(:similar_posts).where("taggings.taggable_type" => "FakeModel")
+    assert_empty authors
+    authors = Author.joins(:similar_posts).where("taggings_authors_join.taggable_type" => "FakeModel")
+    assert_empty authors
+  end
+
+  def test_nested_has_many_through_with_scope_on_polymorphic_reflection
+    authors = Author.joins(:ordered_posts).where("posts.id" => posts(:misc_by_bob).id)
+    assert_equal [authors(:mary), authors(:bob)], authors.distinct.sort_by(&:id)
   end
 
   def test_has_many_through_with_foreign_key_option_on_through_reflection
-    assert_equal [posts(:welcome), posts(:authorless)], people(:david).agents_posts.order('posts.id')
+    assert_equal [posts(:welcome), posts(:authorless)], people(:david).agents_posts.order("posts.id")
     assert_equal [authors(:david)], references(:david_unicyclist).agents_posts_authors
 
-    references = Reference.joins(:agents_posts_authors).where('authors.id' => authors(:david).id)
+    references = Reference.joins(:agents_posts_authors).where("authors.id" => authors(:david).id)
     assert_equal [references(:david_unicyclist)], references
   end
 
   def test_has_many_through_with_foreign_key_option_on_source_reflection
-    assert_equal [people(:michael), people(:susan)], jobs(:unicyclist).agents.order('people.id')
+    assert_equal [people(:michael), people(:susan)], jobs(:unicyclist).agents.order("people.id")
 
     jobs = Job.joins(:agents)
     assert_equal [jobs(:unicyclist), jobs(:unicyclist)], jobs
@@ -443,19 +453,19 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal [ratings(:special_comment_rating), ratings(:sub_special_comment_rating)], ratings
 
     # Ensure STI is respected in the join
-    scope = Post.joins(:special_comments_ratings).where(:id => posts(:sti_comments).id)
-    assert scope.where("comments.type" => "Comment").empty?
-    assert !scope.where("comments.type" => "SpecialComment").empty?
-    assert !scope.where("comments.type" => "SubSpecialComment").empty?
+    scope = Post.joins(:special_comments_ratings).where(id: posts(:sti_comments).id)
+    assert_empty scope.where("comments.type" => "Comment")
+    assert_not_empty scope.where("comments.type" => "SpecialComment")
+    assert_not_empty scope.where("comments.type" => "SubSpecialComment")
   end
 
   def test_has_many_through_with_sti_on_nested_through_reflection
     taggings = posts(:sti_comments).special_comments_ratings_taggings
     assert_equal [taggings(:special_comment_rating)], taggings
 
-    scope = Post.joins(:special_comments_ratings_taggings).where(:id => posts(:sti_comments).id)
-    assert scope.where("comments.type" => "Comment").empty?
-    assert !scope.where("comments.type" => "SpecialComment").empty?
+    scope = Post.joins(:special_comments_ratings_taggings).where(id: posts(:sti_comments).id)
+    assert_empty scope.where("comments.type" => "Comment")
+    assert_not_empty scope.where("comments.type" => "SpecialComment")
   end
 
   def test_nested_has_many_through_writers_should_raise_error
@@ -505,20 +515,20 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_nested_has_many_through_with_conditions_on_through_associations_preload
-    assert Author.where('tags.id' => 100).joins(:misc_post_first_blue_tags).empty?
+    assert_empty Author.where("tags.id" => 100).joins(:misc_post_first_blue_tags)
 
-    authors = assert_queries(3) { Author.includes(:misc_post_first_blue_tags).to_a.sort_by(&:id) }
+    author = assert_queries(2) { Author.includes(:misc_post_first_blue_tags).third }
     blue = tags(:blue)
 
     assert_no_queries do
-      assert_equal [blue], authors[2].misc_post_first_blue_tags
+      assert_equal [blue], author.misc_post_first_blue_tags
     end
   end
 
   def test_nested_has_many_through_with_conditions_on_through_associations_preload_via_joins
     # Pointless condition to force single-query loading
     assert_includes_and_joins_equal(
-      Author.where('tags.id = tags.id').references(:tags),
+      Author.where("tags.id = tags.id").references(:tags),
       [authors(:bob)], :misc_post_first_blue_tags
     )
   end
@@ -528,18 +538,27 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
   end
 
   def test_nested_has_many_through_with_conditions_on_source_associations_preload
-    authors = assert_queries(4) { Author.includes(:misc_post_first_blue_tags_2).to_a.sort_by(&:id) }
+    author = assert_queries(2) { Author.includes(:misc_post_first_blue_tags_2).third }
     blue = tags(:blue)
 
     assert_no_queries do
-      assert_equal [blue], authors[2].misc_post_first_blue_tags_2
+      assert_equal [blue], author.misc_post_first_blue_tags_2
+    end
+  end
+
+  def test_through_association_preload_doesnt_reset_source_association_if_already_preloaded
+    blue = tags(:blue)
+    author = Author.preload(posts: :first_blue_tags_2, misc_post_first_blue_tags_2: {}).third
+
+    assert_no_queries do
+      assert_equal [blue], author.posts.first.first_blue_tags_2
     end
   end
 
   def test_nested_has_many_through_with_conditions_on_source_associations_preload_via_joins
     # Pointless condition to force single-query loading
     assert_includes_and_joins_equal(
-      Author.where('tags.id = tags.id').references(:tags),
+      Author.where("tags.id = tags.id").references(:tags),
       [authors(:bob)], :misc_post_first_blue_tags_2
     )
   end
@@ -548,13 +567,13 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     assert_equal [categories(:general)], organizations(:nsa).author_essay_categories
 
     organizations = Organization.joins(:author_essay_categories).
-                                 where('categories.id' => categories(:general).id)
+                                 where("categories.id" => categories(:general).id)
     assert_equal [organizations(:nsa)], organizations
 
     assert_equal categories(:general), organizations(:nsa).author_owned_essay_category
 
     organizations = Organization.joins(:author_owned_essay_category).
-                                 where('categories.id' => categories(:general).id)
+                                 where("categories.id" => categories(:general).id)
     assert_equal [organizations(:nsa)], organizations
   end
 
@@ -562,14 +581,52 @@ class NestedThroughAssociationsTest < ActiveRecord::TestCase
     c = Categorization.new
     c.author = authors(:david)
     c.post_taggings.to_a
-    assert !c.post_taggings.empty?
+    assert_not_empty c.post_taggings
     c.save
-    assert !c.post_taggings.empty?
+    assert_not_empty c.post_taggings
+  end
+
+  def test_polymorphic_has_many_through_when_through_association_has_not_loaded
+    cake_designer = CakeDesigner.create!(chef: Chef.new)
+    drink_designer = DrinkDesigner.create!(chef: Chef.new)
+    department = Department.create!(chefs: [cake_designer.chef, drink_designer.chef])
+    Hotel.create!(departments: [department])
+    hotel = Hotel.includes(:cake_designers, :drink_designers).take
+
+    assert_equal [cake_designer], hotel.cake_designers
+    assert_equal [drink_designer], hotel.drink_designers
+  end
+
+  def test_polymorphic_has_many_through_when_through_association_has_already_loaded
+    cake_designer = CakeDesigner.create!(chef: Chef.new)
+    drink_designer = DrinkDesigner.create!(chef: Chef.new)
+    department = Department.create!(chefs: [cake_designer.chef, drink_designer.chef])
+    Hotel.create!(departments: [department])
+    hotel = Hotel.includes(:chefs, :cake_designers, :drink_designers).take
+
+    assert_equal [cake_designer], hotel.cake_designers
+    assert_equal [drink_designer], hotel.drink_designers
+  end
+
+  def test_polymorphic_has_many_through_joined_different_table_twice
+    cake_designer = CakeDesigner.create!(chef: Chef.new)
+    drink_designer = DrinkDesigner.create!(chef: Chef.new)
+    department = Department.create!(chefs: [cake_designer.chef, drink_designer.chef])
+    hotel = Hotel.create!(departments: [department])
+
+    assert_equal hotel, Hotel.joins(:cake_designers, :drink_designers).take
+  end
+
+  def test_has_many_through_reset_source_reflection_after_loading_is_complete
+    preloaded = Category.preload(:ordered_post_comments).find(1, 2).last
+    original = Category.find(2)
+    assert_equal original.ordered_post_comments.ids, preloaded.ordered_post_comments.ids
   end
 
   private
-
     def assert_includes_and_joins_equal(query, expected, association)
+      query = query.order(:id)
+
       actual = assert_queries(1) { query.joins(association).to_a.uniq }
       assert_equal expected, actual
 

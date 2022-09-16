@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 
 class Horse < ActiveRecord::Base
@@ -6,7 +8,7 @@ end
 module ActiveRecord
   class InvertibleMigrationTest < ActiveRecord::TestCase
     class SilentMigration < ActiveRecord::Migration::Current
-      def write(text = '')
+      def write(text = "")
         # sssshhhhh!!
       end
     end
@@ -16,6 +18,24 @@ module ActiveRecord
         create_table("horses") do |t|
           t.column :content, :text
           t.column :remind_at, :datetime
+          t.column :place_id, :integer
+        end
+      end
+    end
+
+    class InvertibleChangeTableMigration < SilentMigration
+      def change
+        change_table("horses") do |t|
+          t.column :name, :string
+          t.remove :remind_at, type: :datetime
+        end
+      end
+    end
+
+    class InvertibleTransactionMigration < InvertibleMigration
+      def change
+        transaction do
+          super
         end
       end
     end
@@ -67,6 +87,7 @@ module ActiveRecord
           t.column :name, :string
           t.column :color, :string
           t.index [:name, :color]
+          t.index [:color]
         end
       end
     end
@@ -75,6 +96,7 @@ module ActiveRecord
       def change
         change_table("horses") do |t|
           t.remove_index [:name, :color]
+          t.remove_index [:color], if_exists: true
         end
       end
     end
@@ -90,6 +112,32 @@ module ActiveRecord
     class ChangeColumnDefault2 < SilentMigration
       def change
         change_column_default :horses, :name, from: "Sekitoba", to: "Diomed"
+      end
+    end
+
+    class ChangeColumnComment1 < SilentMigration
+      def change
+        create_table("horses") do |t|
+          t.column :name, :string, comment: "Sekitoba"
+        end
+      end
+    end
+
+    class ChangeColumnComment2 < SilentMigration
+      def change
+        change_column_comment :horses, :name, from: "Sekitoba", to: "Diomed"
+      end
+    end
+
+    class ChangeTableComment1 < SilentMigration
+      def change
+        create_table("horses", comment: "Sekitoba")
+      end
+    end
+
+    class ChangeTableComment2 < SilentMigration
+      def change
+        change_table_comment :horses, from: "Sekitoba", to: "Diomed"
       end
     end
 
@@ -151,6 +199,12 @@ module ActiveRecord
       end
     end
 
+    class RevertNonNamedExpressionIndexMigration < SilentMigration
+      def change
+        add_index :horses, "remind_at, place_id"
+      end
+    end
+
     class RevertCustomForeignKeyTable < SilentMigration
       def change
         change_table(:horses) do |t|
@@ -159,16 +213,23 @@ module ActiveRecord
       end
     end
 
+    class UpOnlyMigration < SilentMigration
+      def change
+        add_column :horses, :oldie, :integer, default: 0
+        up_only { execute "update horses set oldie = 1" }
+      end
+    end
+
+    self.use_transactional_tests = false
+
     setup do
       @verbose_was, ActiveRecord::Migration.verbose = ActiveRecord::Migration.verbose, false
     end
 
     teardown do
       %w[horses new_horses].each do |table|
-        ActiveSupport::Deprecation.silence do
-          if ActiveRecord::Base.connection.table_exists?(table)
-            ActiveRecord::Base.connection.drop_table(table)
-          end
+        if ActiveRecord::Base.connection.table_exists?(table)
+          ActiveRecord::Base.connection.drop_table(table)
         end
       end
       ActiveRecord::Migration.verbose = @verbose_was
@@ -199,14 +260,14 @@ module ActiveRecord
     def test_migrate_up
       migration = InvertibleMigration.new
       migration.migrate(:up)
-      ActiveSupport::Deprecation.silence { assert migration.connection.table_exists?("horses"), "horses should exist" }
+      assert migration.connection.table_exists?("horses"), "horses should exist"
     end
 
     def test_migrate_down
       migration = InvertibleMigration.new
       migration.migrate :up
       migration.migrate :down
-      ActiveSupport::Deprecation.silence { assert !migration.connection.table_exists?("horses") }
+      assert_not migration.connection.table_exists?("horses")
     end
 
     def test_migrate_revert
@@ -214,36 +275,39 @@ module ActiveRecord
       revert = InvertibleRevertMigration.new
       migration.migrate :up
       revert.migrate :up
-      ActiveSupport::Deprecation.silence { assert !migration.connection.table_exists?("horses") }
+      assert_not migration.connection.table_exists?("horses")
       revert.migrate :down
-      ActiveSupport::Deprecation.silence { assert migration.connection.table_exists?("horses") }
+      assert migration.connection.table_exists?("horses")
       migration.migrate :down
-      ActiveSupport::Deprecation.silence { assert !migration.connection.table_exists?("horses") }
+      assert_not migration.connection.table_exists?("horses")
+    end
+
+    def test_migrate_revert_change_table
+      InvertibleMigration.new.migrate :up
+      migration = InvertibleChangeTableMigration.new
+      migration.migrate :up
+      assert_not migration.connection.column_exists?(:horses, :remind_at)
+      migration.migrate :down
+      assert migration.connection.column_exists?(:horses, :remind_at)
     end
 
     def test_migrate_revert_by_part
       InvertibleMigration.new.migrate :up
       received = []
       migration = InvertibleByPartsMigration.new
-      migration.test = ->(dir){
-        ActiveSupport::Deprecation.silence do
-          assert migration.connection.table_exists?("horses")
-          assert migration.connection.table_exists?("new_horses")
-        end
+      migration.test = ->(dir) {
+        assert migration.connection.table_exists?("horses")
+        assert migration.connection.table_exists?("new_horses")
         received << dir
       }
       migration.migrate :up
       assert_equal [:both, :up], received
-      ActiveSupport::Deprecation.silence do
-        assert !migration.connection.table_exists?("horses")
-        assert migration.connection.table_exists?("new_horses")
-      end
+      assert_not migration.connection.table_exists?("horses")
+      assert migration.connection.table_exists?("new_horses")
       migration.migrate :down
       assert_equal [:both, :up, :both, :down], received
-      ActiveSupport::Deprecation.silence do
-        assert migration.connection.table_exists?("horses")
-        assert !migration.connection.table_exists?("new_horses")
-      end
+      assert migration.connection.table_exists?("horses")
+      assert_not migration.connection.table_exists?("new_horses")
     end
 
     def test_migrate_revert_whole_migration
@@ -252,25 +316,34 @@ module ActiveRecord
         revert = RevertWholeMigration.new(klass)
         migration.migrate :up
         revert.migrate :up
-        ActiveSupport::Deprecation.silence { assert !migration.connection.table_exists?("horses") }
+        assert_not migration.connection.table_exists?("horses")
         revert.migrate :down
-        ActiveSupport::Deprecation.silence { assert migration.connection.table_exists?("horses") }
+        assert migration.connection.table_exists?("horses")
         migration.migrate :down
-        ActiveSupport::Deprecation.silence { assert !migration.connection.table_exists?("horses") }
+        assert_not migration.connection.table_exists?("horses")
       end
     end
 
     def test_migrate_nested_revert_whole_migration
       revert = NestedRevertWholeMigration.new(InvertibleRevertMigration)
       revert.migrate :down
-      ActiveSupport::Deprecation.silence { assert revert.connection.table_exists?("horses") }
+      assert revert.connection.table_exists?("horses")
       revert.migrate :up
-      ActiveSupport::Deprecation.silence { assert !revert.connection.table_exists?("horses") }
+      assert_not revert.connection.table_exists?("horses")
+    end
+
+    def test_migrate_revert_transaction
+      migration = InvertibleTransactionMigration.new
+      migration.migrate :up
+      assert migration.connection.table_exists?("horses")
+      migration.migrate :down
+      assert_not migration.connection.table_exists?("horses")
     end
 
     def test_migrate_revert_change_column_default
       migration1 = ChangeColumnDefault1.new
       migration1.migrate(:up)
+      Horse.reset_column_information
       assert_equal "Sekitoba", Horse.new.name
 
       migration2 = ChangeColumnDefault2.new
@@ -283,29 +356,65 @@ module ActiveRecord
       assert_equal "Sekitoba", Horse.new.name
     end
 
+    if ActiveRecord::Base.connection.supports_comments?
+      def test_migrate_revert_change_column_comment
+        migration1 = ChangeColumnComment1.new
+        migration1.migrate(:up)
+        Horse.reset_column_information
+        assert_equal "Sekitoba", Horse.columns_hash["name"].comment
+
+        migration2 = ChangeColumnComment2.new
+        migration2.migrate(:up)
+        Horse.reset_column_information
+        assert_equal "Diomed", Horse.columns_hash["name"].comment
+
+        migration2.migrate(:down)
+        Horse.reset_column_information
+        assert_equal "Sekitoba", Horse.columns_hash["name"].comment
+      end
+
+      def test_migrate_revert_change_table_comment
+        connection = ActiveRecord::Base.connection
+        migration1 = ChangeTableComment1.new
+        migration1.migrate(:up)
+        assert_equal "Sekitoba", connection.table_comment("horses")
+
+        migration2 = ChangeTableComment2.new
+        migration2.migrate(:up)
+        assert_equal "Diomed", connection.table_comment("horses")
+
+        migration2.migrate(:down)
+        assert_equal "Sekitoba", connection.table_comment("horses")
+      end
+    end
+
     if current_adapter?(:PostgreSQLAdapter)
       def test_migrate_enable_and_disable_extension
         migration1 = InvertibleMigration.new
         migration2 = DisableExtension1.new
         migration3 = DisableExtension2.new
 
+        assert_equal true, Horse.connection.extension_available?("hstore")
+
         migration1.migrate(:up)
         migration2.migrate(:up)
-        assert_equal true, Horse.connection.extension_enabled?('hstore')
+        assert_equal true, Horse.connection.extension_enabled?("hstore")
 
         migration3.migrate(:up)
-        assert_equal false, Horse.connection.extension_enabled?('hstore')
+        assert_equal false, Horse.connection.extension_enabled?("hstore")
 
         migration3.migrate(:down)
-        assert_equal true, Horse.connection.extension_enabled?('hstore')
+        assert_equal true, Horse.connection.extension_enabled?("hstore")
 
         migration2.migrate(:down)
-        assert_equal false, Horse.connection.extension_enabled?('hstore')
+        assert_equal false, Horse.connection.extension_enabled?("hstore")
+      ensure
+        enable_extension!("hstore", ActiveRecord::Base.connection)
       end
     end
 
     def test_revert_order
-      block = Proc.new{|t| t.string :name }
+      block = Proc.new { |t| t.string :name }
       recorder = ActiveRecord::Migration::CommandRecorder.new(ActiveRecord::Base.connection)
       recorder.instance_eval do
         create_table("apples", &block)
@@ -330,35 +439,35 @@ module ActiveRecord
 
     def test_legacy_up
       LegacyMigration.migrate :up
-      ActiveSupport::Deprecation.silence { assert ActiveRecord::Base.connection.table_exists?("horses"), "horses should exist" }
+      assert ActiveRecord::Base.connection.table_exists?("horses"), "horses should exist"
     end
 
     def test_legacy_down
       LegacyMigration.migrate :up
       LegacyMigration.migrate :down
-      ActiveSupport::Deprecation.silence { assert !ActiveRecord::Base.connection.table_exists?("horses"), "horses should not exist" }
+      assert_not ActiveRecord::Base.connection.table_exists?("horses"), "horses should not exist"
     end
 
     def test_up
       LegacyMigration.up
-      ActiveSupport::Deprecation.silence { assert ActiveRecord::Base.connection.table_exists?("horses"), "horses should exist" }
+      assert ActiveRecord::Base.connection.table_exists?("horses"), "horses should exist"
     end
 
     def test_down
       LegacyMigration.up
       LegacyMigration.down
-      ActiveSupport::Deprecation.silence { assert !ActiveRecord::Base.connection.table_exists?("horses"), "horses should not exist" }
+      assert_not ActiveRecord::Base.connection.table_exists?("horses"), "horses should not exist"
     end
 
     def test_migrate_down_with_table_name_prefix
-      ActiveRecord::Base.table_name_prefix = 'p_'
-      ActiveRecord::Base.table_name_suffix = '_s'
+      ActiveRecord::Base.table_name_prefix = "p_"
+      ActiveRecord::Base.table_name_suffix = "_s"
       migration = InvertibleMigration.new
       migration.migrate(:up)
       assert_nothing_raised { migration.migrate(:down) }
-      ActiveSupport::Deprecation.silence { assert !ActiveRecord::Base.connection.table_exists?("p_horses_s"), "p_horses_s should not exist" }
+      assert_not ActiveRecord::Base.connection.table_exists?("p_horses_s"), "p_horses_s should not exist"
     ensure
-      ActiveRecord::Base.table_name_prefix = ActiveRecord::Base.table_name_suffix = ''
+      ActiveRecord::Base.table_name_prefix = ActiveRecord::Base.table_name_suffix = ""
     end
 
     def test_migrations_can_handle_foreign_keys_to_specific_tables
@@ -369,7 +478,7 @@ module ActiveRecord
     end
 
     # MySQL 5.7 and Oracle do not allow to create duplicate indexes on the same columns
-    unless current_adapter?(:Mysql2Adapter, :OracleAdapter)
+    unless current_adapter?(:Mysql2Adapter, :OracleAdapter, :IBM_DBAdapter)
       def test_migrate_revert_add_index_with_name
         RevertNamedIndexMigration1.new.migrate(:up)
         RevertNamedIndexMigration2.new.migrate(:up)
@@ -378,10 +487,41 @@ module ActiveRecord
         connection = ActiveRecord::Base.connection
         assert connection.index_exists?(:horses, :content),
                "index on content should exist"
-        assert !connection.index_exists?(:horses, :content, name: "horses_index_named"),
+        assert_not connection.index_exists?(:horses, :content, name: "horses_index_named"),
               "horses_index_named index should not exist"
       end
     end
 
+    def test_migrate_revert_add_index_without_name_on_expression
+      InvertibleMigration.new.migrate(:up)
+      RevertNonNamedExpressionIndexMigration.new.migrate(:up)
+
+      connection = ActiveRecord::Base.connection
+      assert connection.index_exists?(:horses, [:remind_at, :place_id]),
+             "index on remind_at and place_id should exist"
+
+      RevertNonNamedExpressionIndexMigration.new.migrate(:down)
+
+      assert_not connection.index_exists?(:horses, [:remind_at, :place_id]),
+             "index on remind_at and place_id should not exist"
+    end
+
+    def test_up_only
+      InvertibleMigration.new.migrate(:up)
+      horse1 = Horse.create
+      # populates existing horses with oldie = 1 but new ones have default 0
+      UpOnlyMigration.new.migrate(:up)
+      Horse.reset_column_information
+      horse1.reload
+      horse2 = Horse.create
+
+      assert 1, horse1.oldie # created before migration
+      assert 0, horse2.oldie # created after migration
+
+      UpOnlyMigration.new.migrate(:down) # should be no error
+      connection = ActiveRecord::Base.connection
+      assert_not connection.column_exists?(:horses, :oldie)
+      Horse.reset_column_information
+    end
   end
 end

@@ -1,87 +1,91 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'models/computer'
-require 'models/developer'
-require 'models/project'
-require 'models/company'
-require 'models/categorization'
-require 'models/category'
-require 'models/post'
-require 'models/author'
-require 'models/comment'
-require 'models/tag'
-require 'models/tagging'
-require 'models/person'
-require 'models/reader'
-require 'models/ship_part'
-require 'models/ship'
-require 'models/liquid'
-require 'models/molecule'
-require 'models/electron'
-require 'models/man'
-require 'models/interest'
+require "models/computer"
+require "models/developer"
+require "models/project"
+require "models/company"
+require "models/categorization"
+require "models/category"
+require "models/post"
+require "models/author"
+require "models/comment"
+require "models/tag"
+require "models/tagging"
+require "models/person"
+require "models/reader"
+require "models/ship_part"
+require "models/ship"
+require "models/liquid"
+require "models/molecule"
+require "models/electron"
+require "models/human"
+require "models/interest"
+require "models/pirate"
+require "models/parrot"
+require "models/bird"
+require "models/treasure"
+require "models/price_estimate"
 
 class AssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :developers, :projects, :developers_projects,
-           :computers, :people, :readers, :authors, :author_favorites
+           :computers, :people, :readers, :authors, :author_addresses, :author_favorites
 
   def test_eager_loading_should_not_change_count_of_children
-    liquid = Liquid.create(:name => 'salty')
-    molecule = liquid.molecules.create(:name => 'molecule_1')
-    molecule.electrons.create(:name => 'electron_1')
-    molecule.electrons.create(:name => 'electron_2')
+    liquid = Liquid.create(name: "salty")
+    molecule = liquid.molecules.create(name: "molecule_1")
+    molecule.electrons.create(name: "electron_1")
+    molecule.electrons.create(name: "electron_2")
 
-    liquids = Liquid.includes(:molecules => :electrons).references(:molecules).where('molecules.id is not null')
+    liquids = Liquid.includes(molecules: :electrons).references(:molecules).where("molecules.id is not null")
     assert_equal 1, liquids[0].molecules.length
   end
 
   def test_subselect
     author = authors :david
     favs = author.author_favorites
-    fav2 = author.author_favorites.where(:author => Author.where(id: author.id)).to_a
+    fav2 = author.author_favorites.where(author: Author.where(id: author.id)).to_a
     assert_equal favs, fav2
   end
 
   def test_loading_the_association_target_should_keep_child_records_marked_for_destruction
-    ship = Ship.create!(:name => "The good ship Dollypop")
-    part = ship.parts.create!(:name => "Mast")
+    ship = Ship.create!(name: "The good ship Dollypop")
+    part = ship.parts.create!(name: "Mast")
     part.mark_for_destruction
-    ship.parts.send(:load_target)
-    assert ship.parts[0].marked_for_destruction?
+    assert_predicate ship.parts[0], :marked_for_destruction?
   end
 
   def test_loading_the_association_target_should_load_most_recent_attributes_for_child_records_marked_for_destruction
-    ship = Ship.create!(:name => "The good ship Dollypop")
-    part = ship.parts.create!(:name => "Mast")
+    ship = Ship.create!(name: "The good ship Dollypop")
+    part = ship.parts.create!(name: "Mast")
     part.mark_for_destruction
-    ShipPart.find(part.id).update_columns(name: 'Deck')
-    ship.parts.send(:load_target)
-    assert_equal 'Deck', ship.parts[0].name
+    ShipPart.find(part.id).update_columns(name: "Deck")
+    assert_equal "Deck", ship.parts[0].name
   end
 
-
   def test_include_with_order_works
-    assert_nothing_raised {Account.all.merge!(:order => 'id', :includes => :firm).first}
-    assert_nothing_raised {Account.all.merge!(:order => :id, :includes => :firm).first}
+    assert_nothing_raised { Account.all.merge!(order: "id", includes: :firm).first }
+    assert_nothing_raised { Account.all.merge!(order: :id, includes: :firm).first }
   end
 
   def test_bad_collection_keys
-    assert_raise(ArgumentError, 'ActiveRecord should have barked on bad collection keys') do
-      Class.new(ActiveRecord::Base).has_many(:wheels, :name => 'wheels')
+    assert_raise(ArgumentError, "ActiveRecord should have barked on bad collection keys") do
+      Class.new(ActiveRecord::Base).has_many(:wheels, name: "wheels")
     end
   end
 
   def test_should_construct_new_finder_sql_after_create
-    person = Person.new :first_name => 'clark'
+    person = Person.new first_name: "clark"
     assert_equal [], person.readers.to_a
     person.save!
-    reader = Reader.create! :person => person, :post => Post.new(:title => "foo", :body => "bar")
+    reader = Reader.create! person: person, post: Post.new(title: "foo", body: "bar")
     assert person.readers.find(reader.id)
   end
 
   def test_force_reload
     firm = Firm.new("name" => "A New Firm, Inc")
     firm.save
-    firm.clients.each {} # forcing to load all clients
+    firm.clients.each { } # forcing to load all clients
     assert firm.clients.empty?, "New firm shouldn't have client objects"
     assert_equal 0, firm.clients.size, "New firm should have 0 clients"
 
@@ -91,10 +95,10 @@ class AssociationsTest < ActiveRecord::TestCase
     assert firm.clients.empty?, "New firm should have cached no client objects"
     assert_equal 0, firm.clients.size, "New firm should have cached 0 clients count"
 
-    ActiveSupport::Deprecation.silence do
-      assert !firm.clients(true).empty?, "New firm should have reloaded client objects"
-      assert_equal 1, firm.clients(true).size, "New firm should have reloaded clients count"
-    end
+    firm.clients.reload
+
+    assert_not firm.clients.empty?, "New firm should have reloaded client objects"
+    assert_equal 1, firm.clients.size, "New firm should have reloaded clients count"
   end
 
   def test_using_limitable_reflections_helper
@@ -103,113 +107,100 @@ class AssociationsTest < ActiveRecord::TestCase
     has_many_reflections = [Tag.reflect_on_association(:taggings), Developer.reflect_on_association(:projects)]
     mixed_reflections = (belongs_to_reflections + has_many_reflections).uniq
     assert using_limitable_reflections.call(belongs_to_reflections), "Belong to associations are limitable"
-    assert !using_limitable_reflections.call(has_many_reflections), "All has many style associations are not limitable"
-    assert !using_limitable_reflections.call(mixed_reflections), "No collection associations (has many style) should pass"
-  end
-
-  def test_force_reload_is_uncached
-    firm = Firm.create!("name" => "A New Firm, Inc")
-    Client.create!("name" => "TheClient.com", :firm => firm)
-
-    ActiveSupport::Deprecation.silence do
-      ActiveRecord::Base.cache do
-        firm.clients.each {}
-        assert_queries(0) { assert_not_nil firm.clients.each {} }
-        assert_queries(1) { assert_not_nil firm.clients(true).each {} }
-      end
-    end
+    assert_not using_limitable_reflections.call(has_many_reflections), "All has many style associations are not limitable"
+    assert_not using_limitable_reflections.call(mixed_reflections), "No collection associations (has many style) should pass"
   end
 
   def test_association_with_references
     firm = companies(:first_firm)
-    assert_includes firm.association_with_references.references_values, 'foo'
+    assert_equal [:foo], firm.association_with_references.references_values
   end
-
 end
 
 class AssociationProxyTest < ActiveRecord::TestCase
-  fixtures :authors, :posts, :categorizations, :categories, :developers, :projects, :developers_projects
+  fixtures :authors, :author_addresses, :posts, :categorizations, :categories, :developers, :projects, :developers_projects
 
   def test_push_does_not_load_target
     david = authors(:david)
 
-    david.posts << (post = Post.new(:title => "New on Edge", :body => "More cool stuff!"))
-    assert !david.posts.loaded?
-    assert david.posts.include?(post)
+    david.posts << (post = Post.new(title: "New on Edge", body: "More cool stuff!"))
+    assert_not_predicate david.posts, :loaded?
+    assert_includes david.posts, post
   end
 
   def test_push_has_many_through_does_not_load_target
     david = authors(:david)
 
     david.categories << categories(:technology)
-    assert !david.categories.loaded?
-    assert david.categories.include?(categories(:technology))
+    assert_not_predicate david.categories, :loaded?
+    assert_includes david.categories, categories(:technology)
   end
 
   def test_push_followed_by_save_does_not_load_target
     david = authors(:david)
 
-    david.posts << (post = Post.new(:title => "New on Edge", :body => "More cool stuff!"))
-    assert !david.posts.loaded?
+    david.posts << (post = Post.new(title: "New on Edge", body: "More cool stuff!"))
+    assert_not_predicate david.posts, :loaded?
     david.save
-    assert !david.posts.loaded?
-    assert david.posts.include?(post)
+    assert_not_predicate david.posts, :loaded?
+    assert_includes david.posts, post
   end
 
   def test_push_does_not_lose_additions_to_new_record
-    josh = Author.new(:name => "Josh")
-    josh.posts << Post.new(:title => "New on Edge", :body => "More cool stuff!")
-    assert josh.posts.loaded?
+    josh = Author.new(name: "Josh")
+    josh.posts << Post.new(title: "New on Edge", body: "More cool stuff!")
+    assert_predicate josh.posts, :loaded?
     assert_equal 1, josh.posts.size
   end
 
   def test_append_behaves_like_push
-    josh = Author.new(:name => "Josh")
-    josh.posts.append Post.new(:title => "New on Edge", :body => "More cool stuff!")
-    assert josh.posts.loaded?
+    josh = Author.new(name: "Josh")
+    josh.posts.append Post.new(title: "New on Edge", body: "More cool stuff!")
+    assert_predicate josh.posts, :loaded?
     assert_equal 1, josh.posts.size
   end
 
   def test_prepend_is_not_defined
-    josh = Author.new(:name => "Josh")
+    josh = Author.new(name: "Josh")
     assert_raises(NoMethodError) { josh.posts.prepend Post.new }
   end
 
   def test_save_on_parent_does_not_load_target
     david = developers(:david)
 
-    assert !david.projects.loaded?
+    assert_not_predicate david.projects, :loaded?
     david.update_columns(created_at: Time.now)
-    assert !david.projects.loaded?
+    assert_not_predicate david.projects, :loaded?
   end
 
   def test_load_does_load_target
     david = developers(:david)
 
-    assert !david.projects.loaded?
+    assert_not_predicate david.projects, :loaded?
     david.projects.load
-    assert david.projects.loaded?
+    assert_predicate david.projects, :loaded?
   end
 
   def test_inspect_does_not_reload_a_not_yet_loaded_target
-    andreas = Developer.new :name => 'Andreas', :log => 'new developer added'
-    assert !andreas.audit_logs.loaded?
+    andreas = Developer.new name: "Andreas", log: "new developer added"
+    assert_not_predicate andreas.audit_logs, :loaded?
     assert_match(/message: "new developer added"/, andreas.audit_logs.inspect)
+    assert_predicate andreas.audit_logs, :loaded?
   end
 
   def test_save_on_parent_saves_children
-    developer = Developer.create :name => "Bryan", :salary => 50_000
+    developer = Developer.create name: "Bryan", salary: 50_000
     assert_equal 1, developer.reload.audit_logs.size
   end
 
   def test_create_via_association_with_block
-    post = authors(:david).posts.create(:title => "New on Edge") {|p| p.body = "More cool stuff!"}
+    post = authors(:david).posts.create(title: "New on Edge") { |p| p.body = "More cool stuff!" }
     assert_equal post.title, "New on Edge"
     assert_equal post.body, "More cool stuff!"
   end
 
   def test_create_with_bang_via_association_with_block
-    post = authors(:david).posts.create!(:title => "New on Edge") {|p| p.body = "More cool stuff!"}
+    post = authors(:david).posts.create!(title: "New on Edge") { |p| p.body = "More cool stuff!" }
     assert_equal post.title, "New on Edge"
     assert_equal post.body, "More cool stuff!"
   end
@@ -227,7 +218,7 @@ class AssociationProxyTest < ActiveRecord::TestCase
   end
 
   def test_scoped_allows_conditions
-    assert developers(:david).projects.merge(where: 'foo').to_sql.include?('foo')
+    assert developers(:david).projects.merge(where: "foo").to_sql.include?("foo")
   end
 
   test "getting a scope from an association" do
@@ -250,37 +241,56 @@ class AssociationProxyTest < ActiveRecord::TestCase
   end
 
   test "inverses get set of subsets of the association" do
-    man = Man.create
-    man.interests.create
+    human = Human.create
+    human.interests.create
 
-    man = Man.find(man.id)
+    human = Human.find(human.id)
 
     assert_queries(1) do
-      assert_equal man, man.interests.where("1=1").first.man
+      assert_equal human, human.interests.where("1=1").first.human
     end
   end
 
   test "first! works on loaded associations" do
     david = authors(:david)
-    assert_equal david.posts.first, david.posts.reload.first!
-    assert david.posts.loaded?
-    assert_no_queries { david.posts.first! }
+    assert_equal david.first_posts.first, david.first_posts.reload.first!
+    assert_predicate david.first_posts, :loaded?
+    assert_no_queries { david.first_posts.first! }
   end
 
   def test_pluck_uses_loaded_target
     david = authors(:david)
-    assert_equal david.posts.pluck(:title), david.posts.load.pluck(:title)
-    assert david.posts.loaded?
-    assert_no_queries { david.posts.pluck(:title) }
+    assert_equal david.first_posts.pluck(:title), david.first_posts.load.pluck(:title)
+    assert_predicate david.first_posts, :loaded?
+    assert_no_queries { david.first_posts.pluck(:title) }
+  end
+
+  def test_pick_uses_loaded_target
+    david = authors(:david)
+    assert_equal david.first_posts.pick(:title), david.first_posts.load.pick(:title)
+    assert_predicate david.first_posts, :loaded?
+    assert_no_queries { david.first_posts.pick(:title) }
   end
 
   def test_reset_unloads_target
     david = authors(:david)
     david.posts.reload
 
-    assert david.posts.loaded?
+    assert_predicate david.posts, :loaded?
+    assert_predicate david.posts, :loaded
     david.posts.reset
-    assert !david.posts.loaded?
+    assert_not_predicate david.posts, :loaded?
+    assert_not_predicate david.posts, :loaded
+  end
+
+  def test_target_merging_ignores_persisted_in_memory_records
+    david = authors(:david)
+    assert david.thinking_posts.include?(posts(:thinking))
+
+    david.thinking_posts.create!(title: "Something else entirely", body: "Does not matter.")
+
+    assert_equal 1, david.thinking_posts.size
+    assert_equal 1, david.thinking_posts.to_a.size
   end
 end
 
@@ -288,18 +298,18 @@ class OverridingAssociationsTest < ActiveRecord::TestCase
   class DifferentPerson < ActiveRecord::Base; end
 
   class PeopleList < ActiveRecord::Base
-    has_and_belongs_to_many :has_and_belongs_to_many, :before_add => :enlist
-    has_many :has_many, :before_add => :enlist
+    has_and_belongs_to_many :has_and_belongs_to_many, before_add: :enlist
+    has_many :has_many, before_add: :enlist
     belongs_to :belongs_to
     has_one :has_one
   end
 
   class DifferentPeopleList < PeopleList
     # Different association with the same name, callbacks should be omitted here.
-    has_and_belongs_to_many :has_and_belongs_to_many, :class_name => 'DifferentPerson'
-    has_many :has_many, :class_name => 'DifferentPerson'
-    belongs_to :belongs_to, :class_name => 'DifferentPerson'
-    has_one :has_one, :class_name => 'DifferentPerson'
+    has_and_belongs_to_many :has_and_belongs_to_many, class_name: "DifferentPerson"
+    has_many :has_many, class_name: "DifferentPerson"
+    belongs_to :belongs_to, class_name: "DifferentPerson"
+    has_one :has_one, class_name: "DifferentPerson"
   end
 
   def test_habtm_association_redefinition_callbacks_should_differ_and_not_inherited
@@ -355,8 +365,35 @@ class OverridingAssociationsTest < ActiveRecord::TestCase
   end
 end
 
+class PreloaderTest < ActiveRecord::TestCase
+  fixtures :posts, :comments
+
+  def test_preload_with_scope
+    post = posts(:welcome)
+
+    preloader = ActiveRecord::Associations::Preloader.new
+    preloader.preload([post], :comments, Comment.where(body: "Thank you for the welcome"))
+
+    assert_predicate post.comments, :loaded?
+    assert_equal [comments(:greetings)], post.comments
+  end
+
+  def test_preload_for_hmt_with_conditions
+    post = posts(:welcome)
+    _normal_category = post.categories.create!(name: "Normal")
+    special_category = post.special_categories.create!(name: "Special")
+
+    preloader = ActiveRecord::Associations::Preloader.new
+    preloader.preload([post], :hmt_special_categories)
+
+    assert_equal 1, post.hmt_special_categories.length
+    assert_equal [special_category], post.hmt_special_categories
+  end
+end
+
 class GeneratedMethodsTest < ActiveRecord::TestCase
   fixtures :developers, :computers, :posts, :comments
+
   def test_association_methods_override_attribute_methods_of_same_name
     assert_equal(developers(:david), computers(:workstation).developer)
     # this next line will fail if the attribute methods module is generated lazily
@@ -381,5 +418,99 @@ class GeneratedMethodsTest < ActiveRecord::TestCase
 
   def test_included_module_overwrites_association_methods
     assert_equal :none, MyArticle.new.comments
+  end
+end
+
+class WithAnnotationsTest < ActiveRecord::TestCase
+  fixtures :pirates, :parrots, :treasures
+
+  def test_belongs_to_with_annotation_includes_a_query_comment
+    pirate = SpacePirate.where.not(parrot_id: nil).first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.parrot
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* that tells jokes \*/}) do
+      pirate.parrot_with_annotation
+    end
+  end
+
+  def test_has_and_belongs_to_many_with_annotation_includes_a_query_comment
+    pirate = SpacePirate.first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.parrots.first
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* that are very colorful \*/}) do
+      pirate.parrots_with_annotation.first
+    end
+  end
+
+  def test_has_one_with_annotation_includes_a_query_comment
+    pirate = SpacePirate.first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.ship
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* that is a rocket \*/}) do
+      pirate.ship_with_annotation
+    end
+  end
+
+  def test_has_many_with_annotation_includes_a_query_comment
+    pirate = SpacePirate.first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.birds.first
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* that are also parrots \*/}) do
+      pirate.birds_with_annotation.first
+    end
+  end
+
+  def test_has_many_through_with_annotation_includes_a_query_comment
+    pirate = SpacePirate.first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.treasure_estimates.first
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* yarrr \*/}) do
+      pirate.treasure_estimates_with_annotation.first
+    end
+  end
+
+  def test_has_many_through_with_annotation_includes_a_query_comment_when_eager_loading
+    pirate = SpacePirate.first
+    assert pirate, "should have a Pirate record"
+
+    log = capture_sql do
+      pirate.treasure_estimates.first
+    end
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\*}) }, :empty?
+
+    assert_sql(%r{/\* yarrr \*/}) do
+      SpacePirate.includes(:treasure_estimates_with_annotation, :treasures).first
+    end
   end
 end

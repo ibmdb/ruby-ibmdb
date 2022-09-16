@@ -1,17 +1,17 @@
-require 'config'
+# frozen_string_literal: true
 
-require 'active_support/testing/autorun'
-require 'active_support/testing/method_call_assertions'
-require 'stringio'
+require "config"
 
-require 'active_record'
-require 'cases/test_case'
-require 'active_support/dependencies'
-require 'active_support/logger'
-require 'active_support/core_ext/string/strip'
+require "stringio"
 
-require 'support/config'
-require 'support/connection'
+require "active_record"
+require "cases/test_case"
+require "active_support/dependencies"
+require "active_support/logger"
+require "active_support/core_ext/kernel/singleton_class"
+
+require "support/config"
+require "support/connection"
 
 # TODO: Move all these random hacks into the ARTest namespace and into the support/ dir
 
@@ -27,10 +27,7 @@ I18n.enforce_available_locales = false
 ARTest.connect
 
 # Quote "type" if it's a reserved word for the current connection.
-QUOTED_TYPE = ActiveRecord::Base.connection.quote_column_name('type')
-
-# FIXME: Remove this when the deprecation cycle on TZ aware types by default ends.
-ActiveRecord::Base.time_zone_aware_types << :time
+QUOTED_TYPE = ActiveRecord::Base.connection.quote_column_name("type")
 
 def current_adapter?(*types)
   types.any? do |type|
@@ -41,26 +38,53 @@ end
 
 def in_memory_db?
   current_adapter?(:SQLite3Adapter) &&
-  ActiveRecord::Base.connection_pool.spec.config[:database] == ":memory:"
-end
-
-def subsecond_precision_supported?
-  ActiveRecord::Base.connection.supports_datetime_with_precision?
+  ActiveRecord::Base.connection_pool.db_config.database == ":memory:"
 end
 
 def mysql_enforcing_gtid_consistency?
-  current_adapter?(:Mysql2Adapter) && 'ON' == ActiveRecord::Base.connection.show_variable('enforce_gtid_consistency')
+  current_adapter?(:Mysql2Adapter) && "ON" == ActiveRecord::Base.connection.show_variable("enforce_gtid_consistency")
 end
 
-def supports_savepoints?
-  ActiveRecord::Base.connection.supports_savepoints?
+def supports_default_expression?
+  if current_adapter?(:PostgreSQLAdapter)
+    true
+  elsif current_adapter?(:Mysql2Adapter)
+    conn = ActiveRecord::Base.connection
+    !conn.mariadb? && conn.database_version >= "8.0.13"
+  end
 end
 
-def with_env_tz(new_tz = 'US/Eastern')
-  old_tz, ENV['TZ'] = ENV['TZ'], new_tz
+def supports_text_column_with_default?
+  if current_adapter?(:Mysql2Adapter)
+    conn = ActiveRecord::Base.connection
+    conn.mariadb? && conn.database_version >= "10.2.1"
+  else
+    true
+  end
+end
+
+%w[
+  supports_savepoints?
+  supports_partial_index?
+  supports_partitioned_indexes?
+  supports_expression_index?
+  supports_insert_returning?
+  supports_insert_on_duplicate_skip?
+  supports_insert_on_duplicate_update?
+  supports_insert_conflict_target?
+  supports_optimizer_hints?
+  supports_datetime_with_precision?
+].each do |method_name|
+  define_method method_name do
+    ActiveRecord::Base.connection.public_send(method_name)
+  end
+end
+
+def with_env_tz(new_tz = "US/Eastern")
+  old_tz, ENV["TZ"] = ENV["TZ"], new_tz
   yield
 ensure
-  old_tz ? ENV['TZ'] = old_tz : ENV.delete('TZ')
+  old_tz ? ENV["TZ"] = old_tz : ENV.delete("TZ")
 end
 
 def with_timezone_config(cfg)
@@ -134,18 +158,24 @@ def disable_extension!(extension, connection)
   connection.reconnect!
 end
 
-require "cases/validations_repair_helper"
-class ActiveSupport::TestCase
-  include ActiveRecord::TestFixtures
-  include ActiveRecord::ValidationsRepairHelper
-  include ActiveSupport::Testing::MethodCallAssertions
+def clean_up_legacy_connection_handlers
+  handler = ActiveRecord::Base.default_connection_handler
+  ActiveRecord::Base.connection_handlers = {}
 
-  self.fixture_path = FIXTURES_ROOT
-  self.use_instantiated_fixtures  = false
-  self.use_transactional_tests = true
+  handler.connection_pool_names.each do |name|
+    next if ["ActiveRecord::Base", "ARUnit2Model", "Contact", "ContactSti", "FirstAbstractClass", "SecondAbstractClass"].include?(name)
 
-  def create_fixtures(*fixture_set_names, &block)
-    ActiveRecord::FixtureSet.create_fixtures(ActiveSupport::TestCase.fixture_path, fixture_set_names, fixture_class_names, &block)
+    handler.send(:owner_to_pool_manager).delete(name)
+  end
+end
+
+def clean_up_connection_handler
+  handler = ActiveRecord::Base.connection_handler
+  handler.instance_variable_get(:@owner_to_pool_manager).each do |owner, pool_manager|
+    pool_manager.role_names.each do |role_name|
+      next if role_name == ActiveRecord::Base.default_role
+      pool_manager.remove_role(role_name)
+    end
   end
 end
 
@@ -162,6 +192,8 @@ def load_schema
   if File.exist?(adapter_specific_schema_file)
     load adapter_specific_schema_file
   end
+
+  ActiveRecord::FixtureSet.reset_cache
 ensure
   $stdout = original_stdout
 end
@@ -187,18 +219,15 @@ end
 
 module InTimeZone
   private
+    def in_time_zone(zone)
+      old_zone  = Time.zone
+      old_tz    = ActiveRecord::Base.time_zone_aware_attributes
 
-  def in_time_zone(zone)
-    old_zone  = Time.zone
-    old_tz    = ActiveRecord::Base.time_zone_aware_attributes
-
-    Time.zone = zone ? ActiveSupport::TimeZone[zone] : nil
-    ActiveRecord::Base.time_zone_aware_attributes = !zone.nil?
-    yield
-  ensure
-    Time.zone = old_zone
-    ActiveRecord::Base.time_zone_aware_attributes = old_tz
-  end
+      Time.zone = zone ? ActiveSupport::TimeZone[zone] : nil
+      ActiveRecord::Base.time_zone_aware_attributes = !zone.nil?
+      yield
+    ensure
+      Time.zone = old_zone
+      ActiveRecord::Base.time_zone_aware_attributes = old_tz
+    end
 end
-
-require 'mocha/setup' # FIXME: stop using mocha

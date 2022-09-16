@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'support/connection_helper'
+require "support/connection_helper"
 
 module PostgresqlCompositeBehavior
   include ConnectionHelper
@@ -13,14 +15,14 @@ module PostgresqlCompositeBehavior
 
     @connection = ActiveRecord::Base.connection
     @connection.transaction do
-      @connection.execute <<-SQL
-         CREATE TYPE full_address AS
-         (
-             city VARCHAR(90),
-             street VARCHAR(90)
-         );
-        SQL
-      @connection.create_table('postgresql_composites') do |t|
+      @connection.execute <<~SQL
+        CREATE TYPE full_address AS
+        (
+          city VARCHAR(90),
+          street VARCHAR(90)
+        );
+      SQL
+      @connection.create_table("postgresql_composites") do |t|
         t.column :address, :full_address
       end
     end
@@ -29,8 +31,8 @@ module PostgresqlCompositeBehavior
   def teardown
     super
 
-    @connection.drop_table 'postgresql_composites', if_exists: true
-    @connection.execute 'DROP TYPE IF EXISTS full_address'
+    @connection.drop_table "postgresql_composites", if_exists: true
+    @connection.execute "DROP TYPE IF EXISTS full_address"
     reset_connection
     PostgresqlComposite.reset_column_information
   end
@@ -49,10 +51,10 @@ class PostgresqlCompositeTest < ActiveRecord::PostgreSQLTestCase
     column = PostgresqlComposite.columns_hash["address"]
     assert_nil column.type
     assert_equal "full_address", column.sql_type
-    assert_not column.array?
+    assert_not_predicate column, :array?
 
     type = PostgresqlComposite.type_for_attribute("address")
-    assert_not type.binary?
+    assert_not_predicate type, :binary?
   end
 
   def test_composite_mapping
@@ -69,12 +71,12 @@ class PostgresqlCompositeTest < ActiveRecord::PostgreSQLTestCase
   end
 
   private
-  def ensure_warning_is_issued
-    warning = capture(:stderr) do
-      PostgresqlComposite.columns_hash
+    def ensure_warning_is_issued
+      warning = capture(:stderr) do
+        PostgresqlComposite.columns_hash
+      end
+      assert_match(/unknown OID \d+: failed to recognize type of 'address'\. It will be treated as String\./, warning)
     end
-    assert_match(/unknown OID \d+: failed to recognize type of 'address'\. It will be treated as String\./, warning)
-  end
 end
 
 class PostgresqlCompositeWithCustomOIDTest < ActiveRecord::PostgreSQLTestCase
@@ -104,17 +106,17 @@ class PostgresqlCompositeWithCustomOIDTest < ActiveRecord::PostgreSQLTestCase
   def setup
     super
 
-    @connection.type_map.register_type "full_address", FullAddressType.new
+    @connection.send(:type_map).register_type "full_address", FullAddressType.new
   end
 
   def test_column
     column = PostgresqlComposite.columns_hash["address"]
     assert_equal :full_address, column.type
     assert_equal "full_address", column.sql_type
-    assert_not column.array?
+    assert_not_predicate column, :array?
 
     type = PostgresqlComposite.type_for_attribute("address")
-    assert_not type.binary?
+    assert_not_predicate type, :binary?
   end
 
   def test_composite_mapping
@@ -126,7 +128,7 @@ class PostgresqlCompositeWithCustomOIDTest < ActiveRecord::PostgreSQLTestCase
     composite.address = FullAddress.new("Paris", "Rue Basse")
     composite.save!
 
-    assert_equal 'Paris', composite.reload.address.city
-    assert_equal 'Rue Basse', composite.reload.address.street
+    assert_equal "Paris", composite.reload.address.city
+    assert_equal "Rue Basse", composite.reload.address.street
   end
 end

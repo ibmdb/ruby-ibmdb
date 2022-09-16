@@ -49,15 +49,25 @@ connections:
 
   ibm_db:
     arunit:
-      username: db2user
-      password: secret
-      database: railsdb
+      username: newton
+      password: A2m8test
+      database: bjhadb
+      host: waldevdbclnxtst06.dev.rocketsoftware.com
+      port: 60000
       start_id: 1000
+      parameterized: true
+      statement_limit: 1000
+#      debug: true
     arunit2:
-      username: db2user
-      password: secret
-      database: railsdb
+      username: newton
+      password: A2m8test
+      database: sample
+      host: waldevdbclnxtst06.dev.rocketsoftware.com
+      port: 60000
       start_id: 1000
+      parameterized: true
+      statement_limit: 1000
+#      debug: true
 
   firebird:
     arunit:

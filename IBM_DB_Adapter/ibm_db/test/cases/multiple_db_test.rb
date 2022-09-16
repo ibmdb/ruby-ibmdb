@@ -1,7 +1,9 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'models/entrant'
-require 'models/bird'
-require 'models/course'
+require "models/entrant"
+require "models/bird"
+require "models/course"
 
 class MultipleDbTest < ActiveRecord::TestCase
   self.use_transactional_tests = false
@@ -25,7 +27,7 @@ class MultipleDbTest < ActiveRecord::TestCase
   end
 
   def test_swapping_the_connection
-    old_spec_name, Course.connection_specification_name = Course.connection_specification_name, "primary"
+    old_spec_name, Course.connection_specification_name = Course.connection_specification_name, "ActiveRecord::Base"
     assert_equal(Entrant.connection, Course.connection)
   ensure
     Course.connection_specification_name = old_spec_name
@@ -55,12 +57,11 @@ class MultipleDbTest < ActiveRecord::TestCase
     assert_equal e3.course.id, c2.id
   end
 
-  def test_course_connection_should_survive_dependency_reload
+  def test_course_connection_should_survive_reloads
     assert Course.connection
 
-    ActiveSupport::Dependencies.clear
-    Object.send(:remove_const, :Course)
-    require_dependency 'models/course'
+    assert Object.send(:remove_const, :Course)
+    assert load("models/course.rb")
 
     assert Course.connection
   end
@@ -90,14 +91,9 @@ class MultipleDbTest < ActiveRecord::TestCase
     assert_equal "Ruby Developer", Entrant.find(1).name
   end
 
-  def test_arel_table_engines
-    assert_not_equal Entrant.arel_engine, Bird.arel_engine
-    assert_not_equal Entrant.arel_engine, Course.arel_engine
-  end
-
   def test_connection
-    assert_equal Entrant.arel_engine.connection.object_id, Bird.arel_engine.connection.object_id
-    assert_not_equal Entrant.arel_engine.connection.object_id, Course.arel_engine.connection.object_id
+    assert_same Entrant.connection, Bird.connection
+    assert_not_same Entrant.connection, Course.connection
   end
 
   unless in_memory_db?
@@ -109,14 +105,12 @@ class MultipleDbTest < ActiveRecord::TestCase
     end
 
     def test_associations_should_work_when_model_has_no_connection
-      begin
-        ActiveRecord::Base.remove_connection
-        assert_nothing_raised do
-          College.first.courses.first
-        end
-      ensure
-        ActiveRecord::Base.establish_connection :arunit
+      ActiveRecord::Base.remove_connection
+      assert_nothing_raised do
+        College.first.courses.first
       end
+    ensure
+      ActiveRecord::Base.establish_connection :arunit
     end
   end
 end

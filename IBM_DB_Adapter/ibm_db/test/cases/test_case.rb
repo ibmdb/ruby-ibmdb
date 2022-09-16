@@ -1,25 +1,40 @@
-require 'active_support/test_case'
-require 'active_support/testing/stream'
+# frozen_string_literal: true
+
+require "active_support"
+require "active_support/testing/autorun"
+require "active_support/testing/method_call_assertions"
+require "active_support/testing/stream"
+require "active_record/fixtures"
+
+require "cases/validations_repair_helper"
 
 module ActiveRecord
   # = Active Record Test Case
   #
   # Defines some test assertions to test against SQL queries.
   class TestCase < ActiveSupport::TestCase #:nodoc:
+    include ActiveSupport::Testing::MethodCallAssertions
     include ActiveSupport::Testing::Stream
+    include ActiveRecord::TestFixtures
+    include ActiveRecord::ValidationsRepairHelper
+
+    self.fixture_path = FIXTURES_ROOT
+    self.use_instantiated_fixtures = false
+    self.use_transactional_tests = true
+
+    def create_fixtures(*fixture_set_names, &block)
+      ActiveRecord::FixtureSet.create_fixtures(ActiveRecord::TestCase.fixture_path, fixture_set_names, fixture_class_names, &block)
+    end
 
     def teardown
       SQLCounter.clear_log
     end
 
-    def assert_date_from_db(expected, actual, message = nil)
-      assert_equal expected.to_s, actual.to_s, message
-    end
-
     def capture_sql
+      ActiveRecord::Base.connection.materialize_transactions
       SQLCounter.clear_log
       yield
-      SQLCounter.log_all.dup
+      SQLCounter.log.dup
     end
 
     def assert_sql(*patterns_to_match)
@@ -27,13 +42,14 @@ module ActiveRecord
     ensure
       failed_patterns = []
       patterns_to_match.each do |pattern|
-        failed_patterns << pattern unless SQLCounter.log_all.any?{ |sql| pattern === sql }
+        failed_patterns << pattern unless SQLCounter.log_all.any? { |sql| pattern === sql }
       end
       assert failed_patterns.empty?, "Query pattern(s) #{failed_patterns.map(&:inspect).join(', ')} not found.#{SQLCounter.log.size == 0 ? '' : "\nQueries:\n#{SQLCounter.log.join("\n")}"}"
     end
 
     def assert_queries(num = 1, options = {})
       ignore_none = options.fetch(:ignore_none) { num == :any }
+      ActiveRecord::Base.connection.materialize_transactions
       SQLCounter.clear_log
       x = yield
       the_log = ignore_none ? SQLCounter.log_all : SQLCounter.log
@@ -51,11 +67,11 @@ module ActiveRecord
       assert_queries(0, options, &block)
     end
 
-    def assert_column(model, column_name, msg=nil)
+    def assert_column(model, column_name, msg = nil)
       assert has_column?(model, column_name), msg
     end
 
-    def assert_no_column(model, column_name, msg=nil)
+    def assert_no_column(model, column_name, msg = nil)
       assert_not has_column?(model, column_name), msg
     end
 
@@ -64,8 +80,26 @@ module ActiveRecord
       model.column_names.include?(column_name.to_s)
     end
 
-    def frozen_error_class
-      Object.const_defined?(:FrozenError) ? FrozenError : RuntimeError
+    def with_has_many_inversing
+      old = ActiveRecord::Base.has_many_inversing
+      ActiveRecord::Base.has_many_inversing = true
+      yield
+    ensure
+      ActiveRecord::Base.has_many_inversing = old
+    end
+
+    def reset_callbacks(klass, kind)
+      old_callbacks = {}
+      old_callbacks[klass] = klass.send("_#{kind}_callbacks").dup
+      klass.subclasses.each do |subclass|
+        old_callbacks[subclass] = subclass.send("_#{kind}_callbacks").dup
+      end
+      yield
+    ensure
+      klass.send("_#{kind}_callbacks=", old_callbacks[klass])
+      klass.subclasses.each do |subclass|
+        subclass.send("_#{kind}_callbacks=", old_callbacks[subclass])
+      end
     end
   end
 
@@ -93,39 +127,16 @@ module ActiveRecord
       def clear_log; self.log = []; self.log_all = []; end
     end
 
-    self.clear_log
-
-    self.ignored_sql = [/^PRAGMA/, /^SELECT currval/, /^SELECT CAST/, /^SELECT @@IDENTITY/, /^SELECT @@ROWCOUNT/, /^SAVEPOINT/, /^ROLLBACK TO SAVEPOINT/, /^RELEASE SAVEPOINT/, /^SHOW max_identifier_length/, /^BEGIN/, /^COMMIT/]
-
-    # FIXME: this needs to be refactored so specific database can add their own
-    # ignored SQL, or better yet, use a different notification for the queries
-    # instead examining the SQL content.
-    oracle_ignored     = [/^select .*nextval/i, /^SAVEPOINT/, /^ROLLBACK TO/, /^\s*select .* from all_triggers/im, /^\s*select .* from all_constraints/im, /^\s*select .* from all_tab_cols/im]
-    mysql_ignored      = [/^SHOW FULL TABLES/i, /^SHOW FULL FIELDS/, /^SHOW CREATE TABLE /i, /^SHOW VARIABLES /, /^\s*SELECT (?:column_name|table_name)\b.*\bFROM information_schema\.(?:key_column_usage|tables)\b/im]
-    postgresql_ignored = [/^\s*select\b.*\bfrom\b.*pg_namespace\b/im, /^\s*select tablename\b.*from pg_tables\b/im, /^\s*select\b.*\battname\b.*\bfrom\b.*\bpg_attribute\b/im, /^SHOW search_path/i]
-    sqlite3_ignored =    [/^\s*SELECT name\b.*\bFROM sqlite_master/im, /^\s*SELECT sql\b.*\bFROM sqlite_master/im]
-
-    [oracle_ignored, mysql_ignored, postgresql_ignored, sqlite3_ignored].each do |db_ignored_sql|
-      ignored_sql.concat db_ignored_sql
-    end
-
-    attr_reader :ignore
-
-    def initialize(ignore = Regexp.union(self.class.ignored_sql))
-      @ignore = ignore
-    end
+    clear_log
 
     def call(name, start, finish, message_id, values)
+      return if values[:cached]
+
       sql = values[:sql]
-
-      # FIXME: this seems bad. we should probably have a better way to indicate
-      # the query was cached
-      return if 'CACHE' == values[:name]
-
       self.class.log_all << sql
-      self.class.log << sql unless ignore =~ sql
+      self.class.log << sql unless ["SCHEMA", "TRANSACTION"].include? values[:name]
     end
   end
 
-  ActiveSupport::Notifications.subscribe('sql.active_record', SQLCounter.new)
+  ActiveSupport::Notifications.subscribe("sql.active_record", SQLCounter.new)
 end

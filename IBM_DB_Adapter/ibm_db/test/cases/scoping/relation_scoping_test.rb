@@ -1,16 +1,18 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'models/post'
-require 'models/author'
-require 'models/developer'
-require 'models/computer'
-require 'models/project'
-require 'models/comment'
-require 'models/category'
-require 'models/person'
-require 'models/reference'
+require "models/post"
+require "models/author"
+require "models/developer"
+require "models/computer"
+require "models/project"
+require "models/comment"
+require "models/category"
+require "models/person"
+require "models/reference"
 
 class RelationScopingTest < ActiveRecord::TestCase
-  fixtures :authors, :developers, :projects, :comments, :posts, :developers_projects
+  fixtures :authors, :author_addresses, :developers, :projects, :comments, :posts, :developers_projects
 
   setup do
     developers(:david)
@@ -28,7 +30,7 @@ class RelationScopingTest < ActiveRecord::TestCase
   def test_scope_breaks_caching_on_collections
     author = authors :david
     ids = author.reload.special_posts_with_default_scope.map(&:id)
-    assert_equal [1,5,6], ids.sort
+    assert_equal [1, 5, 6], ids.sort
     scoped_posts = SpecialPostWithDefaultScope.unscoped do
       author = authors :david
       author.reload.special_posts_with_default_scope.to_a
@@ -93,6 +95,20 @@ class RelationScopingTest < ActiveRecord::TestCase
     end
   end
 
+  def test_scoped_unscoped
+    DeveloperOrderedBySalary.where("salary = 9000").scoping do
+      assert_equal 11, DeveloperOrderedBySalary.first.id
+      assert_equal 1, DeveloperOrderedBySalary.unscoped.first.id
+    end
+  end
+
+  def test_scoped_default_scoped
+    DeveloperOrderedBySalary.where("salary = 9000").scoping do
+      assert_equal 11, DeveloperOrderedBySalary.first.id
+      assert_equal 2, DeveloperOrderedBySalary.default_scoped.first.id
+    end
+  end
+
   def test_scoped_find_all
     Developer.where("name = 'David'").scoping do
       assert_equal [developers(:david)], Developer.all
@@ -103,13 +119,13 @@ class RelationScopingTest < ActiveRecord::TestCase
     Developer.select("id, name").scoping do
       developer = Developer.where("name = 'David'").first
       assert_equal "David", developer.name
-      assert !developer.has_attribute?(:salary)
+      assert_not developer.has_attribute?(:salary)
     end
   end
 
   def test_scope_select_concatenates
     Developer.select("id, name").scoping do
-      developer = Developer.select('salary').where("name = 'David'").first
+      developer = Developer.select("salary").where("name = 'David'").first
       assert_equal 80000, developer.salary
       assert developer.has_attribute?(:id)
       assert developer.has_attribute?(:name)
@@ -122,58 +138,116 @@ class RelationScopingTest < ActiveRecord::TestCase
       assert_equal 1, Developer.count
     end
 
-    Developer.where('salary = 100000').scoping do
+    Developer.where("salary = 100000").scoping do
       assert_equal 8, Developer.count
       assert_equal 1, Developer.where("name LIKE 'fixture_1%'").count
     end
   end
 
+  def test_scoped_find_with_annotation
+    Developer.annotate("scoped").scoping do
+      developer = nil
+      assert_sql(%r{/\* scoped \*/}) do
+        developer = Developer.where("name = 'David'").first
+      end
+      assert_equal "David", developer.name
+    end
+  end
+
+  def test_find_with_annotation_unscoped
+    Developer.annotate("scoped").unscoped do
+      developer = nil
+      log = capture_sql do
+        developer = Developer.where("name = 'David'").first
+      end
+
+      assert_not_predicate log, :empty?
+      assert_predicate log.select { |query| query.match?(%r{/\* scoped \*/}) }, :empty?
+
+      assert_equal "David", developer.name
+    end
+  end
+
+  def test_find_with_annotation_unscope
+    developer = nil
+    log = capture_sql do
+      developer = Developer.annotate("unscope").
+        where("name = 'David'").
+        unscope(:annotate).first
+    end
+
+    assert_not_predicate log, :empty?
+    assert_predicate log.select { |query| query.match?(%r{/\* unscope \*/}) }, :empty?
+
+    assert_equal "David", developer.name
+  end
+
   def test_scoped_find_include
     # with the include, will retrieve only developers for the given project
     scoped_developers = Developer.includes(:projects).scoping do
-      Developer.where('projects.id' => 2).to_a
+      Developer.where("projects.id" => 2).to_a
     end
-    assert scoped_developers.include?(developers(:david))
-    assert !scoped_developers.include?(developers(:jamis))
+    assert_includes scoped_developers, developers(:david)
+    assert_not_includes scoped_developers, developers(:jamis)
     assert_equal 1, scoped_developers.size
   end
 
   def test_scoped_find_joins
-    scoped_developers = Developer.joins('JOIN developers_projects ON id = developer_id').scoping do
-      Developer.where('developers_projects.project_id = 2').to_a
+    scoped_developers = Developer.joins("JOIN developers_projects ON id = developer_id").scoping do
+      Developer.where("developers_projects.project_id = 2").to_a
     end
 
-    assert scoped_developers.include?(developers(:david))
-    assert !scoped_developers.include?(developers(:jamis))
+    assert_includes scoped_developers, developers(:david)
+    assert_not_includes scoped_developers, developers(:jamis)
     assert_equal 1, scoped_developers.size
     assert_equal developers(:david).attributes, scoped_developers.first.attributes
   end
 
   def test_scoped_create_with_where
-    new_comment = VerySpecialComment.where(:post_id => 1).scoping do
-      VerySpecialComment.create :body => "Wonderful world"
+    new_comment = VerySpecialComment.where(post_id: 1).scoping do
+      VerySpecialComment.create body: "Wonderful world"
     end
 
     assert_equal 1, new_comment.post_id
-    assert Post.find(1).comments.include?(new_comment)
+    assert_includes Post.find(1).comments, new_comment
+  end
+
+  def test_scoped_create_with_where_with_array
+    new_comment = VerySpecialComment.where(label: [0, 1], post_id: 1).scoping do
+      VerySpecialComment.create body: "Wonderful world"
+    end
+
+    assert_equal 1, new_comment.post_id
+    assert_equal "default", new_comment.label
+    assert_includes Post.find(1).comments, new_comment
+  end
+
+  def test_scoped_create_with_where_with_range
+    new_comment = VerySpecialComment.where(label: 0..1, post_id: 1).scoping do
+      VerySpecialComment.create body: "Wonderful world"
+    end
+
+    assert_equal 1, new_comment.post_id
+    assert_equal "default", new_comment.label
+    assert_includes Post.find(1).comments, new_comment
   end
 
   def test_scoped_create_with_create_with
-    new_comment = VerySpecialComment.create_with(:post_id => 1).scoping do
-      VerySpecialComment.create :body => "Wonderful world"
+    new_comment = VerySpecialComment.create_with(post_id: 1).scoping do
+      VerySpecialComment.create body: "Wonderful world"
     end
 
     assert_equal 1, new_comment.post_id
-    assert Post.find(1).comments.include?(new_comment)
+    assert_includes Post.find(1).comments, new_comment
   end
 
   def test_scoped_create_with_create_with_has_higher_priority
-    new_comment = VerySpecialComment.where(:post_id => 2).create_with(:post_id => 1).scoping do
-      VerySpecialComment.create :body => "Wonderful world"
+    new_comment = VerySpecialComment.where(post_id: 2).create_with(post_id: 1).scoping do
+      VerySpecialComment.create body: "Wonderful world"
     end
 
     assert_equal 1, new_comment.post_id
-    assert Post.find(1).comments.include?(new_comment)
+    assert_includes Post.find(1).comments, new_comment
   end
 
   def test_ensure_that_method_scoping_is_correctly_restored
@@ -193,7 +267,7 @@ class RelationScopingTest < ActiveRecord::TestCase
   end
 
   def test_update_all_default_scope_filters_on_joins
-    DeveloperFilteredOnJoins.update_all(:salary => 65000)
+    DeveloperFilteredOnJoins.update_all(salary: 65000)
     assert_equal 65000, Developer.find(developers(:david).id).salary
 
     # has not changed jamis
@@ -211,21 +285,21 @@ class RelationScopingTest < ActiveRecord::TestCase
 
   def test_current_scope_does_not_pollute_sibling_subclasses
     Comment.none.scoping do
-      assert_not SpecialComment.all.any?
-      assert_not VerySpecialComment.all.any?
-      assert_not SubSpecialComment.all.any?
+      assert_not_predicate SpecialComment.all, :any?
+      assert_not_predicate VerySpecialComment.all, :any?
+      assert_not_predicate SubSpecialComment.all, :any?
     end
 
     SpecialComment.none.scoping do
-      assert Comment.all.any?
-      assert VerySpecialComment.all.any?
-      assert_not SubSpecialComment.all.any?
+      assert_predicate Comment.all, :any?
+      assert_predicate VerySpecialComment.all, :any?
+      assert_not_predicate SubSpecialComment.all, :any?
     end
 
     SubSpecialComment.none.scoping do
-      assert Comment.all.any?
-      assert VerySpecialComment.all.any?
-      assert SpecialComment.all.any?
+      assert_predicate Comment.all, :any?
+      assert_predicate VerySpecialComment.all, :any?
+      assert_predicate SpecialComment.all, :any?
     end
   end
 
@@ -236,6 +310,30 @@ class RelationScopingTest < ActiveRecord::TestCase
 
     assert_nil Comment.current_scope
     assert_nil SpecialComment.current_scope
+  end
+
+  def test_scoping_respects_current_class
+    Comment.unscoped do
+      assert_equal "a comment...", Comment.all.what_are_you
+      assert_equal "a special comment...", SpecialComment.all.what_are_you
+    end
+  end
+
+  def test_scoping_respects_sti_constraint
+    Comment.unscoped do
+      assert_equal comments(:greetings), Comment.find(1)
+      assert_raises(ActiveRecord::RecordNotFound) { SpecialComment.find(1) }
+    end
+  end
+
+  def test_scoping_with_klass_method_works_in_the_scope_block
+    expected = SpecialPostWithDefaultScope.unscoped.to_a
+    assert_equal expected, SpecialPostWithDefaultScope.unscoped_all
+  end
+
+  def test_scoping_with_query_method_works_in_the_scope_block
+    expected = SpecialPostWithDefaultScope.unscoped.where(author_id: 0).to_a
+    assert_equal expected, SpecialPostWithDefaultScope.authorless
   end
 
   def test_circular_joins_with_scoping_does_not_crash
@@ -254,10 +352,10 @@ class RelationScopingTest < ActiveRecord::TestCase
 end
 
 class NestedRelationScopingTest < ActiveRecord::TestCase
-  fixtures :authors, :developers, :projects, :comments, :posts
+  fixtures :authors, :author_addresses, :developers, :projects, :comments, :posts
 
   def test_merge_options
-    Developer.where('salary = 80000').scoping do
+    Developer.where("salary = 80000").scoping do
       Developer.limit(10).scoping do
         devs = Developer.all
         sql = devs.to_sql
@@ -276,39 +374,39 @@ class NestedRelationScopingTest < ActiveRecord::TestCase
   end
 
   def test_replace_options
-    Developer.where(:name => 'David').scoping do
+    Developer.where(name: "David").scoping do
       Developer.unscoped do
-        assert_equal 'Jamis', Developer.where(:name => 'Jamis').first[:name]
+        assert_equal "Jamis", Developer.where(name: "Jamis").first[:name]
       end
 
-      assert_equal 'David', Developer.first[:name]
+      assert_equal "David", Developer.first[:name]
     end
   end
 
   def test_three_level_nested_exclusive_scoped_find
     Developer.where("name = 'Jamis'").scoping do
-      assert_equal 'Jamis', Developer.first.name
+      assert_equal "Jamis", Developer.first.name
 
       Developer.unscoped.where("name = 'David'") do
-        assert_equal 'David', Developer.first.name
+        assert_equal "David", Developer.first.name
 
         Developer.unscoped.where("name = 'Maiha'") do
-          assert_equal nil, Developer.first
+          assert_nil Developer.first
         end
 
         # ensure that scoping is restored
-        assert_equal 'David', Developer.first.name
+        assert_equal "David", Developer.first.name
       end
 
       # ensure that scoping is restored
-      assert_equal 'Jamis', Developer.first.name
+      assert_equal "Jamis", Developer.first.name
     end
   end
 
   def test_nested_scoped_create
-    comment = Comment.create_with(:post_id => 1).scoping do
-      Comment.create_with(:post_id => 2).scoping do
-        Comment.create :body => "Hey guys, nested scopes are broken. Please fix!"
+    comment = Comment.create_with(post_id: 1).scoping do
+      Comment.create_with(post_id: 2).scoping do
+        Comment.create body: "Hey guys, nested scopes are broken. Please fix!"
       end
     end
 
@@ -316,15 +414,15 @@ class NestedRelationScopingTest < ActiveRecord::TestCase
   end
 
   def test_nested_exclusive_scope_for_create
-    comment = Comment.create_with(:body => "Hey guys, nested scopes are broken. Please fix!").scoping do
-      Comment.unscoped.create_with(:post_id => 1).scoping do
-        assert Comment.new.body.blank?
-        Comment.create :body => "Hey guys"
+    comment = Comment.create_with(body: "Hey guys, nested scopes are broken. Please fix!").scoping do
+      Comment.unscoped.create_with(post_id: 1).scoping do
+        assert_predicate Comment.new.body, :blank?
+        Comment.create body: "Hey guys"
       end
     end
 
     assert_equal 1, comment.post_id
-    assert_equal 'Hey guys', comment.body
+    assert_equal "Hey guys", comment.body
   end
 end
 
@@ -336,24 +434,36 @@ class HasManyScopingTest < ActiveRecord::TestCase
   end
 
   def test_forwarding_of_static_methods
-    assert_equal 'a comment...', Comment.what_are_you
-    assert_equal 'a comment...', @welcome.comments.what_are_you
+    assert_equal "a comment...", Comment.what_are_you
+    assert_equal "a comment...", @welcome.comments.what_are_you
   end
 
   def test_forwarding_to_scoped
-    assert_equal 4, Comment.search_by_type('Comment').size
-    assert_equal 2, @welcome.comments.search_by_type('Comment').size
+    assert_equal 5, Comment.search_by_type("Comment").size
+    assert_equal 2, @welcome.comments.search_by_type("Comment").size
   end
 
   def test_nested_scope_finder
-    Comment.where('1=0').scoping do
-      assert_equal 0, @welcome.comments.count
-      assert_equal 'a comment...', @welcome.comments.what_are_you
+    Comment.where("1=0").scoping do
+      assert_equal 2, @welcome.comments.count
+      assert_equal "a comment...", @welcome.comments.what_are_you
     end
 
-    Comment.where('1=1').scoping do
+    Comment.where("1=1").scoping do
       assert_equal 2, @welcome.comments.count
-      assert_equal 'a comment...', @welcome.comments.what_are_you
+      assert_equal "a comment...", @welcome.comments.what_are_you
+    end
+  end
+
+  def test_none_scoping
+    Comment.none.scoping do
+      assert_equal 2, @welcome.comments.count
+      assert_equal "a comment...", @welcome.comments.what_are_you
+    end
+
+    Comment.where("1=1").scoping do
+      assert_equal 2, @welcome.comments.count
+      assert_equal "a comment...", @welcome.comments.what_are_you
     end
   end
 
@@ -368,7 +478,7 @@ class HasManyScopingTest < ActiveRecord::TestCase
   end
 
   def test_should_maintain_default_scope_on_eager_loaded_associations
-    michael = Person.where(:id => people(:michael).id).includes(:bad_references).first
+    michael = Person.where(id: people(:michael).id).includes(:bad_references).first
     magician = BadReference.find(1)
     assert_equal [magician], michael.bad_references
   end
@@ -382,19 +492,31 @@ class HasAndBelongsToManyScopingTest < ActiveRecord::TestCase
   end
 
   def test_forwarding_of_static_methods
-    assert_equal 'a category...', Category.what_are_you
-    assert_equal 'a category...', @welcome.categories.what_are_you
+    assert_equal "a category...", Category.what_are_you
+    assert_equal "a category...", @welcome.categories.what_are_you
   end
 
   def test_nested_scope_finder
-    Category.where('1=0').scoping do
-      assert_equal 0, @welcome.categories.count
-      assert_equal 'a category...', @welcome.categories.what_are_you
+    Category.where("1=0").scoping do
+      assert_equal 2, @welcome.categories.count
+      assert_equal "a category...", @welcome.categories.what_are_you
     end
 
-    Category.where('1=1').scoping do
+    Category.where("1=1").scoping do
       assert_equal 2, @welcome.categories.count
-      assert_equal 'a category...', @welcome.categories.what_are_you
+      assert_equal "a category...", @welcome.categories.what_are_you
+    end
+  end
+
+  def test_none_scoping
+    Category.none.scoping do
+      assert_equal 2, @welcome.categories.count
+      assert_equal "a category...", @welcome.categories.what_are_you
+    end
+
+    Category.where("1=1").scoping do
+      assert_equal 2, @welcome.categories.count
+      assert_equal "a category...", @welcome.categories.what_are_you
     end
   end
 end
