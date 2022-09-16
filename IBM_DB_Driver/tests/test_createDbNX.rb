@@ -9,7 +9,7 @@ class TestIbmDb < Test::Unit::TestCase
   def test_createDbNX
     assert_expect do
       dbToCreate = "crtdb"
-      conn_attach_str = "HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password};ATTACH=true"
+      conn_attach_str = "HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password};ATTACH=true;PROTOCOL=TCPIP"
 	  
       #Attach to the instance where database is to be created
       ins_conn = IBM_DB.connect(conn_attach_str, '', '')

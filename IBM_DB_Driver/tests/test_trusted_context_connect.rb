@@ -15,7 +15,7 @@ class TestIbmDb < Test::Unit::TestCase
 		sql_create_trusted_context = "CREATE TRUSTED CONTEXT ctx BASED UPON CONNECTION USING SYSTEM AUTHID "
 		sql_create_trusted_context += auth_user
 		sql_create_trusted_context += " ATTRIBUTES (ADDRESS '"
-		sql_create_trusted_context += hostname
+		sql_create_trusted_context += `hostname`.strip
 		sql_create_trusted_context += "') DEFAULT ROLE role_01 ENABLE WITH USE FOR "
 		sql_create_trusted_context += tc_user
 		
@@ -124,7 +124,7 @@ class TestIbmDb < Test::Unit::TestCase
 			end
 
       begin
-			  tc_conn = IBM_DB.connect dsn, '', '', tc_all_options
+			  tc_conn = IBM_DB.connect dsn, '', '', conn_options
       rescue
         tc_conn = false
       end
@@ -166,7 +166,7 @@ class TestIbmDb < Test::Unit::TestCase
 						# Updating table using trusted_user.
 						sql_update = "UPDATE #{user}.trusted_table set i1 = 400 WHERE i2 = 500"
 						stmt = IBM_DB.exec tc_conn, sql_update
-						puts IBM_DB.getErrormsg(tc_conn, IBM_DB.DB_CONN)
+						puts IBM_DB.getErrormsg(tc_conn, IBM_DB::DB_CONN)
 					end
 				end
 				IBM_DB.close tc_conn
@@ -237,7 +237,7 @@ class TestIbmDb < Test::Unit::TestCase
 				if val
 					userBefore = IBM_DB.get_option tc_conn, IBM_DB::SQL_ATTR_TRUSTED_CONTEXT_USERID, 1
 					IBM_DB.set_option tc_conn, tc_pass_options, 1
-					puts IBM_DB.getErrormsg(tc_conn, IBM_DB.DB_CONN)
+					puts IBM_DB.getErrormsg(tc_conn, IBM_DB::DB_CONN)
 				end
 				IBM_DB.close tc_conn
 			else
@@ -268,7 +268,7 @@ class TestIbmDb < Test::Unit::TestCase
 
 			# Make a connection
 			begin
-			  conn = IBM_DB.connect database, user, password
+              conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       rescue
         conn = false
       end
@@ -332,7 +332,7 @@ class TestIbmDb < Test::Unit::TestCase
 			
 			# Make a connection
 			begin
-			  conn = IBM_DB.connect database, user, password
+              conn = IBM_DB.connect("DATABASE=#{database};HOSTNAME=#{hostname};PORT=#{port};UID=#{user};PWD=#{password}",'','')
       rescue
         conn = false
       end
@@ -368,25 +368,25 @@ __LUW_EXPECTED__
 10 -- 20 -- 
 20 -- 40 -- 
 Normal connection established.
-[%s][%s] CLI0197E  A trusted context is not enabled on this connection. Invalid attribute value. SQLSTATE=HY010
+[%s][%s] CLI0197E  A trusted context is not enabled on this connection. Invalid attribute value. SQLSTATE=HY010 %s
 Normal connection established.
-[%s][%s] CLI0197E  A trusted context is not enabled on this connection. Invalid attribute value. SQLSTATE=HY010
+[%s][%s] CLI0197E  A trusted context is not enabled on this connection. Invalid attribute value. SQLSTATE=HY010%s
 Trusted connection succeeded.
 But trusted user is not switched.
 Trusted connection succeeded.
 User has been switched.
-[%s][%s][%s] SQL0551N  "%s" does not have the privilege to perform operation "UPDATE" on object "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
+[%s][%s][%s] SQL0551N  The statement failed because the authorization ID does not have the required authorization or privilege to perform the operation.  Authorization ID: %s.  Operation: "UPDATE". Object: "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
 Trusted connection succeeded.
 [%s][%s][%s] SQL30082N  Security processing failed with reason "24" ("USERNAME AND/OR PASSWORD INVALID").  SQLSTATE=08001 SQLCODE=-30082
 Trusted connection succeeded.
 User has been switched.
 Trusted connection succeeded.
-[%s][%s] CLI0198E  Missing trusted context userid. SQLSTATE=HY010
+[%s][%s] CLI0198E  Missing trusted context userid. SQLSTATE=HY010 %s
 Trusted connection succeeded.
-[%s][%s][%s] SQL20361N  The switch user request using authorization ID "%s" within trusted context "CTX" failed with reason code "2".  SQLSTATE=42517 SQLCODE=-20361
+[%s][%s][%s] SQL20361N  The switch user request using authorization ID %s within trusted context "CTX" failed with reason code "2".  SQLSTATE=42517 SQLCODE=-20361
 Trusted connection succeeded.
 User has been switched.
-[%s][%s][%s] SQL0551N  "%s" does not have the privilege to perform operation "INSERT" on object "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
+[%s][%s][%s] SQL0551N  The statement failed because the authorization ID does not have the required authorization or privilege to perform the operation.  Authorization ID: %s.  Operation: "INSERT". Object: "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
 400 -- 20 -- 
 20 -- 40 -- 
 300 -- 500 --

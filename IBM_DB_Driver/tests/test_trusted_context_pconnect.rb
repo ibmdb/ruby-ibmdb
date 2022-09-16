@@ -15,7 +15,7 @@ class TestIbmDb < Test::Unit::TestCase
 		sql_create_trusted_context = "CREATE TRUSTED CONTEXT ctx BASED UPON CONNECTION USING SYSTEM AUTHID "
 		sql_create_trusted_context += auth_user
 		sql_create_trusted_context += " ATTRIBUTES (ADDRESS '"
-		sql_create_trusted_context += hostname
+		sql_create_trusted_context += `hostname`.strip
 		sql_create_trusted_context += "') DEFAULT ROLE role_01 ENABLE WITH USE FOR "
 		sql_create_trusted_context += tc_user
 	
@@ -163,7 +163,7 @@ __END__
 __LUW_EXPECTED__
 Trusted connection established.
 User has been switched.
-[%s][%s][%s] SQL0551N  "%s" does not have the privilege to perform operation "%s" on object "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
+[%s][%s][%s] SQL0551N  The statement failed because the authorization ID does not have the required authorization or privilege to perform the operation.  Authorization ID: %s.  Operation: "UPDATE". Object: "%s.TRUSTED_TABLE".  SQLSTATE=42501 SQLCODE=-551
 Explicit Trusted Connection succeeded.
 Explicit Trusted Connection succeeded.
 Explicit Trusted Connection succeeded.

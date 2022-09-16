@@ -18,7 +18,8 @@ Gem::Specification.new do |spec|
   spec.email = 'opendev@us.ibm.com'
   spec.homepage = 'https://github.com/ibmdb/ruby-ibmdb'
   spec.required_ruby_version = '>= 2.5.0'
-  spec.add_dependency('activerecord', '>= 5.0.7', '<=6.0.3')
+  spec.add_dependency('zip')
+  spec.add_dependency('activerecord', '>= 5.0.7', '<=6.1')
   spec.requirements << 'ActiveRecord, at least 5.0.7'
 
   candidates = Dir.glob("**/*")
