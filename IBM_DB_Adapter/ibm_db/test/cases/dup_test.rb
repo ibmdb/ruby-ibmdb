@@ -1,20 +1,23 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'models/reply'
-require 'models/topic'
+require "models/reply"
+require "models/topic"
+require "models/movie"
 
 module ActiveRecord
   class DupTest < ActiveRecord::TestCase
     fixtures :topics
 
     def test_dup
-      assert !Topic.new.freeze.dup.frozen?
+      assert_not_predicate Topic.new.freeze.dup, :frozen?
     end
 
     def test_not_readonly
       topic = Topic.first
 
       duped = topic.dup
-      assert !duped.readonly?, 'should not be readonly'
+      assert_not duped.readonly?, "should not be readonly"
     end
 
     def test_is_readonly
@@ -22,15 +25,22 @@ module ActiveRecord
       topic.readonly!
 
       duped = topic.dup
-      assert duped.readonly?, 'should be readonly'
+      assert duped.readonly?, "should be readonly"
     end
 
     def test_dup_not_persisted
       topic = Topic.first
       duped = topic.dup
 
-      assert !duped.persisted?, 'topic not persisted'
-      assert duped.new_record?, 'topic is new'
+      assert_not duped.persisted?, "topic not persisted"
+      assert duped.new_record?, "topic is new"
+    end
+
+    def test_dup_not_previously_new_record
+      topic = Topic.first
+      duped = topic.dup
+
+      assert_not duped.previously_new_record?, "should not be a previously new record"
     end
 
     def test_dup_not_destroyed
@@ -38,7 +48,7 @@ module ActiveRecord
       topic.destroy
 
       duped = topic.dup
-      assert_not duped.destroyed?
+      assert_not_predicate duped, :destroyed?
     end
 
     def test_dup_has_no_id
@@ -49,9 +59,9 @@ module ActiveRecord
 
     def test_dup_with_modified_attributes
       topic = Topic.first
-      topic.author_name = 'Aaron'
+      topic.author_name = "Aaron"
       duped = topic.dup
-      assert_equal 'Aaron', duped.author_name
+      assert_equal "Aaron", duped.author_name
     end
 
     def test_dup_with_changes
@@ -60,10 +70,10 @@ module ActiveRecord
 
       topic.attributes = dbtopic.attributes.except("id")
 
-      #duped has no timestamp values
+      # duped has no timestamp values
       duped = dbtopic.dup
 
-      #clear topic timestamp values
+      # clear topic timestamp values
       topic.send(:clear_timestamp_attributes)
 
       assert_equal topic.changes, duped.changes
@@ -71,10 +81,10 @@ module ActiveRecord
 
     def test_dup_topics_are_independent
       topic = Topic.first
-      topic.author_name = 'Aaron'
+      topic.author_name = "Aaron"
       duped = topic.dup
 
-      duped.author_name = 'meow'
+      duped.author_name = "meow"
 
       assert_not_equal topic.changes, duped.changes
     end
@@ -83,11 +93,11 @@ module ActiveRecord
       topic = Topic.first
       duped = topic.dup
 
-      duped.author_name = 'meow'
-      topic.author_name = 'Aaron'
+      duped.author_name = "meow"
+      topic.author_name = "Aaron"
 
-      assert_equal 'Aaron', topic.author_name
-      assert_equal 'meow', duped.author_name
+      assert_equal "Aaron", topic.author_name
+      assert_equal "meow", duped.author_name
     end
 
     def test_dup_timestamps_are_cleared
@@ -98,7 +108,7 @@ module ActiveRecord
       # temporary change to the topic object
       topic.updated_at -= 3.days
 
-      #dup should not preserve the timestamps if present
+      # dup should not preserve the timestamps if present
       new_topic = topic.dup
       assert_nil new_topic.updated_at
       assert_nil new_topic.created_at
@@ -124,27 +134,29 @@ module ActiveRecord
 
         duped = topic.dup
         duped.title = nil
-        assert duped.invalid?
+        assert_predicate duped, :invalid?
 
         topic.title = nil
-        duped.title = 'Mathematics'
-        assert topic.invalid?
-        assert duped.valid?
+        duped.title = "Mathematics"
+        assert_predicate topic, :invalid?
+        assert_predicate duped, :valid?
       end
     end
 
     def test_dup_with_default_scope
       prev_default_scopes = Topic.default_scopes
-      Topic.default_scopes = [proc { Topic.where(:approved => true) }]
-      topic = Topic.new(:approved => false)
-      assert !topic.dup.approved?, "should not be overridden by default scopes"
+      Topic.default_scopes = [proc { Topic.where(approved: true) }]
+      topic = Topic.new(approved: false)
+      assert_not topic.dup.approved?, "should not be overridden by default scopes"
     ensure
       Topic.default_scopes = prev_default_scopes
     end
 
     def test_dup_without_primary_key
+      skip if current_adapter?(:OracleAdapter) or current_adapter?(:IBM_DBAdapter)
+
       klass = Class.new(ActiveRecord::Base) do
-        self.table_name = 'parrots_pirates'
+        self.table_name = "parrots_pirates"
       end
 
       record = klass.create!
@@ -152,6 +164,21 @@ module ActiveRecord
       assert_nothing_raised do
         record.dup
       end
+    end
+
+    def test_dup_record_not_persisted_after_rollback_transaction
+      movie = Movie.new(name: "test")
+
+      assert_raises(ActiveRecord::RecordInvalid) do
+        Movie.transaction do
+          movie.save!
+          duped = movie.dup
+          duped.name = nil
+          duped.save!
+        end
+      end
+
+      assert_not movie.persisted?
     end
   end
 end

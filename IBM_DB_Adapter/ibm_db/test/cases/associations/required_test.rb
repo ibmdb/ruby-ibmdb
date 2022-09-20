@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 
 class RequiredAssociationsTest < ActiveRecord::TestCase
@@ -18,11 +20,14 @@ class RequiredAssociationsTest < ActiveRecord::TestCase
   end
 
   teardown do
-    @connection.drop_table 'parents', if_exists: true
-    @connection.drop_table 'children', if_exists: true
+    @connection.drop_table "parents", if_exists: true
+    @connection.drop_table "children", if_exists: true
   end
 
-  test "belongs_to associations are not required by default" do
+  test "belongs_to associations can be optional by default" do
+    original_value = ActiveRecord::Base.belongs_to_required_by_default
+    ActiveRecord::Base.belongs_to_required_by_default = false
+
     model = subclass_of(Child) do
       belongs_to :parent, inverse_of: false,
         class_name: "RequiredAssociationsTest::Parent"
@@ -30,6 +35,8 @@ class RequiredAssociationsTest < ActiveRecord::TestCase
 
     assert model.new.save
     assert model.new(parent: Parent.new).save
+  ensure
+    ActiveRecord::Base.belongs_to_required_by_default = original_value
   end
 
   test "required belongs_to associations have presence validated" do
@@ -44,6 +51,25 @@ class RequiredAssociationsTest < ActiveRecord::TestCase
 
     record.parent = Parent.new
     assert record.save
+  end
+
+  test "belongs_to associations can be required by default" do
+    original_value = ActiveRecord::Base.belongs_to_required_by_default
+    ActiveRecord::Base.belongs_to_required_by_default = true
+
+    model = subclass_of(Child) do
+      belongs_to :parent, inverse_of: false,
+        class_name: "RequiredAssociationsTest::Parent"
+    end
+
+    record = model.new
+    assert_not record.save
+    assert_equal ["Parent must exist"], record.errors.full_messages
+
+    record.parent = Parent.new
+    assert record.save
+  ensure
+    ActiveRecord::Base.belongs_to_required_by_default = original_value
   end
 
   test "has_one associations are not required by default" do
@@ -91,12 +117,11 @@ class RequiredAssociationsTest < ActiveRecord::TestCase
   end
 
   private
-
-  def subclass_of(klass, &block)
-    subclass = Class.new(klass, &block)
-    def subclass.name
-      superclass.name
+    def subclass_of(klass, &block)
+      subclass = Class.new(klass, &block)
+      def subclass.name
+        superclass.name
+      end
+      subclass
     end
-    subclass
-  end
 end

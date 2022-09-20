@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 
 module SchemaLoadCounter
@@ -8,7 +10,7 @@ module SchemaLoadCounter
 
     def load_schema!
       self.load_schema_calls ||= 0
-      self.load_schema_calls +=1
+      self.load_schema_calls += 1
       super
     end
   end
@@ -41,7 +43,6 @@ class SchemaLoadingTest < ActiveRecord::TestCase
   end
 
   private
-
     def define_model
       Class.new(ActiveRecord::Base) do
         include SchemaLoadCounter

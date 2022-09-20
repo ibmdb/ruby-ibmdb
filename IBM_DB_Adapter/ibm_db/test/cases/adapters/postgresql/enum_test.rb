@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'support/connection_helper'
+require "support/connection_helper"
 
 class PostgresqlEnumTest < ActiveRecord::PostgreSQLTestCase
   include ConnectionHelper
@@ -11,18 +13,18 @@ class PostgresqlEnumTest < ActiveRecord::PostgreSQLTestCase
   def setup
     @connection = ActiveRecord::Base.connection
     @connection.transaction do
-      @connection.execute <<-SQL
+      @connection.execute <<~SQL
         CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
       SQL
-      @connection.create_table('postgresql_enums') do |t|
+      @connection.create_table("postgresql_enums") do |t|
         t.column :current_mood, :mood
       end
     end
   end
 
   teardown do
-    @connection.drop_table 'postgresql_enums', if_exists: true
-    @connection.execute 'DROP TYPE IF EXISTS mood'
+    @connection.drop_table "postgresql_enums", if_exists: true
+    @connection.execute "DROP TYPE IF EXISTS mood"
     reset_connection
   end
 
@@ -30,17 +32,17 @@ class PostgresqlEnumTest < ActiveRecord::PostgreSQLTestCase
     column = PostgresqlEnum.columns_hash["current_mood"]
     assert_equal :enum, column.type
     assert_equal "mood", column.sql_type
-    assert_not column.array?
+    assert_not_predicate column, :array?
 
     type = PostgresqlEnum.type_for_attribute("current_mood")
-    assert_not type.binary?
+    assert_not_predicate type, :binary?
   end
 
   def test_enum_defaults
-    @connection.add_column 'postgresql_enums', 'good_mood', :mood, default: 'happy'
+    @connection.add_column "postgresql_enums", "good_mood", :mood, default: "happy"
     PostgresqlEnum.reset_column_information
 
-    assert_equal "happy", PostgresqlEnum.column_defaults['good_mood']
+    assert_equal "happy", PostgresqlEnum.column_defaults["good_mood"]
     assert_equal "happy", PostgresqlEnum.new.good_mood
   ensure
     PostgresqlEnum.reset_column_information
@@ -71,7 +73,7 @@ class PostgresqlEnumTest < ActiveRecord::PostgreSQLTestCase
     @connection.execute "INSERT INTO postgresql_enums VALUES (1, 'sad');"
     stderr_output = capture(:stderr) { PostgresqlEnum.first }
 
-    assert stderr_output.blank?
+    assert_predicate stderr_output, :blank?
   end
 
   def test_enum_type_cast

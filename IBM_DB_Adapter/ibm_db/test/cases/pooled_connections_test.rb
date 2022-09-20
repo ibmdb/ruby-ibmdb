@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 require "models/project"
 require "timeout"
@@ -7,7 +9,7 @@ class PooledConnectionsTest < ActiveRecord::TestCase
 
   def setup
     @per_test_teardown = []
-    @connection = ActiveRecord::Base.remove_connection
+    @connection = ActiveRecord::Base.remove_connection.configuration_hash
   end
 
   teardown do
@@ -18,36 +20,32 @@ class PooledConnectionsTest < ActiveRecord::TestCase
 
   # Will deadlock due to lack of Monitor timeouts in 1.9
   def checkout_checkin_connections(pool_size, threads)
-    ActiveRecord::Base.establish_connection(@connection.merge({:pool => pool_size, :checkout_timeout => 0.5}))
+    ActiveRecord::Base.establish_connection(@connection.merge(pool: pool_size, checkout_timeout: 0.5))
     @connection_count = 0
     @timed_out = 0
     threads.times do
       Thread.new do
-        begin
-          conn = ActiveRecord::Base.connection_pool.checkout
-          sleep 0.1
-          ActiveRecord::Base.connection_pool.checkin conn
-          @connection_count += 1
-        rescue ActiveRecord::ConnectionTimeoutError
-          @timed_out += 1
-        end
+        conn = ActiveRecord::Base.connection_pool.checkout
+        sleep 0.1
+        ActiveRecord::Base.connection_pool.checkin conn
+        @connection_count += 1
+      rescue ActiveRecord::ConnectionTimeoutError
+        @timed_out += 1
       end.join
     end
   end
 
   def checkout_checkin_connections_loop(pool_size, loops)
-    ActiveRecord::Base.establish_connection(@connection.merge({:pool => pool_size, :checkout_timeout => 0.5}))
+    ActiveRecord::Base.establish_connection(@connection.merge(pool: pool_size, checkout_timeout: 0.5))
     @connection_count = 0
     @timed_out = 0
     loops.times do
-      begin
-        conn = ActiveRecord::Base.connection_pool.checkout
-        ActiveRecord::Base.connection_pool.checkin conn
-        @connection_count += 1
-        ActiveRecord::Base.connection.data_sources
-      rescue ActiveRecord::ConnectionTimeoutError
-        @timed_out += 1
-      end
+      conn = ActiveRecord::Base.connection_pool.checkout
+      ActiveRecord::Base.connection_pool.checkin conn
+      @connection_count += 1
+      ActiveRecord::Base.connection.data_sources
+    rescue ActiveRecord::ConnectionTimeoutError
+      @timed_out += 1
     end
   end
 
@@ -66,16 +64,10 @@ class PooledConnectionsTest < ActiveRecord::TestCase
   end
 
   def test_pooled_connection_remove
-    ActiveRecord::Base.establish_connection(@connection.merge({:pool => 2, :checkout_timeout => 0.5}))
+    ActiveRecord::Base.establish_connection(@connection.merge(pool: 2, checkout_timeout: 0.5))
     old_connection = ActiveRecord::Base.connection
     extra_connection = ActiveRecord::Base.connection_pool.checkout
     ActiveRecord::Base.connection_pool.remove(extra_connection)
     assert_equal ActiveRecord::Base.connection, old_connection
-  end
-
-  private
-
-  def add_record(name)
-    ActiveRecord::Base.connection_pool.with_connection { Project.create! :name => name }
   end
 end unless in_memory_db?

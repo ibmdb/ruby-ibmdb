@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 
 module ActiveRecord
@@ -74,7 +76,6 @@ module ActiveRecord
     end
 
     test "construct args are passed to the type" do
-      type = Struct.new(:args)
       registry = Type::AdapterSpecificRegistry.new
       registry.register(:foo, type)
 
@@ -115,7 +116,6 @@ module ActiveRecord
 
     test "registering adapter specific modifiers" do
       decoration = Struct.new(:value)
-      type = Struct.new(:args)
       registry = Type::AdapterSpecificRegistry.new
       registry.register(:foo, type)
       registry.add_modifier({ array: true }, decoration, adapter: :postgresql)
@@ -129,5 +129,17 @@ module ActiveRecord
         registry.lookup(:foo, array: true, adapter: :sqlite3)
       )
     end
+
+    TYPE = Class.new do
+      attr_reader :args
+
+      def initialize(args = nil)
+        @args = args
+      end
+
+      def ==(other) self.args == other.args end
+    end
+
+    private def type; TYPE end
   end
 end

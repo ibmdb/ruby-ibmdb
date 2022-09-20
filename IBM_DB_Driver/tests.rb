@@ -189,14 +189,14 @@ class TestIbmDb < Test::Unit::TestCase
       pattern = expected_luw
     end
 
-    '\.[]*?+|(){}^$/'.each_byte { |c| pattern.gsub! c.chr, "\\#{c.chr}" }
+    '\[]*?+|(){}^$/'.each_byte { |c| pattern.gsub! c.chr, "\\#{c.chr}" }
     if RUBY_VERSION =~ /1.9/
       pattern.gsub! '%s', '?.*?'
     else
       pattern.gsub! '%s', '.*?'
     end
     pattern.gsub! '%d', '\d+'
-    pattern.gsub! "\n", '\n'
+    pattern.gsub! "\n", "\x0A"
 
     assert_match Regexp.new('^' + pattern + '$'), capture(&block)
   end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "cases/helper"
 
 module ActiveRecord
@@ -17,37 +19,39 @@ module ActiveRecord
       end
 
       def test_in_use?
-        assert_not @adapter.in_use?, 'adapter is not in use'
-        assert @adapter.lease, 'lease adapter'
-        assert @adapter.in_use?, 'adapter is in use'
+        assert_not @adapter.in_use?, "adapter is not in use"
+        assert @adapter.lease, "lease adapter"
+        assert @adapter.in_use?, "adapter is in use"
       end
 
       def test_lease_twice
-        assert @adapter.lease, 'should lease adapter'
+        assert @adapter.lease, "should lease adapter"
         assert_raises(ActiveRecordError) do
           @adapter.lease
         end
       end
 
       def test_expire_mutates_in_use
-        assert @adapter.lease, 'lease adapter'
-        assert @adapter.in_use?, 'adapter is in use'
+        assert @adapter.lease, "lease adapter"
+        assert @adapter.in_use?, "adapter is in use"
         @adapter.expire
-        assert_not @adapter.in_use?, 'adapter is in use'
+        assert_not @adapter.in_use?, "adapter is in use"
       end
 
       def test_close
-        pool = Pool.new(ConnectionSpecification.new("primary", {}, nil))
+        db_config = ActiveRecord::DatabaseConfigurations::HashConfig.new("test", "primary", {})
+        pool_config = ActiveRecord::ConnectionAdapters::PoolConfig.new(ActiveRecord::Base, db_config)
+        pool = Pool.new(pool_config)
         pool.insert_connection_for_test! @adapter
         @adapter.pool = pool
 
         # Make sure the pool marks the connection in use
         assert_equal @adapter, pool.connection
-        assert @adapter.in_use?
+        assert_predicate @adapter, :in_use?
 
         # Close should put the adapter back in the pool
         @adapter.close
-        assert_not @adapter.in_use?
+        assert_not_predicate @adapter, :in_use?
 
         assert_equal @adapter, pool.connection
       end

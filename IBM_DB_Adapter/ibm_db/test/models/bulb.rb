@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 class Bulb < ActiveRecord::Base
-  default_scope { where(:name => 'defaulty') }
-  belongs_to :car, :touch => true
+  default_scope { where(name: "defaulty") }
+  belongs_to :car, touch: true
   scope :awesome, -> { where(frickinawesome: true) }
 
-  attr_reader :scope_after_initialize, :attributes_after_initialize
+  attr_reader :scope_after_initialize, :attributes_after_initialize, :count_after_create
 
   after_initialize :record_scope_after_initialize
   def record_scope_after_initialize
@@ -13,6 +15,13 @@ class Bulb < ActiveRecord::Base
   after_initialize :record_attributes_after_initialize
   def record_attributes_after_initialize
     @attributes_after_initialize = attributes.dup
+  end
+
+  after_create :record_count_after_create
+  def record_count_after_create
+    @count_after_create = Bulb.unscoped do
+      car&.bulbs&.count
+    end
   end
 
   def color=(color)
@@ -35,7 +44,7 @@ class CustomBulb < Bulb
   after_initialize :set_awesomeness
 
   def set_awesomeness
-    self.frickinawesome = true if name == 'Dude'
+    self.frickinawesome = true if name == "Dude"
   end
 end
 

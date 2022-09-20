@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   |  Licensed Materials - Property of IBM                                |
   |                                                                      |
-  | (C) Copyright IBM Corporation 2006 - 2017                            |
+  | (C) Copyright IBM Corporation 2006 - 2022                            |
   +----------------------------------------------------------------------+
   | Authors: Sushant Koduru, Lynh Nguyen, Kanchana Padmanabhan,          |
   |          Dan Scott, Helmut Tessarek, Sam Ruby, Kellen Bombardier,    |
@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "3.0.5"
+#define MODULE_RELEASE "3.0.6"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -2885,7 +2885,7 @@ VALUE ruby_ibm_db_createDb_helper(VALUE connection, VALUE dbName, VALUE codeSet,
   VALUE mode_utf16      = Qnil;
 #endif
 
-  int rc;
+  RETCODE rc;
 
   create_drop_db_args *create_db_args = NULL;
   conn_handle *conn_res;
@@ -3041,7 +3041,7 @@ VALUE ruby_ibm_db_dropDb_helper(VALUE connection, VALUE dbName) {
 
   VALUE return_value =  Qfalse;
 
-  int rc;
+  RETCODE rc;
 
   create_drop_db_args *drop_db_args = NULL;
   conn_handle         *conn_res     = NULL;
@@ -9549,8 +9549,6 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
         case SQL_TYPE_DATE:
         case SQL_TYPE_TIME:
         case SQL_TYPE_TIMESTAMP:
-        case SQL_BIGINT:
-
           if ( op & FETCH_ASSOC ) {
             rb_hash_aset(return_value, colName, rb_str_new2((char *)row_data->str_val));
           }
@@ -9558,6 +9556,17 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
             rb_ary_store(return_value, i, rb_str_new2((char *)row_data->str_val));
           } else if ( op == FETCH_BOTH ) {
             rb_hash_aset(return_value, INT2NUM(i), rb_str_new2((char *)row_data->str_val));
+          }
+          break;
+
+        case SQL_BIGINT:
+          if ( op & FETCH_ASSOC ) {
+            rb_hash_aset(return_value, colName, LONG2NUM(atol((char *)row_data->str_val)));
+          }
+          if ( op == FETCH_INDEX ) {
+            rb_ary_store(return_value, i, LONG2NUM(atol((char *)row_data->str_val)));
+          } else if ( op == FETCH_BOTH ) {
+            rb_hash_aset(return_value, INT2NUM(i), LONG2NUM(atol((char *)row_data->str_val)));
           }
           break;
 
@@ -9572,21 +9581,35 @@ static VALUE _ruby_ibm_db_bind_fetch_helper(ibm_db_fetch_helper_args *data)
            return Qnil; 
           }
 
-          strcpy(tmpStr, "BigDecimal(\'");
-          strcat(tmpStr, row_data->str_val);
-          strcat(tmpStr, "\')");
+          if ((atof(row_data->str_val) - atol(row_data->str_val)) > 0)
+          {
+            strcpy(tmpStr, "BigDecimal(\'");
+            strcat(tmpStr, row_data->str_val);
+            strcat(tmpStr, "\')");
 
-          if ( op & FETCH_ASSOC ) {
-            rb_hash_aset(return_value, colName, rb_eval_string(tmpStr));
-          }
-          if ( op == FETCH_INDEX ) {
-            rb_ary_store(return_value, i, rb_eval_string(tmpStr) );
-          } else if ( op == FETCH_BOTH ) {
-            rb_hash_aset( return_value, INT2NUM(i), rb_eval_string( tmpStr ) );
-          }
+            if ( op & FETCH_ASSOC ) {
+              rb_hash_aset(return_value, colName, rb_eval_string(tmpStr));
+            }
+            if ( op == FETCH_INDEX ) {
+              rb_ary_store(return_value, i, rb_eval_string(tmpStr) );
+            } else if ( op == FETCH_BOTH ) {
+              rb_hash_aset( return_value, INT2NUM(i), rb_eval_string( tmpStr ) );
+            }
 
-          ruby_xfree(tmpStr);
-          tmpStr = NULL;
+            ruby_xfree(tmpStr);
+            tmpStr = NULL;
+          }
+          else
+          {
+            if ( op & FETCH_ASSOC ) {
+              rb_hash_aset(return_value, colName, LONG2NUM(atol((char *)row_data->str_val)));
+            }
+            if ( op == FETCH_INDEX ) {
+              rb_ary_store(return_value, i, LONG2NUM(atol((char *)row_data->str_val)));
+            } else if ( op == FETCH_BOTH ) {
+              rb_hash_aset(return_value, INT2NUM(i), LONG2NUM(atol((char *)row_data->str_val)));
+            }
+          }
 
           break;
         case SQL_SMALLINT:

@@ -494,6 +494,7 @@ int _ruby_ibm_db_SQLDropDB_helper(create_drop_db_args *data) {
 
   rc = (*sqldropdb)( (SQLHSTMT) data->conn_res->hdbc, data->dbName, (SQLINTEGER)data->dbName_string_len );
 
+  data->rc = rc;
   DLCLOSE( cliLib );
   return rc;
 }

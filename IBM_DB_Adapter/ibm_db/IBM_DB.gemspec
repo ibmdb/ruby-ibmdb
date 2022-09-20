@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006- 2018                             |
+# | (C) Copyright IBM Corporation 2006- 2022                             |
 # +----------------------------------------------------------------------+
 
 require 'rubygems'
@@ -10,7 +10,7 @@ require 'pathname'
 Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '5.2.0'
+  spec.version  = '5.3.0'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec
@@ -18,7 +18,8 @@ Gem::Specification.new do |spec|
   spec.email = 'opendev@us.ibm.com'
   spec.homepage = 'https://github.com/ibmdb/ruby-ibmdb'
   spec.required_ruby_version = '>= 2.5.0'
-  spec.add_dependency('activerecord', '>= 5.0.7', '<=6.0.3')
+  spec.add_dependency('zip')
+  spec.add_dependency('activerecord', '>= 5.0.7', '<=6.1')
   spec.requirements << 'ActiveRecord, at least 5.0.7'
 
   candidates = Dir.glob("**/*")

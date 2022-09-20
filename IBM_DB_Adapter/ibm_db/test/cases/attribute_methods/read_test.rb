@@ -1,19 +1,19 @@
+# frozen_string_literal: true
+
 require "cases/helper"
-require 'thread'
+require "active_support/core_ext/enumerable"
 
 module ActiveRecord
   module AttributeMethods
     class ReadTest < ActiveRecord::TestCase
-      class FakeColumn < Struct.new(:name)
+      FakeColumn = Struct.new(:name) do
         def type; :integer; end
       end
 
       def setup
-        @klass = Class.new do
+        @klass = Class.new(Class.new { def self.initialize_generated_modules; end }) do
           def self.superclass; Base; end
-          def self.base_class; self; end
-          def self.decorate_matching_attribute_types(*); end
-          def self.initialize_generated_modules; end
+          def self.base_class?; true; end
 
           include ActiveRecord::AttributeMethods
 
@@ -29,9 +29,9 @@ module ActiveRecord
           end
 
           def self.columns_hash
-            Hash[attribute_names.map { |name|
-              [name, FakeColumn.new(name)]
-            }]
+            attribute_names.index_with { |name|
+              FakeColumn.new(name)
+            }
           end
         end
       end
@@ -40,13 +40,13 @@ module ActiveRecord
         instance = @klass.new
 
         @klass.attribute_names.each do |name|
-          assert !instance.methods.map(&:to_s).include?(name)
+          assert_not_includes instance.methods.map(&:to_s), name
         end
 
         @klass.define_attribute_methods
 
         @klass.attribute_names.each do |name|
-          assert instance.methods.map(&:to_s).include?(name), "#{name} is not defined"
+          assert_includes instance.methods.map(&:to_s), name, "#{name} is not defined"
         end
       end
 

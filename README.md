@@ -7,7 +7,7 @@ ibm_db gem version 5.2.0
 
 Requirements:
  Ruby should be installed(Ruby version should be >=2.5.x and <= 3.0.x)
- For developing rails appications Rails should be 6.0.x
+ For developing rails appications Rails should be 6.1.x
 ```
 
  
