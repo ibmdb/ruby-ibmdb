@@ -1,6 +1,12 @@
 Change Log
 ==============
 
+2022/09/21 (IBM_DB adapter 5.3.1, driver 3.0.6)
+  - Yanked version 5.3.0 as package includes clidriver
+
+2022/09/17 (IBM_DB adapter 5.3.0, driver 3.0.6)
+  - Support for Ruby 3.0 and Rails 6.1
+
 2018/05/24 (IBM_DB adapter 4.0.0, driver 3.0.5)
   - Rails 5.0.7 Toleration support. New features of Active Record 5.0.7 are not added also none of the open issue are fixed in this release.
   
