@@ -239,7 +239,7 @@ class CalculationsTest < ActiveRecord::TestCase
 
     queries = capture_sql { Account.limit(1).count }
     assert_equal 1, queries.length
-    assert_match(/LIMIT/, queries.first)
+    assert_match(/FETCH FIRST/, queries.first)
   end
 
   def test_offset_is_kept
@@ -255,14 +255,14 @@ class CalculationsTest < ActiveRecord::TestCase
 
     queries = capture_sql { Account.limit(1).offset(1).count }
     assert_equal 1, queries.length
-    assert_match(/LIMIT/, queries.first)
+    assert_match(/FETCH FIRST/, queries.first)
     assert_match(/OFFSET/, queries.first)
   end
 
   def test_no_limit_no_offset
     queries = capture_sql { Account.count }
     assert_equal 1, queries.length
-    assert_no_match(/LIMIT/, queries.first)
+    assert_no_match(/FETCH FIRST/, queries.first)
     assert_no_match(/OFFSET/, queries.first)
   end
 

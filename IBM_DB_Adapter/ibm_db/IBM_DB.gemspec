@@ -36,7 +36,8 @@ Gem::Specification.new do |spec|
 
   if RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw/
     spec.platform = Gem::Platform::CURRENT
-	spec.add_dependency('archive-zip', '>= 0.7.0')
+    spec.add_dependency('archive-zip', '>= 0.7.0')
+    spec.extensions << 'ext/extconf.rb'
   else
     spec.files = candidates.delete_if { |item| item.include?("lib/mswin32") }
     puts ".. Check for the pre-built IBM_DB driver for this platform: #{RUBY_PLATFORM}"
@@ -48,7 +49,7 @@ Gem::Specification.new do |spec|
       puts ".. ibm_db driver was found:   #{drv_lib.realpath}"
     else
       puts ".. ibm_db driver binary was not found. The driver native extension to be built during install."	  
-		spec.extensions << 'ext/extconf.rb'	  
+      spec.extensions << 'ext/extconf.rb'
     end
   end
 
