@@ -54,7 +54,7 @@ Rickety Ride
 6
 llama
 Sweater         
-0.15e3
+150
 __ZOS_EXPECTED__
 0
 cat
@@ -71,7 +71,7 @@ Rickety Ride
 6
 llama
 Sweater         
-0.15e3
+150
 __SYSTEMI_EXPECTED__
 0
 cat
@@ -88,7 +88,7 @@ Rickety Ride
 6
 llama
 Sweater         
-0.15e3
+150
 __IDS_EXPECTED__
 0
 cat
@@ -105,4 +105,4 @@ Rickety Ride
 6
 llama
 Sweater         
-0.15e3
+150
