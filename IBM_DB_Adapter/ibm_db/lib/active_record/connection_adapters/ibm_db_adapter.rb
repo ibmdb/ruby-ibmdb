@@ -51,6 +51,12 @@ module ActiveRecord
   module ConnectionAdapters
     class SchemaDumper
       private
+        def header(stream)
+          stream.puts <<~HEADER          
+            ActiveRecord::Schema[#{ActiveRecord::Migration.current_version}].define(#{define_params}) do
+          HEADER
+        end
+
         def default_primary_key?(column)
           schema_type(column) == :integer
         end
@@ -75,11 +81,11 @@ module ActiveRecord
           end
 
           if supports_foreign_keys?
-            statements.concat(o.foreign_keys.map { |to_table, options| foreign_key_in_create(o.name, to_table, options) })
+            statements.concat(o.foreign_keys.map { |fk| accept fk })
           end
 
           if supports_check_constraints?
-            statements.concat(o.check_constraints.map { |expression, options| check_constraint_in_create(o.name, expression, options) })
+            statements.concat(o.check_constraints.map { |chk| accept chk })
           end
 
           create_sql << "(#{statements.join(', ')})" if statements.present?
@@ -423,7 +429,7 @@ module ActiveRecord
       end
 		
       def drop_table(table_name, options={})
-        puts_log "drop_table"
+        puts_log "drop_table - #{table_name}"
         if options[:if_exists]
           execute("DROP TABLE IF EXISTS #{quote_table_name(table_name)}")
         else
@@ -833,7 +839,9 @@ module ActiveRecord
 
       def prepared_statements?
         puts_log "prepared_statements?"
-        @prepared_statements && !prepared_statements_disabled_cache.include?(object_id)
+        prepare = @prepared_statements && !prepared_statements_disabled_cache.include?(object_id)
+        puts_log "prepare = #{prepare}"
+        prepare
       end
       alias :prepared_statements :prepared_statements?
 
@@ -1112,8 +1120,10 @@ module ActiveRecord
         end
       end
 
-      def select(sql, name = nil, binds = [])
+      def select(sql, name = nil, binds = [], prepare: false, async: false)
         puts_log "select #{sql}"
+        puts_log "prepare = #{prepare}"
+
         # Replaces {"= NULL" with " IS NULL"} OR {"IN (NULL)" with " IS NULL"
         begin
           sql.gsub( /(=\s*NULL|IN\s*\(NULL\))/i, " IS NULL" )
@@ -1121,12 +1131,32 @@ module ActiveRecord
           # ...
         end
 
+        if async && async_enabled?
+          if current_transaction.joinable?
+            raise AsynchronousQueryInsideTransactionError, "Asynchronous queries are not allowed inside transactions"
+          end
+
+          future_result = async.new(
+            pool,
+            sql,
+            name,
+            binds,
+            prepare: prepare,
+          )
+          if supports_concurrent_connections? && current_transaction.closed?
+            future_result.schedule!(ActiveRecord::Base.asynchronous_queries_session)
+          else
+            future_result.execute!(self)
+          end
+          return future_result
+        end
+
         results = []
 
         if(binds.nil? || binds.empty?)
           stmt = execute(sql, name)
         else
-          stmt = exec_query_ret_stmt(sql, name, binds, prepare = false)
+          stmt = exec_query_ret_stmt(sql, name, binds, prepare)
         end
 
         cols = IBM_DB.resultCols(stmt)
@@ -1452,7 +1482,8 @@ module ActiveRecord
       # the executed +sql+ statement.
       # Here prepare argument is not used, by default this method creates prepared statment and execute.
       def exec_query_ret_stmt(sql, name = 'SQL', binds = [], prepare = false)
-        puts_log "exec_query_ret_stmt"
+        puts_log "exec_query_ret_stmt #{sql}"
+        sql = transform_query(sql)
         check_if_write_query(sql)
         materialize_transactions
         mark_transaction_written_if_write(sql)
@@ -1461,6 +1492,8 @@ module ActiveRecord
           puts_log "Binds = #{binds}"
           param_array = type_casted_binds(binds)
           puts_log "Param array = #{param_array}"
+          puts_log "Prepare flag = #{prepare}"
+          puts_log "#{caller}"
 
           stmt = @servertype.prepare(sql, name)
           if prepare 
@@ -1526,6 +1559,7 @@ module ActiveRecord
 	    #sql='INSERT INTO ar_internal_metadata (key, value, created_at, updated_at) VALUES ('10', '10', '10', '10')
         puts_log "execute"
         puts_log "#{sql}"
+        sql = transform_query(sql)
         check_if_write_query(sql)
         materialize_transactions
         mark_transaction_written_if_write(sql)
@@ -1725,6 +1759,9 @@ module ActiveRecord
 
       def quote_table_name(name)
         puts_log "quote_table_name"
+        if name.start_with?'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+          name = "\"#{name}\""
+        end
         name
         #@servertype.check_reserved_words(name).gsub('"', '').gsub("'",'')
       end
@@ -2378,7 +2415,9 @@ module ActiveRecord
               column_nullable = (col["nullable"] == 1) ? true : false
               # Make sure the hidden column (db2_generated_rowid_for_lobs) in DB2 z/OS isn't added to the list
               if !(column_name.match(/db2_generated_rowid_for_lobs/i))
+                puts_log "Column type = #{column_type}"
 				ruby_type = simplified_type(column_type)
+                puts_log "Ruby type after = #{ruby_type}"
 				precision = extract_precision(ruby_type)
 
                 if column_type.match(/timestamp|integer|bigint|date|time|blob/i)
@@ -2429,7 +2468,7 @@ module ActiveRecord
             else
               error_msg = "An unexpected error occurred during retrieval of column metadata"
               error_msg = error_msg + ": #{fetch_error.message}" if !fetch_error.message.empty?
-              raise error_msg
+#             raise error_msg
             end
           ensure  # Free resources associated with the statement
             IBM_DB.free_stmt(stmt) if stmt
@@ -2447,6 +2486,10 @@ module ActiveRecord
         return columns
       end
 	 
+      def extract_precision(sql_type)
+        $1.to_i if sql_type =~ /\((\d+)(,\d+)?\)/
+      end
+
       def extract_default_function(default_value, default)
         default if has_default_function?(default_value, default)
       end
@@ -2491,7 +2534,7 @@ module ActiveRecord
             else
               error_msg = "An unexpected error occurred during retrieval of foreign key metadata"
               error_msg = error_msg + ": #{fetch_error.message}" if !fetch_error.message.empty?
-              raise error_msg
+#             raise error_msg
             end
           ensure  # Free resources associated with the statement
             IBM_DB.free_stmt(stmt) if stmt
@@ -2578,6 +2621,7 @@ module ActiveRecord
         puts_log "add_column"
         clear_cache!
         puts_log "add_column info #{table_name}, #{column_name}, #{type}, #{options}"
+        puts_log caller
         if (!type.nil? && type.to_s == "primary_key") or (options.key?(:primary_key) and options[:primary_key] == true)
           if !type.nil? and type.to_s != "primary_key"
             execute "ALTER TABLE #{table_name} ADD COLUMN #{column_name} #{type} NOT NULL DEFAULT 0"
@@ -2685,6 +2729,15 @@ module ActiveRecord
         end
       end
 
+      def remove_columns(table_name, *column_names, type: nil, **options)
+        if column_names.empty?
+          raise ArgumentError.new("You must specify at least one column name. Example: remove_columns(:people, :first_name)")
+        end
+
+        remove_column_fragments = remove_columns_for_alter(table_name, *column_names, type: type, **options)
+        execute "ALTER TABLE #{quote_table_name(table_name)} #{remove_column_fragments.join(' ')}"
+      end
+
       # Renames a table.
       # ==== Example
       # rename_table('octopuses', 'octopi')
@@ -2782,7 +2835,7 @@ module ActiveRecord
         puts_log "add_foreign_keyList = #{table_name}, #{column_name}, #{fkey_list}"
         fkey_list.each do |fkey|
           if fkey.options[:column] == column_name
-            add_foreign_key(table_name, fkey.to_table, column: new_column_name)
+            add_foreign_key(table_name, strip_table_name_prefix_and_suffix(fkey.to_table), column: new_column_name)
           end
         end
       end
@@ -2917,6 +2970,7 @@ module ActiveRecord
 
       class SchemaDumper < ConnectionAdapters::SchemaDumper
         def dump(stream)    # Like in abstract class, we no need to call header() & trailer().
+          header(stream)
           extensions(stream)
           tables(stream)
           stream
@@ -3724,7 +3778,7 @@ module Arel
           row.each_with_index do |value, k|
           collector << ", " unless k == 0
           case value
-            when Nodes::SqlLiteral, Nodes::BindParam
+            when Nodes::SqlLiteral, Nodes::BindParam, ActiveModel::Attribute
               collector = visit(value, collector)
               #collector << quote(value).to_s
             else

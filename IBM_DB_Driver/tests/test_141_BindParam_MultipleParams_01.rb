@@ -49,7 +49,7 @@ Peaches
 2
 horse
 Smarty          
-0.35e3
+350
 __ZOS_EXPECTED__
 0
 cat
@@ -62,7 +62,7 @@ Peaches
 2
 horse
 Smarty          
-0.35e3
+350
 __SYSTEMI_EXPECTED__
 0
 cat
@@ -75,7 +75,7 @@ Peaches
 2
 horse
 Smarty          
-0.35e3
+350
 __IDS_EXPECTED__
 0
 cat
@@ -88,4 +88,4 @@ Peaches
 2
 horse
 Smarty          
-0.35e3
+350

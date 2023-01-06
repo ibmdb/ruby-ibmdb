@@ -36,16 +36,16 @@ __END__
 __LUW_EXPECTED__
 0     Pook             cat                                  0.32e1
 5     Rickety Ride     goat                                 0.97e1
-2     Smarty           horse                                0.35e3
+2     Smarty           horse                                   350
 __ZOS_EXPECTED__
 0     Pook             cat                                  0.32e1
 5     Rickety Ride     goat                                 0.97e1
-2     Smarty           horse                                0.35e3
+2     Smarty           horse                                   350
 __SYSTEMI_EXPECTED__
 0     Pook             cat                                  0.32e1
 5     Rickety Ride     goat                                 0.97e1
-2     Smarty           horse                                0.35e3
+2     Smarty           horse                                   350
 __IDS_EXPECTED__
 0     Pook             cat                                  0.32e1
 5     Rickety Ride     goat                                 0.97e1
-2     Smarty           horse                                0.35e3
+2     Smarty           horse                                   350

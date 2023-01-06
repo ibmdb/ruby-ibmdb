@@ -40,8 +40,8 @@ __LUW_EXPECTED__
 1 : dog : Peaches          : 0.123e2
 0 : cat : Pook             : 0.32e1
 5 : goat : Rickety Ride     : 0.97e1
-2 : horse : Smarty           : 0.35e3
-6 : llama : Sweater          : 0.15e3
+2 : horse : Smarty           : 350
+6 : llama : Sweater          : 150
 Requested row number must be a positive value
 __ZOS_EXPECTED__
 3 : gold fish : Bubbles          : 0.1e0
@@ -49,8 +49,8 @@ __ZOS_EXPECTED__
 1 : dog : Peaches          : 0.123e2
 0 : cat : Pook             : 0.32e1
 5 : goat : Rickety Ride     : 0.97e1
-2 : horse : Smarty           : 0.35e3
-6 : llama : Sweater          : 0.15e3
+2 : horse : Smarty           : 350
+6 : llama : Sweater          : 150
 Requested row number must be a positive value
 __SYSTEMI_EXPECTED__
 3 : gold fish : Bubbles          : 0.1e0
@@ -58,8 +58,8 @@ __SYSTEMI_EXPECTED__
 1 : dog : Peaches          : 0.123e2
 0 : cat : Pook             : 0.32e1
 5 : goat : Rickety Ride     : 0.97e1
-2 : horse : Smarty           : 0.35e3
-6 : llama : Sweater          : 0.15e3
+2 : horse : Smarty           : 350
+6 : llama : Sweater          : 150
 Requested row number must be a positive value
 __IDS_EXPECTED__
 3 : gold fish : Bubbles          : 0.1e0
@@ -67,6 +67,6 @@ __IDS_EXPECTED__
 1 : dog : Peaches          : 0.123e2
 0 : cat : Pook             : 0.32e1
 5 : goat : Rickety Ride     : 0.97e1
-2 : horse : Smarty           : 0.35e3
-6 : llama : Sweater          : 0.15e3
+2 : horse : Smarty           : 350
+6 : llama : Sweater          : 150
 Requested row number must be a positive value

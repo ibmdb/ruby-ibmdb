@@ -124,11 +124,11 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15e3
+150
 Smarty          
 2
 horse
-0.35e3
+350
 Rickety Ride    
 5
 goat
@@ -177,11 +177,11 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15e3
+150
 Smarty          
 2
 horse
-0.35e3
+350
 Rickety Ride    
 5
 goat
@@ -230,11 +230,11 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15e3
+150
 Smarty          
 2
 horse
-0.35e3
+350
 Rickety Ride    
 5
 goat
@@ -283,11 +283,11 @@ Fetching second result set
 Sweater         
 6
 llama
-0.15e3
+150
 Smarty          
 2
 horse
-0.35e3
+350
 Rickety Ride    
 5
 goat

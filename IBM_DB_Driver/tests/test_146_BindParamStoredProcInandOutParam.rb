@@ -54,8 +54,8 @@ Results:
   Peaches, dog, 0.123e2
   Pook, cat, 0.32e1
   Rickety Ride, goat, 0.97e1
-  Smarty, horse, 0.35e3
-  Sweater, llama, 0.15e3
+  Smarty, horse, 350
+  Sweater, llama, 150
 __ZOS_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0
@@ -67,8 +67,8 @@ Results:
   Peaches, dog, 0.123e2
   Pook, cat, 0.32e1
   Rickety Ride, goat, 0.97e1
-  Smarty, horse, 0.35e3
-  Sweater, llama, 0.15e3
+  Smarty, horse, 350
+  Sweater, llama, 150
 __SYSTEMI_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0
@@ -80,8 +80,8 @@ Results:
   Peaches, dog, 0.123e2
   Pook, cat, 0.32e1
   Rickety Ride, goat, 0.97e1
-  Smarty, horse, 0.35e3
-  Sweater, llama, 0.15e3
+  Smarty, horse, 350
+  Sweater, llama, 150
 __IDS_EXPECTED__
 Values of bound parameters _before_ CALL:
   1: Peaches 2: Rickety Ride 3: 0

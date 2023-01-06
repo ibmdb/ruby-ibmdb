@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "3.0.6"
+#define MODULE_RELEASE "3.1.0"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -2507,8 +2507,7 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   }
   /* Call the function where the actual logic is being run*/
   #ifdef UNICODE_SUPPORT_VERSION_H
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_connect_helper2, helper_args, RUBY_UBF_IO, NULL);	
-	
+    _ruby_ibm_db_connect_helper2( helper_args );
 				
     conn_res = helper_args->conn_res;
 	
@@ -6988,8 +6987,7 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
     bind_array->error             =  &error;
 
     #ifdef UNICODE_SUPPORT_VERSION_H
-  	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_execute_helper, bind_array,
-                            RUBY_UBF_IO, NULL );
+      _ruby_ibm_db_execute_helper( bind_array );
 	  ret_value = bind_array->return_value;
     #else
       ret_value = _ruby_ibm_db_execute_helper( bind_array );
@@ -10078,8 +10076,7 @@ VALUE ibm_db_fetch_row(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
 
   #ifdef UNICODE_SUPPORT_VERSION_H
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
-                        RUBY_UBF_IO, NULL );
+    _ruby_ibm_db_fetch_row_helper( helper_args );
 	ret_val = helper_args->return_value;
   #else
     ret_val = _ruby_ibm_db_fetch_row_helper( helper_args );
@@ -10247,8 +10244,7 @@ VALUE ibm_db_fetch_assoc(int argc, VALUE *argv, VALUE self) {
   helper_args->funcType   =  FETCH_ASSOC;
 
   #ifdef UNICODE_SUPPORT_VERSION_H
-  	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                         RUBY_UBF_IO, NULL );
+    _ruby_ibm_db_bind_fetch_helper( helper_args );
 	ret_val = helper_args->return_value;
 						
   #else

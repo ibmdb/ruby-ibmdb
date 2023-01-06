@@ -80,7 +80,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-   40  OBrien        38 Sales       6       0.18006e5  0.84655e3 
+   40  OBrien        38 Sales       6           18006  0.84655e3 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -110,7 +110,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-   70  Rothman       15 Sales       7     0.1650283e5   0.1152e4 
+   70  Rothman       15 Sales       7     0.1650283e5       1152 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -160,7 +160,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  120  Naughton      38 Clerk       0     0.1295475e5     0.18e3 
+  120  Naughton      38 Clerk       0     0.1295475e5        180 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -180,7 +180,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  140  Fraye         51 Mgr         6        0.2115e5            
+  140  Fraye         51 Mgr         6           21150            
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -250,7 +250,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  210  Lu            10 Mgr        10        0.2001e5            
+  210  Lu            10 Mgr        10           20010            
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -290,7 +290,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  250  Wheeler       51 Clerk       6        0.1446e5   0.5133e3 
+  250  Wheeler       51 Clerk       6           14460   0.5133e3 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -300,7 +300,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  260  Jones         10 Mgr        12       0.21234e5            
+  260  Jones         10 Mgr        12           21234            
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -330,7 +330,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  290  Quill         84 Mgr        10       0.19818e5            
+  290  Quill         84 Mgr        10           19818            
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -350,7 +350,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  310  Graham        66 Sales      13          0.21e5   0.2003e3 
+  310  Graham        66 Sales      13           21000   0.2003e3 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -360,7 +360,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  320  Gonzales      66 Sales       4      0.168582e5    0.844e3 
+  320  Gonzales      66 Sales       4      0.168582e5        844 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -370,7 +370,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  330  Burke         66 Clerk       1       0.10988e5    0.555e2 
+  330  Burke         66 Clerk       1           10988    0.555e2 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -380,7 +380,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  340  Edwards       84 Sales       7       0.17844e5   0.1285e4 
+  340  Edwards       84 Sales       7           17844       1285 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -390,7 +390,7 @@ __LUW_EXPECTED__
 		E01              SUPPORT SERVICES 000050 A00                 
 		E11                    OPERATIONS 000090 E01                 
 		E21              SOFTWARE SUPPORT 000100 E01                 
-  350  Gafney        84 Clerk       5      0.130305e5    0.188e3 
+  350  Gafney        84 Clerk       5      0.130305e5        188 
 		A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 		B01                      PLANNING 000020 A00                 
 		C01            INFORMATION CENTER 000030 A00                 
@@ -431,7 +431,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-40  OBrien        38 Sales       6       0.18006e5  0.84655e3 
+40  OBrien        38 Sales       6           18006  0.84655e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -461,7 +461,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-70  Rothman       15 Sales       7     0.1650283e5   0.1152e4 
+70  Rothman       15 Sales       7     0.1650283e5       1152 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -511,7 +511,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-120  Naughton      38 Clerk       0     0.1295475e5     0.18e3 
+120  Naughton      38 Clerk       0     0.1295475e5        180 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -531,7 +531,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-140  Fraye         51 Mgr         6        0.2115e5            
+140  Fraye         51 Mgr         6           21150            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -601,7 +601,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-210  Lu            10 Mgr        10        0.2001e5            
+210  Lu            10 Mgr        10           20010            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -641,7 +641,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-250  Wheeler       51 Clerk       6        0.1446e5   0.5133e3 
+250  Wheeler       51 Clerk       6           14460   0.5133e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -651,7 +651,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-260  Jones         10 Mgr        12       0.21234e5            
+260  Jones         10 Mgr        12           21234            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -681,7 +681,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-290  Quill         84 Mgr        10       0.19818e5            
+290  Quill         84 Mgr        10           19818            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -701,7 +701,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-310  Graham        66 Sales      13          0.21e5   0.2003e3 
+310  Graham        66 Sales      13           21000   0.2003e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -711,7 +711,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-320  Gonzales      66 Sales       4      0.168582e5    0.844e3 
+320  Gonzales      66 Sales       4      0.168582e5        844 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -721,7 +721,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-330  Burke         66 Clerk       1       0.10988e5    0.555e2 
+330  Burke         66 Clerk       1           10988    0.555e2 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -731,7 +731,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-340  Edwards       84 Sales       7       0.17844e5   0.1285e4 
+340  Edwards       84 Sales       7           17844       1285 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -741,7 +741,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-350  Gafney        84 Clerk       5      0.130305e5    0.188e3 
+350  Gafney        84 Clerk       5      0.130305e5        188 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -783,7 +783,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-40  OBrien        38 Sales       6       0.18006e5  0.84655e3 
+40  OBrien        38 Sales       6           18006  0.84655e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -813,7 +813,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-70  Rothman       15 Sales       7     0.1650283e5   0.1152e4 
+70  Rothman       15 Sales       7     0.1650283e5       1152 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -863,7 +863,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-120  Naughton      38 Clerk       0     0.1295475e5     0.18e3 
+120  Naughton      38 Clerk       0     0.1295475e5        180 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -883,7 +883,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-140  Fraye         51 Mgr         6        0.2115e5            
+140  Fraye         51 Mgr         6           21150            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -953,7 +953,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-210  Lu            10 Mgr        10        0.2001e5            
+210  Lu            10 Mgr        10           20010            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -993,7 +993,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-250  Wheeler       51 Clerk       6        0.1446e5   0.5133e3 
+250  Wheeler       51 Clerk       6           14460   0.5133e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1003,7 +1003,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-260  Jones         10 Mgr        12       0.21234e5            
+260  Jones         10 Mgr        12           21234            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1033,7 +1033,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-290  Quill         84 Mgr        10       0.19818e5            
+290  Quill         84 Mgr        10           19818            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1053,7 +1053,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-310  Graham        66 Sales      13          0.21e5   0.2003e3 
+310  Graham        66 Sales      13           21000   0.2003e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1063,7 +1063,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-320  Gonzales      66 Sales       4      0.168582e5    0.844e3 
+320  Gonzales      66 Sales       4      0.168582e5        844 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1073,7 +1073,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-330  Burke         66 Clerk       1       0.10988e5    0.555e2 
+330  Burke         66 Clerk       1           10988    0.555e2 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1083,7 +1083,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-340  Edwards       84 Sales       7       0.17844e5   0.1285e4 
+340  Edwards       84 Sales       7           17844       1285 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1093,7 +1093,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-350  Gafney        84 Clerk       5      0.130305e5    0.188e3 
+350  Gafney        84 Clerk       5      0.130305e5        188 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1135,7 +1135,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-40  OBrien        38 Sales       6       0.18006e5  0.84655e3 
+40  OBrien        38 Sales       6           18006  0.84655e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1165,7 +1165,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-70  Rothman       15 Sales       7     0.1650283e5   0.1152e4 
+70  Rothman       15 Sales       7     0.1650283e5       1152 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1215,7 +1215,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-120  Naughton      38 Clerk       0     0.1295475e5     0.18e3 
+120  Naughton      38 Clerk       0     0.1295475e5        180 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1235,7 +1235,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-140  Fraye         51 Mgr         6        0.2115e5            
+140  Fraye         51 Mgr         6           21150            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1305,7 +1305,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-210  Lu            10 Mgr        10        0.2001e5            
+210  Lu            10 Mgr        10           20010            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1345,7 +1345,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-250  Wheeler       51 Clerk       6        0.1446e5   0.5133e3 
+250  Wheeler       51 Clerk       6           14460   0.5133e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1355,7 +1355,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-260  Jones         10 Mgr        12       0.21234e5            
+260  Jones         10 Mgr        12           21234            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1385,7 +1385,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-290  Quill         84 Mgr        10       0.19818e5            
+290  Quill         84 Mgr        10           19818            
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1405,7 +1405,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-310  Graham        66 Sales      13          0.21e5   0.2003e3 
+310  Graham        66 Sales      13           21000   0.2003e3 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1415,7 +1415,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-320  Gonzales      66 Sales       4      0.168582e5    0.844e3 
+320  Gonzales      66 Sales       4      0.168582e5        844 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1425,7 +1425,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-330  Burke         66 Clerk       1       0.10988e5    0.555e2 
+330  Burke         66 Clerk       1           10988    0.555e2 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1435,7 +1435,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-340  Edwards       84 Sales       7       0.17844e5   0.1285e4 
+340  Edwards       84 Sales       7           17844       1285 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 
@@ -1445,7 +1445,7 @@ D21        ADMINISTRATION SYSTEMS 000070 D01
 E01              SUPPORT SERVICES 000050 A00                 
 E11                    OPERATIONS 000090 E01                 
 E21              SOFTWARE SUPPORT 000100 E01                 
-350  Gafney        84 Clerk       5      0.130305e5    0.188e3 
+350  Gafney        84 Clerk       5      0.130305e5        188 
 A00  SPIFFY COMPUTER SERVICE DIV. 000010 A00                 
 B01                      PLANNING 000020 A00                 
 C01            INFORMATION CENTER 000030 A00                 

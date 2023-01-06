@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "3.0.6"
+#define MODULE_RELEASE "3.1.0"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -28,10 +28,7 @@
 #include "ruby_ibm_db.h"
 #include <ctype.h>
 
-#ifdef RUBY_THREAD_H
-	#include <ruby/thread.h>
-#endif
-
+#include <ruby/thread.h>
 #include <ruby/version.h>
 
 /* True global resources - no need for thread safety here */
@@ -100,10 +97,12 @@ typedef struct _ibm_db_fetch_helper_struct {
 void ruby_init_ibm_db();
 
 /* equivalent functions on different platforms */
-#ifdef _WIN32
-#define STRCASECMP stricmp
-#else
-#define STRCASECMP strcasecmp
+#ifndef STRCASECMP
+#  ifdef _WIN32
+#    define STRCASECMP stricmp
+#  else
+#    define STRCASECMP strcasecmp
+#  endif
 #endif
 
 static VALUE mDB;
@@ -684,29 +683,12 @@ static void _ruby_ibm_db_mark_stmt_struct(stmt_handle *handle)
 {
 }
 
-
+static inline
 VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock_function_t *ubf, void *data2)
 {
-	#ifdef RUBY_API_VERSION_MAJOR	
-		if( RUBY_API_VERSION_MAJOR >=2 && RUBY_API_VERSION_MINOR >=2) 
-		{	
-			#ifdef _WIN32
-				void *(*f)(void*) = (void *(*)(void*))func;
-				return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
-			#elif __APPLE__
-				return rb_thread_call_without_gvl(func, data1, ubf, data2);                	   
-			#else
-				rb_thread_call_without_gvl(func, data1, ubf, data2);
-	                #endif	
-		}		
-		else	
-		{
-			rb_thread_call_without_gvl(func, data1, ubf, data2);
-		}
-	#else
-		rb_thread_call_without_gvl(func, data1, ubf, data2);
-	#endif
-  }
+	void *(*f)(void*) = (void *(*)(void*))func;
+	return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+}
   
 
 /*  */
@@ -2355,7 +2337,7 @@ static VALUE _ruby_ibm_db_connect_helper2( connect_helper_args *data ) {
         handleAttr_args->handle      =  &( conn_res->hdbc );
         handleAttr_args->strLength   =  SQL_IS_INTEGER;
         handleAttr_args->attribute   =  SQL_ATTR_REPLACE_QUOTED_LITERALS;
-        handleAttr_args->valuePtr    =  (SQLPOINTER)(enable_numeric_literals);
+        handleAttr_args->valuePtr    =  (SQLPOINTER)(size_t)(enable_numeric_literals);
         rc = _ruby_ibm_db_SQLSetConnectAttr_helper( handleAttr_args );
         if (rc != SQL_SUCCESS) {
           handleAttr_args->attribute =  SQL_ATTR_REPLACE_QUOTED_LITERALS_OLDVALUE;
@@ -2525,14 +2507,13 @@ static VALUE _ruby_ibm_db_connect_helper( int argc, VALUE *argv, int isPersisten
   }
   /* Call the function where the actual logic is being run*/
   #ifdef UNICODE_SUPPORT_VERSION_H
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_connect_helper2, helper_args, RUBY_UBF_IO, NULL);	
-	
+    _ruby_ibm_db_connect_helper2( helper_args );
 				
     conn_res = helper_args->conn_res;
 	
 	if(helper_args->isPersistent)
 	{
-		if(helper_args-> entry == NULL)
+		if(helper_args-> entry == (VALUE)0)
 		{
 			return_value = Qnil;
 		}
@@ -3320,7 +3301,7 @@ VALUE ibm_db_autocommit(int argc, VALUE *argv, VALUE self)
         handleAttr_args->attribute   =  SQL_ATTR_AUTOCOMMIT;
 
 #ifndef PASE
-        handleAttr_args->valuePtr = (SQLPOINTER)autocommit;
+        handleAttr_args->valuePtr = (SQLPOINTER)(size_t)autocommit;
 #else
         handleAttr_args->valuePtr = (SQLPOINTER)&autocommit;
 #endif
@@ -3456,7 +3437,7 @@ VALUE ibm_db_bind_param_helper(int argc, char * varname, long varname_len ,long 
     case 3:
       param_type = SQL_PARAM_INPUT;
       
-      #ifdef UNICODE_SUPPORT_VERSIO
+      #ifdef UNICODE_SUPPORT_VERSION_H
                	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_SQLDescribeParam_helper, data,
                          (void *)_ruby_ibm_db_Statement_level_UBF, stmt_res);
 		rc = data->rc;
@@ -5663,7 +5644,7 @@ static int _ruby_ibm_db_do_prepare(conn_handle *conn_res, VALUE stmt, stmt_handl
       if ( rc == SQL_ERROR ) {
         ruby_xfree( prepare_args );
         prepare_args = NULL;
-        rb_warn( RSTRING_PTR(error) );
+        rb_warn( "%s", RSTRING_PTR(error) );
         return rc;
       }
     }
@@ -5803,7 +5784,7 @@ VALUE ibm_db_exec(int argc, VALUE *argv, VALUE self)
           stmt_res = NULL;
           ruby_xfree( exec_direct_args );
           exec_direct_args = NULL;
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }
@@ -7006,15 +6987,14 @@ VALUE ibm_db_execute(int argc, VALUE *argv, VALUE self)
     bind_array->error             =  &error;
 
     #ifdef UNICODE_SUPPORT_VERSION_H
-  	  ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_execute_helper, bind_array,
-                            RUBY_UBF_IO, NULL );
+      _ruby_ibm_db_execute_helper( bind_array );
 	  ret_value = bind_array->return_value;
     #else
       ret_value = _ruby_ibm_db_execute_helper( bind_array );
     #endif
 
     if( ret_value == Qnil || ret_value == Qfalse ) {
-      rb_warn( RSTRING_PTR(error) );
+      rb_warn( "%s", RSTRING_PTR(error) );
       ruby_xfree( bind_array );
       bind_array = NULL;
       return Qfalse;
@@ -9271,7 +9251,7 @@ VALUE ibm_db_result(int argc, VALUE *argv, VALUE self)
   }
 
   if( error != Qnil && ret_val == Qnil) {
-    rb_warn( RSTRING_PTR(error) );
+    rb_warn( "%s", RSTRING_PTR(error) );
     ret_val = Qnil;
   }
 
@@ -10096,8 +10076,7 @@ VALUE ibm_db_fetch_row(int argc, VALUE *argv, VALUE self)
   helper_args->error       =  &error;
 
   #ifdef UNICODE_SUPPORT_VERSION_H
-	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_fetch_row_helper, helper_args,
-                        RUBY_UBF_IO, NULL );
+    _ruby_ibm_db_fetch_row_helper( helper_args );
 	ret_val = helper_args->return_value;
   #else
     ret_val = _ruby_ibm_db_fetch_row_helper( helper_args );
@@ -10265,8 +10244,7 @@ VALUE ibm_db_fetch_assoc(int argc, VALUE *argv, VALUE self) {
   helper_args->funcType   =  FETCH_ASSOC;
 
   #ifdef UNICODE_SUPPORT_VERSION_H
-  	ibm_Ruby_Thread_Call ( (void *)_ruby_ibm_db_bind_fetch_helper, helper_args,
-                         RUBY_UBF_IO, NULL );
+    _ruby_ibm_db_bind_fetch_helper( helper_args );
 	ret_val = helper_args->return_value;
 						
   #else
@@ -10585,7 +10563,7 @@ VALUE ibm_db_set_option(int argc, VALUE *argv, VALUE self)
       if ( !NIL_P(r_options) ) {
         rc = _ruby_ibm_db_parse_options( r_options, SQL_HANDLE_DBC, conn_res, &error );
         if (rc == SQL_ERROR) {
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }
@@ -10595,7 +10573,7 @@ VALUE ibm_db_set_option(int argc, VALUE *argv, VALUE self)
       if ( !NIL_P(r_options) ) {
         rc = _ruby_ibm_db_parse_options( r_options, SQL_HANDLE_STMT, stmt_res, &error );
         if (rc == SQL_ERROR) {
-          rb_warn( RSTRING_PTR(error) );
+          rb_warn( "%s", RSTRING_PTR(error) );
           return Qfalse;
         }
       }

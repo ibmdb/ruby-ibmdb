@@ -69,7 +69,7 @@ end
 
 __END__
 __LUW_EXPECTED__
-10  Megadeth  0.1e3  0.990356e3
+10  Megadeth  100  0.990356e3
 20  Zaral  0.1022e3  0.100234e3
 30  Megabyte  0.9865e2  0.1002112e4
 40  Visarsoft  0.12334e3  0.1652345e4
@@ -77,7 +77,7 @@ __LUW_EXPECTED__
 60  Kaerci  0.10097e3  0.9876765e4
 70  Nirvana  0.10012e3  0.100567e3
 __ZOS_EXPECTED__
-10  Megadeth  0.1e3  0.990356e3
+10  Megadeth  100  0.990356e3
 20  Zaral  0.1022e3  0.100234e3
 30  Megabyte  0.9865e2  0.1002112e4
 40  Visarsoft  0.12334e3  0.1652345e4

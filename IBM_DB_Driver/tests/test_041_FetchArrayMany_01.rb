@@ -39,8 +39,8 @@ __LUW_EXPECTED__
 1 dog Peaches          0.123e2 
 5 goat Rickety Ride     0.97e1 
 3 gold fish Bubbles          0.1e0 
-2 horse Smarty           0.35e3 
-6 llama Sweater          0.15e3 
+2 horse Smarty           350 
+6 llama Sweater          150 
 
 Number of rows: 7
 __ZOS_EXPECTED__
@@ -49,8 +49,8 @@ __ZOS_EXPECTED__
 1 dog Peaches          0.123e2
 5 goat Rickety Ride     0.97e1
 3 gold fish Bubbles          0.1e0
-2 horse Smarty           0.35e3
-6 llama Sweater          0.15e3
+2 horse Smarty           350
+6 llama Sweater          150
 
 Number of rows: 7
 __SYSTEMI_EXPECTED__
@@ -59,8 +59,8 @@ __SYSTEMI_EXPECTED__
 1 dog Peaches          0.123e2
 5 goat Rickety Ride     0.97e1
 3 gold fish Bubbles          0.1e0
-2 horse Smarty           0.35e3
-6 llama Sweater          0.15e3
+2 horse Smarty           350
+6 llama Sweater          150
 
 Number of rows: 7
 __IDS_EXPECTED__
@@ -69,7 +69,7 @@ __IDS_EXPECTED__
 1 dog Peaches          0.123e2
 5 goat Rickety Ride     0.97e1
 3 gold fish Bubbles          0.1e0
-2 horse Smarty           0.35e3
-6 llama Sweater          0.15e3
+2 horse Smarty           350
+6 llama Sweater          150
 
 Number of rows: 7
