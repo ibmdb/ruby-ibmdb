@@ -47,50 +47,50 @@ if(RUBY_PLATFORM =~ /aix/i)
   #AIX
   if(is64Bit)
         puts "Detected platform - aix 64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix64_odbc_cli.tar.gz"
   else
         puts "Detected platform - aix 32"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /powerpc/ || RUBY_PLATFORM =~ /ppc/)
   #PPC
   if(is64Bit)
         puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc64_odbc_cli.tar.gz"
   else
         puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /linux/)
   #x86
   if(is64Bit)
         puts "Detected platform - linux x86 64"
-	DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxx64_odbc_cli.tar.gz"
+	DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxx64_odbc_cli.tar.gz"
   else
         puts "Detected platform - linux 32"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxia32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxia32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /sparc/i)
   #Solaris
   if(is64Bit)
         puts "Detected platform - sun sparc64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun64_odbc_cli.tar.gz"
   else
         puts "Detected platform - sun sparc32"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /solaris/i)
   if(is64Bit)
         puts "Detected platform - sun amd64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd64_odbc_cli.tar.gz"
   else
         puts "Detected platform - sun amd32"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /darwin/i)
   if(is64Bit) 
         puts "Detected platform - MacOS darwin64"
-        DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"			
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"			
   else
         puts "Mac OS 32 bit not supported. Please use an x64 architecture."
   end
