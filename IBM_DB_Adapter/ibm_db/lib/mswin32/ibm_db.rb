@@ -59,9 +59,9 @@ if(needToDownloadedCLIPackage == true)
 
 	if (RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/)
 	  if(is64Bit)			
-			DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ntx64_odbc_cli.zip"
+			DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ntx64_odbc_cli.zip"
 	  else			
-			DOWNLOADLINK = "http://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/nt32_odbc_cli.zip"			
+			DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/nt32_odbc_cli.zip"			
 	  end   
 	end
 	
