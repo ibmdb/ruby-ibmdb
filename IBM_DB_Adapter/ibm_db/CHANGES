@@ -1,5 +1,10 @@
 Change Log
 ==============
+2023/03/29 (IBM_DB adapter 5.4.1, driver 3.1.0)
+  - Download clidriver issue fixed and replaced http links with https.
+
+2023/01/06 (IBM_DB adapter 5.4.0, driver 3.1.0)
+  - Support for Ruby 3.1 and Rails 7.0
 
 2022/10/06 (IBM_DB adapter 5.3.2, driver 3.0.6)
   - Allowed all rails versions < 6.2 in gemspec, replaced limit clause with FETCH FIRST n ROWS

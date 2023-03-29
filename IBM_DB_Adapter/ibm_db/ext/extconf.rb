@@ -5,7 +5,7 @@ require 'rubygems/package'
 require 'zlib'
 require 'zip'
 require 'fileutils'
-
+require 'down'
 
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
@@ -114,24 +114,13 @@ def downloadCLIPackage(destination, link = nil)
     downloadLink = link
   end
 
-  uri = URI.parse(downloadLink)
   if ZIP
     filename = "#{destination}/clidriver.zip"
   else
     filename = "#{destination}/clidriver.tar.gz"
   end
-
-  headers = {
-    'Accept-Encoding' => 'identity',
-  }
-
-  request = Net::HTTP::Get.new(uri.request_uri, headers)
-  http = Net::HTTP.new(uri.host, uri.port)
-  response = http.request(request)
-
-  f = open(filename, 'wb')
-  f.write(response.body)
-  f.close()
+  
+  Down.download(downloadLink, destination: filename)
 
   filename
 end
