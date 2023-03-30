@@ -120,7 +120,7 @@ def downloadCLIPackage(destination, link = nil)
     filename = "#{destination}/clidriver.tar.gz"
   end
   
-  Down.download(downloadLink, destination: filename)
+  Down.download(downloadLink, destination: filename, ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE)
 
   filename
 end
