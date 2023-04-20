@@ -686,8 +686,7 @@ static void _ruby_ibm_db_mark_stmt_struct(stmt_handle *handle)
 static inline
 VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock_function_t *ubf, void *data2)
 {
-	void *(*f)(void*) = (void *(*)(void*))func;
-	return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+	return func(data1);
 }
   
 
