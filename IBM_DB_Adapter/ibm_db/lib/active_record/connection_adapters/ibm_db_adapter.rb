@@ -3759,15 +3759,13 @@ module Arel
   class IBM_DB < Arel::Visitors::ToSql
     private
       def visit_Arel_Nodes_Limit(o, collector)
-        collector << " FETCH FIRST "
+        collector << " LIMIT "
         visit o.expr, collector
-        collector << " ROWS ONLY "
       end
 
       def visit_Arel_Nodes_Offset(o, collector)
         collector << " OFFSET "
         visit o.expr, collector
-        collector << " ROWS"
       end
 
       def visit_Arel_Nodes_ValuesList(o, collector)
@@ -3810,12 +3808,10 @@ module Arel
         end
 
         if (o.offset && o.limit)
-          visit_Arel_Nodes_Offset(o.offset, collector)
           visit_Arel_Nodes_Limit(o.limit, collector)
+          visit_Arel_Nodes_Offset(o.offset, collector)
         elsif (o.offset && o.limit.nil?)
-          collector << " OFFSET "
-          visit o.offset.expr, collector
-          collector << " ROWS "
+          visit_Arel_Nodes_Offset(o.offset, collector)
           maybe_visit o.lock, collector
         else
           visit_Arel_Nodes_SelectOptions(o, collector)
