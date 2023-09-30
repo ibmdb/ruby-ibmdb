@@ -49,8 +49,8 @@ connections:
 
   ibm_db:
     arunit:
-      username: newton
-      password: A2m8test
+      username: dbuser
+      password: dbpass
       database: bjhadb
       host: waldevdbclnxtst06.dev.rocketsoftware.com
       port: 60000
@@ -59,8 +59,8 @@ connections:
       statement_limit: 1000
 #      debug: true
     arunit2:
-      username: newton
-      password: A2m8test
+      username: dbuser
+      password: dbpass
       database: sample
       host: waldevdbclnxtst06.dev.rocketsoftware.com
       port: 60000
@@ -94,13 +94,13 @@ connections:
   mysql:
     arunit:
       username: root
-      password: root123
+      password: rootpass
       port: 3306
       database: railsdb
       encoding: utf8
     arunit2:
       username: root
-      password: root123
+      password: rootpass
       port: 3306
       database: railsdb
       encoding: utf8
