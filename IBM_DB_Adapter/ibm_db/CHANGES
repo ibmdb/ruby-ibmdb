@@ -1,5 +1,8 @@
 Change Log
 ==============
+2023/10/11 (IBM_DB adapter 5.4.2, driver 3.1.0)
+  - config.yml to have Environment variables to specify credentials.
+
 2023/03/29 (IBM_DB adapter 5.4.1, driver 3.1.0)
   - Download clidriver issue fixed and replaced http links with https.
 
