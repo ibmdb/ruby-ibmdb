@@ -49,21 +49,21 @@ connections:
 
   ibm_db:
     arunit:
-      username: dbuser
-      password: dbpass
-      database: bjhadb
-      host: waldevdbclnxtst06.dev.rocketsoftware.com
-      port: 60000
+      username: <%= ENV['DB2_USER1'] %>
+      password: <%= ENV['DB2_PASSWD1'] %>
+      database: <%= ENV['DB2_DATABASE1'] %>
+      host: <%= ENV['DB2_HOST1'] %>
+      port: <%= ENV['DB2_PORT1'] %>
       start_id: 1000
       parameterized: true
       statement_limit: 1000
 #      debug: true
     arunit2:
-      username: dbuser
-      password: dbpass
-      database: sample
-      host: waldevdbclnxtst06.dev.rocketsoftware.com
-      port: 60000
+      username: <%= ENV['DB2_USER2'] %>
+      password: <%= ENV['DB2_PASSWD2'] %>
+      database: <%= ENV['DB2_DATABASE2'] %>
+      host: <%= ENV['DB2_HOST2'] %>
+      port: <%= ENV['DB2_PORT2'] %>
       start_id: 1000
       parameterized: true
       statement_limit: 1000
