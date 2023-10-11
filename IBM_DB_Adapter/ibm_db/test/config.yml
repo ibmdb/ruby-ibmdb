@@ -48,26 +48,82 @@ connections:
       database: arunit2
 
   ibm_db:
+<% env_not_set = false %>
     arunit:
+<% if ENV['DB2_USER1'] %>
       username: <%= ENV['DB2_USER1'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_USER1 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_PASSWD1'] %>
       password: <%= ENV['DB2_PASSWD1'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_PASSWD1 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_DATABASE1'] %>
       database: <%= ENV['DB2_DATABASE1'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_DATABASE1 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_HOST1'] %>
       host: <%= ENV['DB2_HOST1'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_HOST1 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_PORT1'] %>
       port: <%= ENV['DB2_PORT1'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_PORT1 is not set." %>
+    <% env_not_set = true %>
+<% end %>
       start_id: 1000
       parameterized: true
       statement_limit: 1000
 #      debug: true
     arunit2:
+<% if ENV['DB2_USER2'] %>
       username: <%= ENV['DB2_USER2'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_USER2 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_PASSWD2'] %>
       password: <%= ENV['DB2_PASSWD2'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_PASSWD2 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_DATABASE2'] %>
       database: <%= ENV['DB2_DATABASE2'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_DATABASE2 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_HOST2'] %>
       host: <%= ENV['DB2_HOST2'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_HOST2 is not set." %>
+    <% env_not_set = true %>
+<% end %>
+<% if ENV['DB2_PORT2'] %>
       port: <%= ENV['DB2_PORT2'] %>
+<% else %>
+    <% puts "Warning: Environment variable DB2_PORT2 is not set." %>
+    <% env_not_set = true %>
+<% end %>
       start_id: 1000
       parameterized: true
       statement_limit: 1000
 #      debug: true
+<% if env_not_set == true %>
+    <% puts "Please set it before running test file and avoid" %>
+    <% puts "hardcoded password in confi.yml file." %>
+    <% exit(1) %>
+<% end %>
 
   firebird:
     arunit:
