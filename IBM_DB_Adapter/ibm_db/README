@@ -133,6 +133,7 @@ Testing the IBM_DB Adapter
 2) Edit the Rakefile to include ibm_db in list of adapters
 	%w( mysql mysql2 postgresql sqlite3 sqlite3_mem firebird db2 oracle sybase openbase ibm_db frontbase jdbcmysql jdbcpostgresql jdbcsqlite3 jdbcderby jdbch2 jdbchsqldb )
 3) Configure the connection information in test/config.yml for ibm_db
+   Set Environment Variables DB2_USER1, DB2_PASSWD1, DB2_DATABASE1, DB2_HOST1, DB2_PORT1 etc... accordingly.
 4) run the test suite - rake test_ibm_db
 
 Running IBM_DB driver test suite

@@ -3,7 +3,7 @@ ruby-ibmdb
 Rails Adapter/Ruby Driver for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on IBMi, IBM Informix (IDS)}
 
 ```
-ibm_db gem version 5.4.0
+ibm_db gem version 5.4.2
 
 Requirements:
  Ruby should be installed(Ruby version should be >=2.5.x and <= 3.1.x)
