@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006 - 2022          					 |
+# | (C) Copyright IBM Corporation 2006 - 2023          					 |
 # +----------------------------------------------------------------------+
 # |  Authors: Antonio Cangiano <cangiano@ca.ibm.com>                     |
 # |         : Mario Ds Briggs  <mario.briggs@in.ibm.com>                 |
@@ -3759,15 +3759,13 @@ module Arel
   class IBM_DB < Arel::Visitors::ToSql
     private
       def visit_Arel_Nodes_Limit(o, collector)
-        collector << " FETCH FIRST "
+        collector << " LIMIT "
         visit o.expr, collector
-        collector << " ROWS ONLY "
       end
 
       def visit_Arel_Nodes_Offset(o, collector)
         collector << " OFFSET "
         visit o.expr, collector
-        collector << " ROWS"
       end
 
       def visit_Arel_Nodes_ValuesList(o, collector)
@@ -3810,8 +3808,8 @@ module Arel
         end
 
         if (o.offset && o.limit)
-          visit_Arel_Nodes_Offset(o.offset, collector)
           visit_Arel_Nodes_Limit(o.limit, collector)
+          visit_Arel_Nodes_Offset(o.offset, collector)
         elsif (o.offset && o.limit.nil?)
           collector << " OFFSET "
           visit o.offset.expr, collector
