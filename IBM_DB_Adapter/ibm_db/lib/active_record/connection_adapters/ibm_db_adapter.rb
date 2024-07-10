@@ -46,6 +46,35 @@ module ActiveRecord
     end
   end
 
+  module Persistence
+    module ClassMethods
+      def _insert_record(values, returning) # :nodoc:
+        primary_key = self.primary_key
+        primary_key_value = nil
+
+        if prefetch_primary_key? && primary_key
+          values[primary_key] ||= begin
+            primary_key_value = next_sequence_value
+            _default_attributes[primary_key].with_cast_value(primary_key_value)
+          end
+        end
+
+        im = Arel::InsertManager.new(arel_table)
+
+        if values.empty?
+          im.insert(connection.empty_insert_statement_value(primary_key, arel_table[name].relation.name))
+        else
+          im.insert(values.transform_keys { |name| arel_table[name] })
+        end
+
+        connection.insert(
+          im, "#{self} Create", primary_key || false, primary_key_value,
+          returning: returning
+        )
+      end
+    end
+  end
+
   module ConnectionAdapters
     class SchemaDumper
       private
@@ -62,6 +91,26 @@ module ActiveRecord
 
       def explicit_primary_key_default?(column)
         column.bigint? and column.name == 'id'
+      end
+
+      def unique_constraints_in_create(table, stream)
+        if (unique_constraints = @connection.unique_constraints(table)).any?
+          add_unique_constraint_statements = unique_constraints.map do |unique_constraint|
+            parts = [
+              "t.unique_constraint #{unique_constraint.column.inspect}"
+            ]
+
+            parts << "deferrable: #{unique_constraint.deferrable.inspect}" if unique_constraint.deferrable
+
+            if unique_constraint.export_name_on_schema_dump?
+              parts << "name: #{unique_constraint.name.inspect}"
+            end
+
+            "    #{parts.join(', ')}"
+          end
+
+          stream.puts add_unique_constraint_statements.sort.join("\n")
+        end
       end
     end
 
@@ -84,10 +133,21 @@ module ActiveRecord
 
         statements.concat(o.check_constraints.map { |chk| accept chk }) if supports_check_constraints?
 
+        if !@conn.servertype.instance_of? IBM_IDS
+          statements.concat(o.unique_constraints.map { |exc| accept exc }) if supports_unique_constraints?
+        end
+
         create_sql << "(#{statements.join(', ')})" if statements.present?
         add_table_options!(create_sql, o)
         create_sql << " AS (#{to_sql(o.as)}) WITH DATA" if o.as
         create_sql
+      end
+
+      def visit_ColumnDefinition(o)
+        o.sql_type = type_to_sql(o.type, **o.options)
+        column_sql = +"#{quote_column_name(o.name)} #{o.sql_type}"
+        add_column_options!(column_sql, column_options(o))
+        column_sql
       end
 
       def add_column_options!(sql, options)
@@ -101,6 +161,61 @@ module ActiveRecord
         sql << ' NOT NULL' if options[:null] == false
         sql
       end
+
+      def visit_AlterTable(o)
+        sql = +"ALTER TABLE #{quote_table_name(o.name)} "
+        sql << o.adds.map { |col| accept col }.join(" ")
+        sql << o.foreign_key_adds.map { |fk| visit_AddForeignKey fk }.join(" ")
+        sql << o.foreign_key_drops.map { |fk| visit_DropForeignKey fk }.join(" ")
+        sql << o.check_constraint_adds.map { |con| visit_AddCheckConstraint con }.join(" ")
+        sql << o.check_constraint_drops.map { |con| visit_DropCheckConstraint con }.join(" ")
+        sql << o.constraint_validations.map { |fk| visit_ValidateConstraint fk }.join(" ")
+        sql << o.exclusion_constraint_adds.map { |con| visit_AddExclusionConstraint con }.join(" ")
+        sql << o.exclusion_constraint_drops.map { |con| visit_DropExclusionConstraint con }.join(" ")
+        sql << o.unique_constraint_adds.map { |con| visit_AddUniqueConstraint con }.join(" ")
+        sql << o.unique_constraint_drops.map { |con| visit_DropUniqueConstraint con }.join(" ")
+      end
+
+      def visit_ValidateConstraint(name)
+        "VALIDATE CONSTRAINT #{quote_column_name(name)}"
+      end
+
+      def visit_UniqueConstraintDefinition(o)
+        column_name = Array(o.column).map { |column| quote_column_name(column) }.join(", ")
+
+        sql = ["CONSTRAINT"]
+        sql << quote_column_name(o.name)
+        sql << "UNIQUE"
+
+        if o.using_index
+          sql << "USING INDEX #{quote_column_name(o.using_index)}"
+        else
+          sql << "(#{column_name})"
+        end
+
+#        if o.deferrable
+#          sql << "DEFERRABLE INITIALLY #{o.deferrable.to_s.upcase}"
+#        end
+
+        sql.join(" ")
+      end
+
+      def visit_AddExclusionConstraint(o)
+        "ADD #{accept(o)}"
+      end
+
+      def visit_DropExclusionConstraint(name)
+        "DROP CONSTRAINT #{quote_column_name(name)}"
+      end
+
+      def visit_AddUniqueConstraint(o)
+        "ADD #{accept(o)}"
+      end
+
+      def visit_DropUniqueConstraint(name)
+        "DROP CONSTRAINT #{quote_column_name(name)}"
+      end
+
     end
   end
 
@@ -316,7 +431,7 @@ module ActiveRecord
           # Retrieves the host address/name
           host = config[:host]
           # A net address connection requires a port. If no port has been specified, 50000 is used by default
-          port = config[:port] || 50_000
+          port = config[:port] || 50000
           # Connects to the database specified using the hostname, port, authentication type, username and password info
           # Starting with DB2 9.1FP5 secure connections using SSL are supported.
           # On the client side using CLI this is supported from CLI version V95FP2 and onwards.
@@ -365,6 +480,16 @@ module ActiveRecord
         # Returns a string removing the eventual BLOB scalar function
         value.to_s.gsub(/"SYSIBM"."BLOB"\('(.*)'\)/i, '\1')
       end
+
+      # whether the column is auto-populated by the database using a sequence
+      def auto_incremented_by_db?
+        true
+      end
+
+      def auto_increment?
+        true
+      end
+      alias_method :auto_incremented_by_db?, :auto_increment?
     end
 
     module Quoting
@@ -376,7 +501,10 @@ module ActiveRecord
     module Savepoints
       def create_savepoint(name = current_savepoint_name)
         puts_log 'create_savepoint'
-        execute("SAVEPOINT #{name} ON ROLLBACK RETAIN CURSORS", 'TRANSACTION')
+        # Turns off auto-committing
+        auto_commit_off
+        # Create savepoint
+        internal_execute("SAVEPOINT #{name} ON ROLLBACK RETAIN CURSORS", 'TRANSACTION')
       end
     end
 
@@ -432,7 +560,6 @@ module ActiveRecord
       end
       
       def drop_table(table_name, options = {})
-        puts_log "drop_table - #{table_name}"
         if options[:if_exists]
           execute("DROP TABLE IF EXISTS #{quote_table_name(table_name)}")
         else
@@ -441,8 +568,18 @@ module ActiveRecord
       end
 
       def create_table_definition(*args, **options)
-        puts_log 'create_table_definition'
+        puts_log 'create_table_definition SchemaStatements'
         TableDefinition.new(self, *args, **options)
+      end
+
+      def unique_constraint_name(table_name, **options)
+        options.fetch(:name) do
+          column_or_index = Array(options[:column] || options[:using_index]).map(&:to_s)
+          identifier = "#{table_name}_#{column_or_index * '_and_'}_unique"
+          hashed_identifier = Digest::SHA256.hexdigest(identifier).first(10)
+
+          "uniq_rails_#{hashed_identifier}"
+        end
       end
     # end of Module SchemaStatements
     end
@@ -660,6 +797,7 @@ module ActiveRecord
 
           self
         end
+
       end # end of class TableDefinition
     end # end of module ColumnMethods
 
@@ -703,6 +841,79 @@ module ActiveRecord
         'IBM_DB'
       end
 
+      class AlterTable < ActiveRecord::ConnectionAdapters::AlterTable
+        attr_reader :constraint_validations, :exclusion_constraint_adds, :exclusion_constraint_drops, :unique_constraint_adds, :unique_constraint_drops
+        def initialize(td)
+          super
+          @constraint_validations = []
+          @exclusion_constraint_adds = []
+          @exclusion_constraint_drops = []
+          @unique_constraint_adds = []
+          @unique_constraint_drops = []
+        end
+
+        def add_unique_constraint(column_name, options)
+          @unique_constraint_adds << @td.new_unique_constraint_definition(column_name, options)
+        end
+
+        def drop_unique_constraint(unique_constraint_name)
+          @unique_constraint_drops << unique_constraint_name
+        end
+      end
+
+      class TableDefinition < ActiveRecord::ConnectionAdapters::TableDefinition
+        include ColumnMethods
+
+        attr_reader :exclusion_constraints, :unique_constraints
+
+        def initialize(*, **)
+          super
+          @exclusion_constraints = []
+          @unique_constraints = []
+        end
+
+        def exclusion_constraint(expression, **options)
+          exclusion_constraints << new_exclusion_constraint_definition(expression, options)
+        end
+
+        def unique_constraint(column_name, **options)
+          @conn.puts_log "TD unique_constraint column_name = #{column_name}, options = #{options}"
+          unique_constraints << new_unique_constraint_definition(column_name, options)
+          @conn.puts_log "unique_constraints = #{unique_constraints}"
+        end
+
+        def new_unique_constraint_definition(column_name, options) # :nodoc:
+          @conn.puts_log "TD new_unique_constraint_definition column_name = #{column_name}, options = #{options}"
+          @conn.puts_log caller
+          options = @conn.unique_constraint_options(name, column_name, options)
+          UniqueConstraintDefinition.new(name, column_name, options)
+        end
+      end # end of class TableDefinition
+
+      UniqueConstraintDefinition = Struct.new(:table_name, :column, :options) do
+        def name
+          options[:name]
+        end
+
+        def deferrable
+          options[:deferrable]
+        end
+
+        def using_index
+          options[:using_index]
+        end
+
+        def export_name_on_schema_dump?
+          !ActiveRecord::SchemaDumper.unique_ignore_pattern.match?(name) if name
+        end
+
+        def defined_for?(name: nil, column: nil, **options)
+          (name.nil? || self.name == name.to_s) &&
+            (column.nil? || Array(self.column) == Array(column).map(&:to_s)) &&
+            options.all? { |k, v| self.options[k].to_s == v.to_s }
+        end
+      end
+
       class StatementPool < ConnectionAdapters::StatementPool # :nodoc:
         private
 
@@ -727,7 +938,7 @@ module ActiveRecord
         @debug            = config[:debug]
         if config.has_key?(:host)
           @host           = config[:host]
-          @port           = config[:port] || 50_000 # default port
+          @port           = config[:port] || 50000 # default port
         end
         @schema = if config.has_key?(:schema)
                     config[:schema]
@@ -922,6 +1133,15 @@ module ActiveRecord
         end
       end
 
+      def supports_common_table_expressions?
+        true
+      end
+
+      # Does this adapter support creating unique constraints?
+      def supports_unique_constraints?
+        true
+      end
+
       # This adapter supports migrations.
       # Current limitations:
       # +rename_column+ is not currently supported by the IBM data servers
@@ -978,6 +1198,10 @@ module ActiveRecord
         true
       end
 
+      def supports_foreign_keys?
+        true
+      end
+
       def puts_log(val)
         begin
         #         puts val
@@ -994,20 +1218,28 @@ module ActiveRecord
 
       # Tests the connection status
       def active?
-        puts_log 'active?'
-        IBM_DB.active @connection
-      rescue StandardError
+        isActive = false
+        puts_log "active? #{caller} #{Thread.current}"
+        @lock.synchronize do
+          puts_log "active? #{@connection}, #{caller}, #{Thread.current}"
+          isActive = IBM_DB.active @connection
+          puts_log "active? isActive = #{isActive}"
+        end
+        isActive
+      rescue StandardError => e
+        puts_log "active? check failure #{e.message}, #{caller}, #{Thread.current}"
         false
       end
 
       # Private method used by +reconnect!+.
       # It connects to the database with the initially provided credentials
       def connect
-        puts_log 'connect'
+        puts_log "connect = #{@connection}, #{caller}, #{Thread.current}"
         # If the type of connection is net based
         raise ArgumentError, 'Username/Password cannot be nil' if @username.nil? || @password.nil?
 
         begin
+          puts_log "Begin connection #{Thread.current}"
           if @host
             @conn_string = "DRIVER={IBM DB2 ODBC DRIVER};\
                             DATABASE=#{@database};\
@@ -1021,29 +1253,51 @@ module ActiveRecord
             @conn_string << "CONNECTTIMEOUT=#{@timeout};"
             # Connects and assigns the resulting IBM_DB.Connection to the +@connection+ instance variable
             @connection = IBM_DB.connect(@conn_string, '', '', @conn_options, @set_quoted_literal_replacement)
+            puts_log "Connection Established A = #{@connection}"
           else
             # Connects to the database using the local alias (@database)
             # and assigns the connection object (IBM_DB.Connection) to @connection
             @connection = IBM_DB.connect(@database, @username, @password, @conn_options,
                                          @set_quoted_literal_replacement)
+            puts_log "Connection Established B = #{@connection}"
           end
         rescue StandardError => e
           warn "Connection to database #{@database} failed: #{e}"
+          puts_log "Connection to database #{@database} failed: #{e}"
           @connection = false
         end
         # Sets the schema if different from default (username)
         return unless @schema && @schema != @username
 
+        puts_log "Connection Established = #{@connection}"
         @servertype.set_schema(@schema)
       end
       private :connect
 
-      # Closes the current connection and opens a new one
-      def reconnect!
-        puts_log 'reconnect!'
-        disconnect!
-        connect
+      def reset!
+        puts_log "reset! #{caller} #{Thread.current}"
+        @lock.synchronize do
+          return connect! unless @connection
+
+          rollback_db_transaction
+
+          super
+        end
       end
+
+      # Closes the current connection and opens a new one
+      def reconnect
+        puts_log "reconnect #{caller} #{Thread.current}"
+#disconnect!
+        @lock.synchronize do
+          puts_log "Before reconnection = #{@connection}, #{Thread.current}"
+          connect unless @connection
+        end
+      end
+
+#      def reconnect!(restore_transactions: false)
+#        super
+#      end
 
       # Closes the current connection
       def disconnect!
@@ -1051,16 +1305,23 @@ module ActiveRecord
         # * true if succesfull
         # * false if the connection is already closed
         # * nil if an error is raised
-        puts_log 'disconnect!'
-        return nil if @connection.nil? || @connection == false
+        @lock.synchronize do
+          puts_log "disconnect! #{caller}, #{Thread.current}"
+          if @connection.nil? || @connection == false
+            puts_log "disconnect! return #{caller}, #{Thread.current}"
+            return nil
+          end
 
-        begin
-          IBM_DB.close(@connection)
-        rescue StandardError
-          nil
+          begin
+            super
+            IBM_DB.close(@connection)
+            puts_log "Connection closed #{Thread.current}"
+            @connection = nil
+          rescue StandardError => e
+            puts_log "Connection close failure #{e.message}, #{Thread.current}"
+          end
+#reset_transaction
         end
-        @connection = nil
-        reset_transaction
       end
 
       #==============================================
@@ -1109,7 +1370,7 @@ module ActiveRecord
           raise StatementInvalid, "Failed to retrieve data: #{error_msg}" if error_msg && !error_msg.empty?
 
           error_msg += ": #{e.message}" unless e.message.empty?
-          raise error_msg
+         #raise error_msg
         ensure
           # Ensures to free the resources associated with the statement
           if stmt
@@ -1121,6 +1382,7 @@ module ActiveRecord
 
       def select(sql, name = nil, binds = [], prepare: false, async: false)
         puts_log "select #{sql}"
+        puts_log "binds = #{binds}"
         puts_log "prepare = #{prepare}"
 
         # Replaces {"= NULL" with " IS NULL"} OR {"IN (NULL)" with " IS NULL"
@@ -1153,9 +1415,9 @@ module ActiveRecord
         results = []
 
         stmt = if binds.nil? || binds.empty?
-                 execute(sql, name)
+                 internal_execute(sql, name)
                else
-                 exec_query_ret_stmt(sql, name, binds, prepare)
+                 exec_query_ret_stmt(sql, name, binds, prepare: prepare, async: async)
                end
 
         cols = IBM_DB.resultCols(stmt)
@@ -1168,11 +1430,17 @@ module ActiveRecord
         if @isAr3
           results
         else
-          ActiveRecord::Result.new(cols, results)
+          results = ActiveRecord::Result.new(cols, results)
+          if async
+            results = ActiveRecord::FutureResult::Complete.new(results)
+          end
         end
+
+        results
       end
 
       def translate_exception(exception, message:, sql:, binds:)
+        puts_log "translate_exception - #{message}"
         error_msg1 = /SQL0803N  One or more values in the INSERT statement, UPDATE statement, or foreign key update caused by a DELETE statement are not valid because the primary key, unique constraint or unique index identified by .* constrains table .* from having duplicate values for the index key/
         error_msg2 = /SQL0204N  .* is an undefined name/
         error_msg3 = /SQL0413N  Overflow occurred during numeric data type conversion/
@@ -1182,19 +1450,26 @@ module ActiveRecord
         error_msg7 = /SQL0433N  Value .* is too long/
         error_msg8 = /CLI0109E  String data right truncation/
         if !error_msg1.match(message).nil?
-          RecordNotUnique.new(message, sql: sql, binds: binds)
+          puts_log 'RecordNotUnique exception'
+          RecordNotUnique.new(message, sql: sql, binds: binds, connection_pool: @pool)
         elsif !error_msg2.match(message).nil?
+          puts_log 'ArgumentError exception'
           ArgumentError.new(message)
         elsif !error_msg3.match(message).nil?
-          RangeError.new(message, sql: sql, binds: binds)
+          puts_log 'RangeError exception'
+          RangeError.new(message, sql: sql, binds: binds, connection_pool: @pool)
         elsif !error_msg4.match(message).nil?
-          NotNullViolation.new(message, sql: sql, binds: binds)
+          puts_log 'NotNullViolation exception'
+          NotNullViolation.new(message, sql: sql, binds: binds, connection_pool: @pool)
         elsif !error_msg5.match(message).nil? or !error_msg6.match(message).nil?
-          InvalidForeignKey.new(message, sql: sql, binds: binds)
+          puts_log 'InvalidForeignKey exception'
+          InvalidForeignKey.new(message, sql: sql, binds: binds, connection_pool: @pool)
         elsif !error_msg7.match(message).nil? or !error_msg8.match(message).nil?
-          ValueTooLong.new(message, sql: sql, binds: binds)
+          puts_log 'ValueTooLong exception'
+          ValueTooLong.new(message, sql: sql, binds: binds, connection_pool: @pool)
         elsif exception.message.match?(/called on a closed database/i)
-          ConnectionNotEstablished.new(exception)
+          puts_log 'ConnectionNotEstablished exception'
+          ConnectionNotEstablished.new(exception, connection_pool: @pool)
         else
           super
         end
@@ -1205,17 +1480,11 @@ module ActiveRecord
         "DELETE FROM #{quote_table_name(table_name)}"
       end
 
-      def build_fixture_statements(fixture_set)
-        fixture_set.flat_map do |table_name, fixtures|
-          next if fixtures.empty?
-
-          fixtures.map { |fixture| build_fixture_sql([fixture], table_name) }
-        end.compact
-      end
-
       def build_fixture_sql(fixtures, table_name)
-        puts_log 'build_fixture_sql'
-        columns = schema_cache.columns_hash(table_name)
+        columns = schema_cache.columns_hash(table_name).reject { |_, column| supports_virtual_columns? && column.virtual? }
+        puts_log "build_fixture_sql - Table = #{table_name}"
+        puts_log "build_fixture_sql - Fixtures = #{fixtures}"
+        puts_log "build_fixture_sql - Columns = #{columns}"
 
         values_list = fixtures.map do |fixture|
           fixture = fixture.stringify_keys
@@ -1223,8 +1492,7 @@ module ActiveRecord
 
           unknown_columns = fixture.keys - columns.keys
           if unknown_columns.any?
-            raise Fixture::FixtureError,
-                  %(table "#{table_name}" has no columns named #{unknown_columns.map(&:inspect).join(', ')}.)
+            raise Fixture::FixtureError, %(table "#{table_name}" has no columns named #{unknown_columns.map(&:inspect).join(', ')}.)
           end
 
           columns.map do |name, column|
@@ -1238,18 +1506,17 @@ module ActiveRecord
         end
 
         table = Arel::Table.new(table_name)
-        manager = Arel::InsertManager.new
-        manager.into(table)
+        manager = Arel::InsertManager.new(table)
 
         if values_list.size == 1
           values = values_list.shift
           new_values = []
-          columns.each_key.with_index do |column, i|
+          columns.each_key.with_index { |column, i|
             unless values[i].equal?(DEFAULT_INSERT_VALUE)
               new_values << values[i]
               manager.columns << table[column]
             end
-          end
+          }
           values_list << new_values
         else
           columns.each_key { |column| manager.columns << table[column] }
@@ -1257,6 +1524,14 @@ module ActiveRecord
 
         manager.values = manager.create_values_list(values_list)
         visitor.compile(manager.ast)
+      end
+
+      def build_fixture_statements(fixture_set)
+        puts_log "build_fixture_statements - fixture_set = #{fixture_set}"
+        fixture_set.filter_map do |table_name, fixtures|
+          next if fixtures.empty?
+          build_fixture_sql(fixtures, table_name)
+        end
       end
 
       # inserts values from fixtures
@@ -1324,28 +1599,32 @@ module ActiveRecord
         end
       end
 
-      def empty_insert_statement_value(pkey)
-        raise ArgumentError, 'Empty Insert Statement not allowed in DB2' if pkey.nil?
+      def empty_insert_statement_value(pkey, table_name)
+        puts_log "empty_insert_statement_value pkey = #{pkey}, table_name = #{table_name}"
+        puts_log caller
 
-        "(#{pkey}) VALUES (DEFAULT)"
+        colCount = columns(table_name).count()
+        puts_log "empty_insert_statement_value colCount = #{colCount}"
+        val = "DEFAULT, " * (colCount - 1)
+        val = val + "DEFAULT"
+        " VALUES (#{val})"
       end
 
       # Perform an insert and returns the last ID generated.
       # This can be the ID passed to the method or the one auto-generated by the database,
       # and retrieved by the +last_generated_id+ method.
-      def insert_direct(sql, name = nil, _pk = nil, id_value = nil, _sequence_name = nil)
+      def insert_direct(sql, name = nil, _pk = nil, id_value = nil, _sequence_name = nil, returning: nil)
         puts_log 'insert_direct'
         if @handle_lobs_triggered # Ensure the array of sql is cleared if they have been handled in the callback
           @sql = []
           @handle_lobs_triggered = false
         end
 
-        ActiveRecord::Base.clear_query_caches_for_current_thread
-
         return unless stmt = execute(sql, name)
 
         begin
           @sql << sql
+          return [@servertype.last_generated_id(stmt)] unless returning.nil?
           id_value || @servertype.last_generated_id(stmt)
           # Ensures to free the resources associated with the statement
         ensure
@@ -1353,8 +1632,9 @@ module ActiveRecord
         end
       end
 
-      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [])
-        puts_log "insert Binds = #{binds}"
+      def insert(arel, name = nil, pk = nil, id_value = nil, sequence_name = nil, binds = [], returning: nil)
+        puts_log "insert Binds P = #{binds}"
+        puts_log caller
         if @arelVersion < 6
           sql = to_sql(arel)
           binds = binds
@@ -1362,27 +1642,28 @@ module ActiveRecord
           sql, binds = to_sql_and_binds(arel, binds)
         end
 
-        puts_log "Binds 2 = #{binds}"
-        puts_log "SQL = #{sql}"
+        puts_log "insert Binds A = #{binds}"
+        puts_log "insert SQL = #{sql}"
         # unless IBM_DBAdapter.respond_to?(:exec_insert)
-        return insert_direct(sql, name, pk, id_value, sequence_name) if binds.nil? || binds.empty?
+        return insert_direct(sql, name, pk, id_value, sequence_name, returning: returning) if binds.nil? || binds.empty?
 
         ActiveRecord::Base.clear_query_caches_for_current_thread
 
-        return unless stmt = exec_insert_db2(sql, name, binds)
+        return unless stmt = exec_insert_db2(sql, name, binds, pk, sequence_name, returning)
 
         begin
           @sql << sql
+          return [@servertype.last_generated_id(stmt)] unless returning.nil?
           id_value || @servertype.last_generated_id(stmt)
         ensure
           IBM_DB.free_stmt(stmt) if stmt
         end
       end
 
-      def exec_insert_db2(sql, name = nil, binds = [], pk = nil, _sequence_name = nil)
+      def exec_insert_db2(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning = nil)
         puts_log 'exec_insert_db2'
-        sql, binds = sql_for_insert(sql, pk, binds)
-        exec_query_ret_stmt(sql, name, binds, prepare = false)
+        sql, binds = sql_for_insert(sql, pk, binds, returning)
+        exec_query_ret_stmt(sql, name, binds, prepare: false)
       end
 
       def last_inserted_id(result)
@@ -1390,7 +1671,7 @@ module ActiveRecord
         result
       end
 
-      def exec_insert(sql, _name = nil, _binds = [], _pk = nil, _sequence_name = nil) # :nodoc:
+      def exec_insert(sql, name = nil, binds = [], pk = nil, sequence_name = nil, returning: nil) # :nodoc:
         puts_log 'exec_insert'
         insert(sql)
       end
@@ -1477,11 +1758,11 @@ module ActiveRecord
       # +binds+ as the bind substitutes.  +name+ is logged along with
       # the executed +sql+ statement.
       # Here prepare argument is not used, by default this method creates prepared statment and execute.
-      def exec_query_ret_stmt(sql, name = 'SQL', binds = [], prepare = false)
+      def exec_query_ret_stmt(sql, name = 'SQL', binds = [], prepare: false, async: false)
         puts_log "exec_query_ret_stmt #{sql}"
         sql = transform_query(sql)
         check_if_write_query(sql)
-        materialize_transactions
+#materialize_transactions
         mark_transaction_written_if_write(sql)
         begin
           puts_log "SQL = #{sql}"
@@ -1495,24 +1776,28 @@ module ActiveRecord
           @statements[sql] = stmt if prepare
 
           puts_log "Statement = #{stmt}"
-          log(sql, name, binds, param_array) do
-            return false unless stmt
-            return stmt if execute_prepared_stmt(stmt, param_array)
+          log(sql, name, binds, param_array, async: async) do
+            with_raw_connection do |conn|
+              return false unless stmt
+              return stmt if execute_prepared_stmt(stmt, param_array)
+            end
           end
+        rescue => e
+          raise translate_exception_class(e, sql, binds)
         ensure
           @offset = @limit = nil
         end
       end
 
-      def exec_query(sql, name = 'SQL', binds = [], prepare = false)
-        select_prepared(sql, name, binds, prepare)
+      def internal_exec_query(sql, name = 'SQL', binds = [], prepare: false, async: false)
+        select_prepared(sql, name, binds, prepare: prepare, async: async)
       end
 
-      def select_prepared(sql, name = nil, binds = [], prepare = true)
+      def select_prepared(sql, name = nil, binds = [], prepare: true, async: false)
         puts_log 'select_prepared'
         puts_log "select_prepared sql before = #{sql}"
         puts_log "select_prepared Binds = #{binds}"
-        stmt = exec_query_ret_stmt(sql, name, binds, prepare)
+        stmt = exec_query_ret_stmt(sql, name, binds, prepare: prepare, async: async)
         if !/^select .*/i.match(sql).nil?
           cols = IBM_DB.resultCols(stmt)
 
@@ -1540,18 +1825,26 @@ module ActiveRecord
 
       # Executes and logs +sql+ commands and
       # returns a +IBM_DB.Statement+ object.
-      def execute(sql, name = nil)
+      def execute(sql, name = nil, allow_retry: false)
+        puts_log "execute #{sql}"
+        ActiveRecord::Base.clear_query_caches_for_current_thread
+        internal_execute(sql, name, allow_retry: allow_retry)
+      end
+
+      def raw_execute(sql, name, async: false, allow_retry: false, materialize_transactions: true)
         # Logs and execute the sql instructions.
         # The +log+ method is defined in the parent class +AbstractAdapter+
         # sql='INSERT INTO ar_internal_metadata (key, value, created_at, updated_at) VALUES ('10', '10', '10', '10')
-        puts_log 'execute'
-        puts_log "#{sql}"
-        sql = transform_query(sql)
-        check_if_write_query(sql)
-        materialize_transactions
-        mark_transaction_written_if_write(sql)
-        log(sql, name) do
-          @servertype.execute(sql, name)
+        puts_log "raw_execute #{sql} #{Thread.current}"
+        log(sql, name, async: async) do
+          with_raw_connection(allow_retry: allow_retry, materialize_transactions: materialize_transactions) do |conn|
+            verify!
+            puts_log "raw_execute executes query #{Thread.current}"
+            result = @servertype.execute(sql, name)
+            puts_log "raw_execute result = #{result} #{Thread.current}"
+            verified!
+            result
+          end
         end
       end
 
@@ -1635,7 +1928,7 @@ module ActiveRecord
           update_direct(sql, name)
         else
           begin
-            if stmt = exec_query_ret_stmt(sql, name, binds, prepare = true)
+            if stmt = exec_query_ret_stmt(sql, name, binds, prepare: true)
               IBM_DB.num_rows(stmt)
             end
           ensure
@@ -1646,12 +1939,37 @@ module ActiveRecord
 
       alias delete update
 
+      def auto_commit_on
+        puts_log 'Inside auto_commit_on'
+        IBM_DB.autocommit @connection, IBM_DB::SQL_AUTOCOMMIT_ON
+        ac = IBM_DB::autocommit @connection
+        if ac != 1
+          puts_log "Cannot set IBM_DB::AUTOCOMMIT_ON"
+        else
+          puts_log "AUTOCOMMIT_ON set"
+        end
+      end
+
+      def auto_commit_off
+        puts_log 'auto_commit_off'
+        IBM_DB.autocommit(@connection, IBM_DB::SQL_AUTOCOMMIT_OFF)
+        ac = IBM_DB::autocommit @connection
+        if ac != 0
+          puts_log "Cannot set IBM_DB::AUTOCOMMIT_OFF"
+        else
+          puts_log "AUTOCOMMIT_OFF set"
+        end
+      end
+
       # Begins the transaction (and turns off auto-committing)
       def begin_db_transaction
         puts_log 'begin_db_transaction'
         log('begin transaction', 'TRANSACTION') do
-          # Turns off the auto-commit
-          IBM_DB.autocommit(@connection, IBM_DB::SQL_AUTOCOMMIT_OFF)
+          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+            # Turns off the auto-commit
+            auto_commit_off
+            verified!
+          end
         end
       end
 
@@ -1659,14 +1977,16 @@ module ActiveRecord
       def commit_db_transaction
         puts_log 'commit_db_transaction'
         log('commit transaction', 'TRANSACTION') do
-          # Commits the transaction
+          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+            # Commits the transaction
 
-          IBM_DB.commit @connection
+            IBM_DB.commit @connection
+          end
         rescue StandardError
           nil
         end
         # Turns on auto-committing
-        IBM_DB.autocommit @connection, IBM_DB::SQL_AUTOCOMMIT_ON
+        auto_commit_on
       end
 
       # Rolls back the transaction and turns on auto-committing. Must be
@@ -1674,15 +1994,17 @@ module ActiveRecord
       def rollback_db_transaction
         puts_log 'rollback_db_transaction'
         log('rollback transaction', 'TRANSACTION') do
-          # ROLLBACK the transaction
+          with_raw_connection(allow_retry: true, materialize_transactions: false) do |conn|
+            # ROLLBACK the transaction
 
-          IBM_DB.rollback(@connection)
+            IBM_DB.rollback(@connection)
+          end
         rescue StandardError
           nil
         end
         ActiveRecord::Base.clear_query_caches_for_current_thread
         # Turns on auto-committing
-        IBM_DB.autocommit @connection, IBM_DB::SQL_AUTOCOMMIT_ON
+        auto_commit_on
       end
 
       def default_sequence_name(table, column) # :nodoc:
@@ -1754,8 +2076,13 @@ module ActiveRecord
       end
 
       def quote_table_name(name)
-        puts_log 'quote_table_name'
-        name = "\"#{name}\"" if name.start_with? '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+        puts_log "quote_table_name #{name}"
+        if name.start_with? '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+          name = "\"#{name}\""
+        else
+          name = name.to_s
+        end
+        puts_log "name = #{name}"
         name
         # @servertype.check_reserved_words(name).gsub('"', '').gsub("'",'')
       end
@@ -1874,6 +2201,7 @@ module ActiveRecord
       def type_to_sql(type, limit = nil, precision = nil, scale = nil)
         puts_log 'type_to_sql'
         puts_log "Type = #{type}, Limit = #{limit}"
+        puts_log "type_to_sql = #{caller}"
 
         if type.to_sym == :binary and limit.class == Hash and limit.has_key?('limit'.to_sym)
           sql_segment = native_database_types[type.to_sym][:name].to_s
@@ -2180,7 +2508,7 @@ module ActiveRecord
               next if is_composite
 
               sql = "select remarks from syscat.indexes where tabname = #{quote(table_name.upcase)} and indname = #{quote(index_stats[5])}"
-              comment = single_value_from_rows(select_prepared(sql).rows)
+              comment = single_value_from_rows(select_prepared(sql, "SCHEMA").rows)
 
               indexes << IndexDefinition.new(table_name, index_name, index_unique, index_columns,
                                              comment: comment)
@@ -2321,9 +2649,9 @@ module ActiveRecord
 
       # Returns an array of Column objects for the table specified by +table_name+
       def columns(table_name)
-        default_blob_length = 1_048_576
+        default_blob_length = 1048576
         # to_s required because it may be a symbol.
-        puts_log 'columns'
+        puts_log "def columns #{table_name}"
         puts_log caller
         table_name = @servertype.set_case(table_name.to_s)
 
@@ -2473,6 +2801,7 @@ module ActiveRecord
 
         table_name = @servertype.set_case(table_name.to_s)
         foreignKeys = []
+        fks_temp = []
         stmt = IBM_DB.foreignkeys(@connection, nil,
                                   @servertype.set_case(@schema),
                                   @servertype.set_case(table_name), 'FK_TABLE')
@@ -2488,9 +2817,46 @@ module ActiveRecord
               }
               options[:on_update] = extract_foreign_key_action(fk_row[9])
               options[:on_delete] = extract_foreign_key_action(fk_row[10])
-              foreignKeys << ForeignKeyDefinition.new(fk_row[6].downcase, fk_row[2].downcase, options)
+              fks_temp << ForeignKeyDefinition.new(fk_row[6].downcase, fk_row[2].downcase, options)
             end
+
+            fks_temp.each do |fkst|
+              comb = false
+              if foreignKeys.size > 0
+                foreignKeys.each_with_index do |fks, ind|
+                  if fks.name == fkst.name
+                    if foreignKeys[ind].column.kind_of?(Array)
+                      foreignKeys[ind].column << fkst.column
+                      foreignKeys[ind].primary_key << fkst.primary_key
+                    else
+                      options = {
+                        name: fks.name,
+                        on_update: nil,
+                        on_delete: nil
+                      }
+
+                      options[:column] = []
+                      options[:column] << fks.column
+                      options[:column] << fkst.column
+
+                      options[:primary_key] = []
+                      options[:primary_key] << fks.primary_key
+                      options[:primary_key] << fkst.primary_key
+
+                      foreignKeys[ind] = ForeignKeyDefinition.new(fks.from_table, fks.to_table, options)
+                    end
+                    comb = true
+                    break
+                  end
+                end
+                foreignKeys << fkst if !comb
+              else
+                foreignKeys << fkst
+              end
+            end
+
           rescue StandardError => e # Handle driver fetch errors
+            puts_log "foreign_keys e = #{e}"
             error_msg = IBM_DB.getErrormsg(stmt, IBM_DB::DB_STMT)
             raise "Failed to retrieve foreign key metadata during fetch: #{error_msg}" if error_msg && !error_msg.empty?
 
@@ -2538,6 +2904,7 @@ module ActiveRecord
         enforced = not_enforced ? 'NOT ENFORCED' : 'ENFORCED'
         tables.each do |table|
           foreign_keys(table).each do |fk|
+            puts_log "alter_foreign_keys fk = #{fk}"
             execute("ALTER TABLE #{@servertype.set_case(fk.from_table)} ALTER FOREIGN KEY #{@servertype.set_case(fk.name)} #{enforced}")
           end
         end
@@ -2614,6 +2981,12 @@ module ActiveRecord
         result
       end
 
+      def add_timestamps(table_name, **options)
+        puts_log "add_timestamps #{table_name}"
+        fragments = add_timestamps_for_alter(table_name, **options)
+        execute "ALTER TABLE #{quote_table_name(table_name)} #{fragments.join(' ')}"
+      end
+
       def query_values(sql, _name = nil) # :nodoc:
         puts_log 'query_values'
         select_prepared(sql).rows.map(&:first)
@@ -2621,13 +2994,25 @@ module ActiveRecord
 
       def data_source_sql(name = nil, type: nil)
         puts_log 'data_source_sql'
-        sql = +'SELECT tabname FROM (SELECT tabname, type FROM syscat.tables '
-        sql << " WHERE tabschema = #{quote(@schema.upcase)}) subquery"
-        if type || name
-          conditions = []
-          conditions << "subquery.type = #{quote(type.upcase)}" if type
-          conditions << "subquery.tabname = #{quote(name.upcase)}" if name
-          sql << " WHERE #{conditions.join(' AND ')}"
+        puts_log "servertype = #{@servertype}"
+        if @servertype.instance_of? IBM_IDS
+          sql = "SELECT tabname FROM systables WHERE"
+          if type || name
+            conditions = []
+            conditions << "tabtype = #{quote(type.upcase)}" if type
+            conditions << "tabname = #{quote(name.upcase)}" if name
+            sql << " #{conditions.join(' AND ')}"
+          end
+          sql << " AND owner = #{quote(@schema.upcase)}"
+        else
+          sql = +'SELECT tabname FROM (SELECT tabname, type FROM syscat.tables '
+          sql << " WHERE tabschema = #{quote(@schema.upcase)}) subquery"
+          if type || name
+            conditions = []
+            conditions << "subquery.type = #{quote(type.upcase)}" if type
+            conditions << "subquery.tabname = #{quote(name.upcase)}" if name
+            sql << " WHERE #{conditions.join(' AND ')}"
+          end
         end
         sql
       end
@@ -2700,8 +3085,12 @@ module ActiveRecord
       # ==== Example
       # rename_table('octopuses', 'octopi')
       # Overriden to satisfy IBM data servers syntax
-      def rename_table(name, new_name)
+      def rename_table(name, new_name, **options)
         puts_log 'rename_table'
+        validate_table_length!(new_name) unless options[:_uses_legacy_table_name]
+        clear_cache!
+        schema_cache.clear_data_source_cache!(name.to_s)
+        schema_cache.clear_data_source_cache!(new_name.to_s)
         name = quote_column_name(name)
         new_name = quote_column_name(new_name)
         puts_log "90 old_table = #{name}, new_table = #{new_name}"
@@ -2716,6 +3105,11 @@ module ActiveRecord
       ensure
         IBM_DB.free_stmt(stmt) if stmt
       end
+
+      def add_reference(table_name, ref_name, **options) # :nodoc:
+        super(table_name, ref_name, type: :integer, **options)
+      end
+      alias :add_belongs_to :add_reference
 
       def drop_table_indexes(index_list)
         puts_log 'drop_table_indexes'
@@ -2780,16 +3174,34 @@ module ActiveRecord
         new_column_name = quote_column_name(new_column_name)
         puts_log "rename_column #{table_name}, #{column_name}, #{new_column_name}"
         clear_cache!
+        unique_indexes = unique_constraints(table_name)
+        puts_log "rename_column Unique Indexes = #{unique_indexes}"
+        remove_unique_constraint_byColumn(unique_indexes)
         index_list = indexes(table_name)
-        puts_log "Index List = #{index_list}"
+        puts_log "rename_column Index List = #{index_list}"
         fkey_list = foreign_keys(table_name)
-        puts_log "ForeignKey = #{fkey_list}"
+        puts_log "rename_column ForeignKey = #{fkey_list}"
         drop_column_indexes(index_list, column_name)
         fkey_removed = remove_foreign_key_byColumn(fkey_list, table_name, column_name)
         execute("ALTER TABLE #{quote_table_name(table_name)} #{rename_column_sql(table_name, column_name,
                                                                                  new_column_name)}")
+        add_unique_constraint_byColumn(unique_indexes, new_column_name)
         add_foreign_keyList(fkey_list, table_name, column_name, new_column_name) if fkey_removed
         create_column_indexes(index_list, column_name, new_column_name)
+      end
+
+      def add_unique_constraint_byColumn(unique_indexes, new_column_name)
+        puts_log "add_unique_constraint_byColumn = #{unique_indexes}"
+        unique_indexes.each do |unq|
+          add_unique_constraint(unq.table_name, new_column_name, name: unq.name)
+        end
+      end
+
+      def remove_unique_constraint_byColumn(unique_indexes)
+        puts_log "remove_unique_constraint_byColumn = #{unique_indexes}"
+        unique_indexes.each do |unq|
+          remove_unique_constraint(unq.table_name, unq.column, name: unq.name)
+        end
       end
 
       def add_foreign_keyList(fkey_list, table_name, column_name, new_column_name)
@@ -2873,11 +3285,179 @@ module ActiveRecord
       # Changes the nullability value of a column
       def change_column_null(table_name, column_name, null, default = nil)
         puts_log 'change_column_null'
+         validate_change_column_null_argument!(null)
         @servertype.change_column_null(table_name, column_name, null, default)
       end
 
+      def build_change_column_default_definition(table_name, column_name, default_or_changes) # :nodoc:
+        column = column_for(table_name, column_name)
+        return unless column
+
+        default = extract_new_default_value(default_or_changes)
+        ChangeColumnDefaultDefinition.new(column, default)
+      end
+
+      def build_change_column_definition(table_name, column_name, type, **options) # :nodoc:
+        column = column_for(table_name, column_name)
+        type ||= column.sql_type
+
+        unless options.key?(:default)
+          options[:default] = column.default
+        end
+
+        unless options.key?(:null)
+          options[:null] = column.null
+        end
+
+        unless options.key?(:comment)
+          options[:comment] = column.comment
+        end
+
+        if options[:collation] == :no_collation
+          options.delete(:collation)
+        else
+          options[:collation] ||= column.collation if text_type?(type)
+        end
+
+        unless options.key?(:auto_increment)
+          options[:auto_increment] = column.auto_increment?
+        end
+
+        td = create_table_definition(table_name)
+        cd = td.new_column_definition(column.name, type, **options)
+        ChangeColumnDefinition.new(cd, column.name)
+      end
+
+      def text_type?(type)
+        TYPE_MAP.lookup(type).is_a?(Type::String) || TYPE_MAP.lookup(type).is_a?(Type::Text)
+      end
+
+      def quote_schema_name(schema_name)
+        quote_table_name(schema_name)
+      end
+
+       # Creates a schema for the given schema name.
+      def create_schema(schema_name, force: nil, if_not_exists: nil)
+        puts_log "create_schema #{schema_name}"
+        drop_schema(schema_name, if_exists: true)
+
+        execute("CREATE SCHEMA #{quote_schema_name(schema_name)}")
+      end
+
+      # Drops the schema for the given schema name.
+      def drop_schema(schema_name, **options)
+        puts_log "drop_schema = #{schema_name}"
+        schema_list = internal_exec_query("select schemaname from syscat.schemata where schemaname=#{quote(schema_name.upcase)}", "SCHEMA")
+        puts_log "drop_schema schema_list = #{schema_list.columns}, #{schema_list.rows}"
+        execute("DROP SCHEMA #{quote_schema_name(schema_name)} RESTRICT") if schema_list.rows.size > 0
+      end
+
+      def add_unique_constraint(table_name, column_name = nil, **options)
+        puts_log "add_unique_constraint = #{table_name}, #{column_name}, #{options}"
+        options = unique_constraint_options(table_name, column_name, options)
+        at = create_alter_table(table_name)
+        at.add_unique_constraint(column_name, options)
+
+        execute schema_creation.accept(at)
+      end
+
+      def unique_constraint_options(table_name, column_name, options) # :nodoc:
+        assert_valid_deferrable(options[:deferrable])
+
+        if column_name && options[:using_index]
+          raise ArgumentError, "Cannot specify both column_name and :using_index options."
+        end
+
+        options = options.dup
+        options[:name] ||= unique_constraint_name(table_name, column: column_name, **options)
+        options
+      end
+
+      # Returns an array of unique constraints for the given table.
+      # The unique constraints are represented as UniqueConstraintDefinition objects.
+      def unique_constraints(table_name)
+        puts_log "unique_constraints table_name = #{table_name}"
+        puts_log "unique_constraints #{caller}"
+        table_name = table_name.to_s
+        if table_name.include?(".")
+          schema_name, table_name = table_name.split(".")
+          puts_log "unique_constraints split schema_name = #{schema_name}, table_name = #{table_name}"
+        else
+          schema_name = @schema
+        end
+        unique_info = internal_exec_query(<<~SQL, "SCHEMA")
+          SELECT KEYCOL.CONSTNAME, KEYCOL.COLNAME FROM SYSCAT.KEYCOLUSE KEYCOL
+              INNER JOIN SYSCAT.TABCONST TABCONST ON KEYCOL.CONSTNAME=TABCONST.CONSTNAME
+              WHERE TABCONST.TABSCHEMA=#{quote(schema_name.upcase)} and
+              TABCONST.TABNAME=#{quote(table_name.upcase)} and TABCONST.TYPE='U'
+        SQL
+
+        puts_log "unique_constraints unique_info = #{unique_info.columns}, #{unique_info.rows}"
+        unique_info.map do |row|
+          puts_log "unique_constraints row = #{row}"
+          columns = []
+          columns << row["colname"].downcase
+
+          options = {
+            name: row["constname"].downcase,
+            deferrable: false
+          }
+
+          UniqueConstraintDefinition.new(table_name, columns, options)
+        end
+      end
+
+      def remove_unique_constraint(table_name, column_name = nil, **options)
+        puts_log "remove_unique_constraint table_name = #{table_name}, column_name = #{column_name}, options = #{options}"
+        unique_name_to_delete = unique_constraint_for!(table_name, column: column_name, **options).name
+
+        at = create_alter_table(table_name)
+        at.drop_unique_constraint(unique_name_to_delete)
+
+        execute schema_creation.accept(at)
+      end
+
+      def unique_constraint_name(table_name, **options)
+        puts_log "unique_constraint_name"
+        options.fetch(:name) do
+          column_or_index = Array(options[:column] || options[:using_index]).map(&:to_s)
+          identifier = "#{table_name}_#{column_or_index * '_and_'}_unique"
+          hashed_identifier = Digest::SHA256.hexdigest(identifier).first(10)
+
+          "uniq_rails_#{hashed_identifier}"
+        end
+      end
+
+      def unique_constraint_for(table_name, **options)
+        name = unique_constraint_name(table_name, **options) unless options.key?(:column)
+        unique_constraints(table_name).detect { |unique_constraint| unique_constraint.defined_for?(name: name, **options) }
+      end
+
+      def unique_constraint_for!(table_name, column: nil, **options)
+        puts_log "unique_constraint_for table_name = #{table_name}, column = #{column}, options = #{options}"
+        unique_constraint_for(table_name, column: column, **options) ||
+        raise(ArgumentError, "Table '#{table_name}' has no unique constraint for #{column || options}")
+      end
+
+      def create_table_definition(name, **options)
+        puts_log "create_table_definition name = #{name}"
+        puts_log caller
+        IBM_DBAdapter::TableDefinition.new(self, name, **options)
+      end
+
+      def create_alter_table(name)
+        puts_log "create_alter_table name = #{name}"
+        IBM_DBAdapter::AlterTable.new create_table_definition(name)
+      end
+
+      def assert_valid_deferrable(deferrable)
+        return if !deferrable || %i(immediate deferred).include?(deferrable)
+
+        raise ArgumentError, "deferrable must be `:immediate` or `:deferred`, got: `#{deferrable.inspect}`"
+      end
+
       def remove_index(table_name, column_name = nil, **options)
-        puts_log 'remove_index'
+        puts_log "remove_index table_name = #{table_name}, column_name = #{column_name}, options = #{options}"
         return if options[:if_exists] && !index_exists?(table_name, column_name, **options)
 
         execute("DROP INDEX #{index_name_for_remove(table_name, column_name, options)}")
@@ -3047,7 +3627,7 @@ To remove the column, the table must be dropped and recreated without the #{colu
 
       # Akhil Tcheck for if_exits added so that it will try to drop even if the table does not exit.
       def execute(sql, _name = nil)
-        @adapter.puts_log "execute #{sql}"
+        @adapter.puts_log "IBM_DataServer execute #{sql} #{Thread.current}"
 
         begin
           if @adapter.connection.nil? || @adapter.connection == false
@@ -3101,13 +3681,13 @@ To remove the column, the table must be dropped and recreated without the #{colu
       end
 
       def rename_column(_table_name, _column_name, _new_column_name)
-        @adapter.puts_log 'primary_key_definition'
+        @adapter.puts_log 'rename_column'
         raise NotImplementedError, 'rename_column is not implemented yet in the IBM_DB Adapter'
       end
 
       def primary_key_definition(start_id)
-        @adapter.puts_log '108'
-        "INTEGER GENERATED BY DEFAULT AS IDENTITY (START WITH #{start_id}) PRIMARY KEY NOT NULL"
+        @adapter.puts_log 'primary_key_definition'
+        "INTEGER GENERATED BY DEFAULT AS IDENTITY (START WITH #{start_id})"
       end
 
       # Returns the last automatically generated ID.
@@ -3472,7 +4052,7 @@ To remove the column, the table must be dropped and recreated without the #{colu
       end # End of rename_column
 
       def primary_key_definition(start_id)
-        "SERIAL(#{start_id}) PRIMARY KEY"
+        "SERIAL(#{start_id})"
       end
 
       def change_column(table_name, column_name, type, options)
