@@ -133,6 +133,7 @@ module ActiveRecord
 
         statements.concat(o.check_constraints.map { |chk| accept chk }) if supports_check_constraints?
 
+        @conn.puts_log "visit_TableDefinition #{@conn.servertype}"
         if !@conn.servertype.instance_of? IBM_IDS
           statements.concat(o.unique_constraints.map { |exc| accept exc }) if supports_unique_constraints?
         end
@@ -4264,8 +4265,11 @@ module Arel
       end
 
       def visit_Arel_Nodes_Offset(o, collector)
-        collector << ' OFFSET '
-        visit o.expr, collector
+        @connection.puts_log "visit_Arel_Nodes_Offset #{@connection.servertype}"
+        if !@connection.servertype.instance_of? ActiveRecord::ConnectionAdapters::IBM_IDS
+          collector << ' OFFSET '
+          visit o.expr, collector
+        end
       end
 
       def visit_Arel_Nodes_ValuesList(o, collector)
@@ -4289,6 +4293,7 @@ module Arel
       end
 
       def visit_Arel_Nodes_SelectStatement(o, collector)
+        @connection.puts_log "visit_Arel_Nodes_SelectStatement #{@connection.servertype}"
         if o.with
           collector = visit o.with, collector
           collector << ' '
@@ -4311,10 +4316,12 @@ module Arel
           visit_Arel_Nodes_Limit(o.limit, collector)
           visit_Arel_Nodes_Offset(o.offset, collector)
         elsif o.offset && o.limit.nil?
-          collector << ' OFFSET '
-          visit o.offset.expr, collector
-          collector << ' ROWS '
-          maybe_visit o.lock, collector
+          if !@connection.servertype.instance_of? ActiveRecord::ConnectionAdapters::IBM_IDS
+            collector << ' OFFSET '
+            visit o.offset.expr, collector
+            collector << ' ROWS '
+            maybe_visit o.lock, collector
+          end
         else
           visit_Arel_Nodes_SelectOptions(o, collector)
         end
