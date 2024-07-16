@@ -2,7 +2,7 @@ needToDownloadedCLIPackage = false
 IBM_DB_HOME = ENV['IBM_DB_HOME']
 cliPackagePath = File.dirname(__FILE__)  + '/../clidriver'
 
-if ((IBM_DB_HOME == nil || IBM_DB_HOME == '') && (!Dir.exists?(cliPackagePath)))
+if ((IBM_DB_HOME == nil || IBM_DB_HOME == '') && (!File.directory?(cliPackagePath)))
    needToDownloadedCLIPackage = true
 end
 
@@ -91,6 +91,8 @@ else
 		require 'rb3x/i386/ruby30/ibm_db.so'
 	elsif (RUBY_VERSION =~ /3.1/)
 		require 'rb3x/i386/ruby31/ibm_db.so'
+	elsif (RUBY_VERSION =~ /3.2/)
+		require 'rb3x/i386/ruby32/ibm_db.so'
 	elsif (RUBY_VERSION =~ /2.7/)
 		require 'rb2x/i386/ruby27/ibm_db.so'
 	elsif (RUBY_VERSION =~ /2.6/)
