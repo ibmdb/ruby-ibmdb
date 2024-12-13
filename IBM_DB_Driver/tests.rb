@@ -1,9 +1,16 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006, 2007, 2008, 2009, 2010           |
+# | (C) Copyright IBM Corporation 2006, 2007, 2008, 2009, 2010, 2024     |
 # +----------------------------------------------------------------------+
-require (RUBY_PLATFORM =~ /mswin32/ || RUBY_PLATFORM =~ /mingw32/ ) ? 'mswin32/ibm_db.so' : 'ibm_db.so'
+require case RUBY_PLATFORM
+  when /mswin32/, /mingw32/
+    'mswin32/ibm_db.so'
+  when /darwin/
+    'ibm_db.bundle'
+  else
+    'ibm_db.so'
+  end
 require 'stringio'
 require 'test/unit'
 require 'fileutils'

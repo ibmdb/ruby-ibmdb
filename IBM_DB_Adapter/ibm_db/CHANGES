@@ -1,5 +1,11 @@
 Change Log
 ==============
+2024/12/13 (IBM_DB adapter 5.5.1, driver 3.1.1)
+  - Support for MAC ARM64
+
+2024/07/10 (IBM_DB adapter 5.5.0, driver 3.1.0)
+  - Support for ruby 3.2 and rails 7.1.3.2
+
 2023/10/11 (IBM_DB adapter 5.4.2, driver 3.1.0)
   - config.yml to have Environment variables to specify credentials.
 
