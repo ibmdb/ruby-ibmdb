@@ -208,7 +208,7 @@ int _ruby_ibm_db_SQLForeignKeys_helper(metadata_args *data) {
 
   data->stmt_res->is_executing = 1;
 
-  if(!NIL_P(data->table_type))
+  if(data->table_type != NULL && !NIL_P(*data->table_type))
   {
 #ifndef UNICODE_SUPPORT_VERSION_H
   rc = SQLForeignKeys( (SQLHSTMT) data->stmt_res->hstmt, data->qualifier, data->qualifier_len,

@@ -1,7 +1,7 @@
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006- 2022                             |
+# | (C) Copyright IBM Corporation 2006- 2024                             |
 # +----------------------------------------------------------------------+
 
 require 'rubygems'
@@ -10,7 +10,7 @@ require 'pathname'
 Gem::Specification.new do |spec|
   # Required spec
   spec.name     = 'ibm_db'
-  spec.version  = '5.5.0'
+  spec.version  = '5.5.1'
   spec.summary  = 'Rails Driver and Adapter for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on i5/OS, Informix (IDS)}'
 
   # Optional spec

@@ -10,7 +10,7 @@ require 'down'
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
 # |                                                                      |
-# | (C) Copyright IBM Corporation 2006 - 2016                            |
+# | (C) Copyright IBM Corporation 2006 - 2024                            |
 # +----------------------------------------------------------------------+
 
 TAR_LONGLINK = '././@LongLink'
@@ -90,8 +90,11 @@ elsif (RUBY_PLATFORM =~ /solaris/i)
         DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /darwin/i)
-  if(is64Bit) 
-        puts "Detected platform - MacOS darwin64"
+  if (RUBY_PLATFORM =~ /arm64/i)
+        puts "Detected platform - MacOS darwin arm64"
+        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macarm64_odbc_cli.tar.gz"
+  elsif(RUBY_PLATFORM =~ /x86_64/i || is64Bit)
+        puts "Detected platform - MacOS darwin x86_64"
         DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"			
   else
         puts "Mac OS 32 bit not supported. Please use an x64 architecture."
@@ -151,11 +154,17 @@ def untarCLIPackage(archive,destination)
         FileUtils.mkdir_p file, :mode => entry.header.mode, :verbose => false
       elsif entry.file?
         FileUtils.rm_rf file if File.directory? file
+        if (RUBY_PLATFORM =~ /darwin/i) && (RUBY_PLATFORM =~ /arm64/i) && File.exist?(file)
+          FileUtils.chmod 755, file, :verbose => false
+        end
         File.open file, "wb" do |f|
           f.print entry.read
         end
         FileUtils.chmod entry.header.mode, file, :verbose => false
       elsif entry.header.typeflag == '2' #Symlink!
+        if (RUBY_PLATFORM =~ /darwin/i) && (RUBY_PLATFORM =~ /arm64/i) && File.exist?(file)
+           File.delete file if File.file? file
+        end
         File.symlink entry.header.linkname, file
       end
     end

@@ -1,6 +1,6 @@
 if(RUBY_PLATFORM =~ /darwin/i)
    cliPackagePath = File.dirname(__FILE__)  + '/clidriver'
-        if(Dir.exists?(cliPackagePath))
+        if(Dir.exist?(cliPackagePath))
                 currentPath = "#{File.expand_path(File.dirname(File.dirname(__FILE__)))}"
 
                 cmd = "chmod 755 #{currentPath}/lib/ibm_db.bundle "

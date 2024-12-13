@@ -2,7 +2,7 @@
   +----------------------------------------------------------------------+
   |  Licensed Materials - Property of IBM                                |
   |                                                                      |
-  | (C) Copyright IBM Corporation 2006 - 2022                            |
+  | (C) Copyright IBM Corporation 2006 - 2024                            |
   +----------------------------------------------------------------------+
   | Authors: Sushant Koduru, Lynh Nguyen, Kanchana Padmanabhan,          |
   |          Dan Scott, Helmut Tessarek, Sam Ruby, Kellen Bombardier,    |
@@ -12,7 +12,7 @@
   +----------------------------------------------------------------------+
 */
 
-#define MODULE_RELEASE "3.1.0"
+#define MODULE_RELEASE "3.1.1"
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -686,8 +686,7 @@ static void _ruby_ibm_db_mark_stmt_struct(stmt_handle *handle)
 static inline
 VALUE ibm_Ruby_Thread_Call(rb_blocking_function_t *func, void *data1, rb_unblock_function_t *ubf, void *data2)
 {
-	void *(*f)(void*) = (void *(*)(void*))func;
-	return (VALUE)rb_thread_call_without_gvl(f, data1, ubf, data2);
+	return func(data1);
 }
   
 
@@ -11238,7 +11237,7 @@ VALUE ibm_db_server_info(int argc, VALUE *argv, VALUE self)
   rb_scan_args(argc, argv, "1", &connection);
   
   
-  if(NIL_P(&connection))
+  if(NIL_P(connection))
 	{
 	}
 	if(&connection == NULL)
