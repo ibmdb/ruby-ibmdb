@@ -49,53 +49,53 @@ if(RUBY_PLATFORM =~ /aix/i)
   #AIX
   if(is64Bit)
         puts "Detected platform - aix 64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/aix64_odbc_cli.tar.gz"
   else
         puts "Detected platform - aix 32"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/aix32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/aix32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /powerpc/ || RUBY_PLATFORM =~ /ppc/)
   #PPC
   if(is64Bit)
         puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ppc64_odbc_cli.tar.gz"
   else
         puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ppc32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ppc32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /linux/)
   #x86
   if(is64Bit)
         puts "Detected platform - linux x86 64"
-	DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxx64_odbc_cli.tar.gz"
+	DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/linuxx64_odbc_cli.tar.gz"
   else
         puts "Detected platform - linux 32"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/linuxia32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/linuxia32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /sparc/i)
   #Solaris
   if(is64Bit)
         puts "Detected platform - sun sparc64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sun64_odbc_cli.tar.gz"
   else
         puts "Detected platform - sun sparc32"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sun32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sun32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /solaris/i)
   if(is64Bit)
         puts "Detected platform - sun amd64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sunamd64_odbc_cli.tar.gz"
   else
         puts "Detected platform - sun amd32"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/sunamd32_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sunamd32_odbc_cli.tar.gz"
   end
 elsif (RUBY_PLATFORM =~ /darwin/i)
   if (RUBY_PLATFORM =~ /arm64/i)
         puts "Detected platform - MacOS darwin arm64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macarm64_odbc_cli.tar.gz"
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/macarm64_odbc_cli.tar.gz"
   elsif(RUBY_PLATFORM =~ /x86_64/i || is64Bit)
         puts "Detected platform - MacOS darwin x86_64"
-        DOWNLOADLINK = "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/macos64_odbc_cli.tar.gz"			
+        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/macos64_odbc_cli.tar.gz"			
   else
         puts "Mac OS 32 bit not supported. Please use an x64 architecture."
   end
@@ -103,10 +103,10 @@ elsif (RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/)
   ZIP = true
   if(is64Bit)
     puts "Detected platform - windows 64"
-    DOWNLOADLINK= "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/ntx64_odbc_cli.zip"
+    DOWNLOADLINK= "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ntx64_odbc_cli.zip"
   else
     puts "Detected platform - windows 32"
-    DOWNLOADLINK= "https://public.dhe.ibm.com/ibmdl/export/pub/software/data/db2/drivers/odbc_cli/nt32_odbc_cli.zip"
+    DOWNLOADLINK= "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/nt32_odbc_cli.zip"
   end
 end
 
