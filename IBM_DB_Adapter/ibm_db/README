@@ -10,6 +10,7 @@ Supported Operating Systems
   - IBM AIX 32/64 bit
   - HP-UX 32/64 bit
   - Sun Solaris 32/64 bit
+  - MAC M1 ARM 64 bit
 
 
 Supported Databases
