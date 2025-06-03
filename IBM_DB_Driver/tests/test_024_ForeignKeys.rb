@@ -29,7 +29,7 @@ class TestIbmDb < Test::Unit::TestCase
         if (server.DBMS_NAME[0,3] == 'IDS')
           stmt = IBM_DB::foreign_keys conn, nil, user, 'test_foreign_keys'
         else
-          stmt = IBM_DB::foreign_keys conn, nil, nil, 'TEST_FOREIGN_KEYS'
+          stmt = IBM_DB::foreign_keys conn, nil, nil, 'TEST_PRIMARY_KEYS'
         end
         row = IBM_DB::fetch_array stmt
         puts row[2]

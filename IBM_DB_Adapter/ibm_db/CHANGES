@@ -1,5 +1,8 @@
 Change Log
 ==============
+2025/06/03 (IBM_DB adapter 5.6.0, driver 3.2.0)
+  - Support for ruby 3.3 and rails 7.2.2.1
+
 2024/12/13 (IBM_DB adapter 5.5.1, driver 3.1.1)
   - Support for MAC ARM64
 
