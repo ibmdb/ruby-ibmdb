@@ -1,5 +1,8 @@
 Change Log
 ==============
+2025/06/09 (IBM_DB adapter 5.6.1, driver 3.2.0)
+  - Rails < 7.2 is not campatible with Adapter 5.6.0 Onwards.
+
 2025/06/03 (IBM_DB adapter 5.6.0, driver 3.2.0)
   - Support for ruby 3.3 and rails 7.2.2.1
 
