@@ -93,6 +93,8 @@ else
 		require 'rb3x/i386/ruby31/ibm_db.so'
 	elsif (RUBY_VERSION =~ /3.2/)
 		require 'rb3x/i386/ruby32/ibm_db.so'
+	elsif (RUBY_VERSION =~ /3.3/)
+		require 'rb3x/i386/ruby33/ibm_db.so'
 	elsif (RUBY_VERSION =~ /2.7/)
 		require 'rb2x/i386/ruby27/ibm_db.so'
 	elsif (RUBY_VERSION =~ /2.6/)
