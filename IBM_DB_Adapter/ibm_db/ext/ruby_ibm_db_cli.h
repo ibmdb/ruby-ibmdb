@@ -12,6 +12,14 @@
 #define RUBY_IBM_DB_CLI_H
 
 #ifdef _WIN32
+#ifndef _MSC_VER
+#define __out_ecount_opt(x)
+#define __in_ecount_opt(x)
+#define __out_bcount_opt(x)
+#endif
+#endif
+
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <dlfcn.h>
