@@ -39,6 +39,9 @@ Gem::Specification.new do |spec|
     spec.platform = Gem::Platform::CURRENT
     spec.add_dependency('archive-zip', '>= 0.7.0')
     spec.extensions << 'ext/extconf.rb'	  
+  elsif RUBY_PLATFORM =~ /darwin/
+    spec.platform = Gem::Platform::CURRENT
+    spec.extensions << 'ext/extconf.rb'
   else
     spec.files = candidates.delete_if { |item| item.include?("lib/mswin32") }
     puts ".. Check for the pre-built IBM_DB driver for this platform: #{RUBY_PLATFORM}"
