@@ -3,3 +3,8 @@ gil_release_version
 unicode_support_version
 *.o
 *.so
+*.gem
+mkmf.log
+gem_make.out
+conftest.*
+extconf.h

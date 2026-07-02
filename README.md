@@ -1,94 +1,60 @@
-ruby-ibmdb
-==========
-Rails Adapter/Ruby Driver for IBM Data Servers: {DB2 on Linux/Unix/Windows, DB2 on zOS, DB2 on IBMi, IBM Informix (IDS)}
+ruby-ibmdb (Linux)
+==================
+
+Rails adapter and Ruby driver for IBM data servers on **Linux x86** (DB2 LUW, remote DB2 on z/OS and IBM i, Informix IDS).
 
 ```
 ibm_db gem version 5.5.1
 
+Supported host OS:
+  Linux x86_64 (linuxx64_odbc_cli.tar.gz)
+
 Requirements:
- Ruby should be installed(Ruby version should be >=2.5.x and <= 3.2.x)
- For developing rails appications Rails should be 7.1.x
-
- Note: x86 version of ruby can be downloaded from https://rubyinstaller.org/downloads/archives/
-       ibm_db@5.5.1 onwards supports native installation on MacOS ARM64(M* Chip/Apple Silicon Chip) system using clidriver/dsdriver version 12.1.0.
+  Ruby >= 2.5, <= 3.2
+  Rails / ActiveRecord 7.0 - 7.1 (gem declares 7.0 - 7.1)
+  Build tools: gcc, make, ruby-dev headers
 ```
 
- 
-Installing the IBM_DB adapter and driver
-========================================
+The fork ships IBM CLI driver archives under `odbc_cli/`. During `gem install` or `bundle install` from a local path, `extconf.rb` unpacks the matching archive into `lib/clidriver/`, builds `ibm_db.so`, and removes the temporary archive file.
 
-Issue the following command to install the ibm_db gem
+Installing from this repository
+=================================
 
-```
-gem install ibm_db
-
+```bash
+gem install /path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db
 ```
 
-For Windows please set the below variable:-
+Or in a Rails `Gemfile`:
 
+```ruby
+gem 'ibm_db', path: "/path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db"
 ```
-set RUBY_DLL_PATH=path\to\clidriver\bin
+
+```bash
+bundle install
 ```
+
+Manual build (without gem install):
+
+```bash
+cd /path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db/ext
+ruby extconf.rb
+make
+```
+
+`lib/ibm_db.so` is a symlink to `ext/ibm_db.so` for local development.
+
+Optional environment variables
+==============================
+
+| Variable | Purpose |
+|----------|---------|
+| `IBM_DB_HOME` | Use an existing DB2 / CLI installation instead of bundled `odbc_cli` |
+| `IBM_DB_ODBC_CLI_DIR` | Directory with `linuxx64_odbc_cli.tar.gz` / `linuxia32_odbc_cli.tar.gz` |
+| `IBM_DB_FORCE_BUILD` | `1` - always compile the native extension on install |
+| `IBM_DB_ODBC_CLI_REPO` / `IBM_DB_ODBC_CLI_BRANCH` | GitHub source when a local archive is missing |
 
 Contacts
 ========
 
-For any issues or help: https://github.com/ibmdb/ruby-ibmdb/issues
-
-Local Development
-=================
-
-To easily test changes to the ibm_db gem locally without building 
-a gem package, add to your Rails Gemfile:
-
-```
-gem 'ibm_db', path: "/path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db"
-```
-
-Then build the ibm_db.so library:
-
-```bash
-$ cd /path/to/ruby-ibmdb/IBM_DB_Adapter/ibm_db/ext"
-$ ruby extconf.rb
-$ make
-```
-
-Then bundle install in your rails app:
-
-```
-$ bundle install
-...
-Using ibm_db 4.0.0 from source at `ruby-ibmdb/IBM_DB_Adapter/ibm_db`
-```
-
-License
-=======
-Copyright (c) 2006 - 2017 IBM Corporation
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-and/or sell copies of the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-
-Contributing
-=======
-See [CONTRIBUTING](https://github.com/ibmdb/ruby-ibmdb/blob/master/contributing/CONTRIBUTING.md)
-
-```
-The developer sign-off should include the reference to the DCO in remarks(example below):
-DCO 1.1 Signed-off-by: Random J Developer <random@developer.org>
-```
+Issues: https://github.com/etspring/ruby-ibmdb/issues

@@ -3,9 +3,7 @@ require 'net/http'
 require 'open-uri'
 require 'rubygems/package'
 require 'zlib'
-require 'zip'
 require 'fileutils'
-require 'down'
 
 # +----------------------------------------------------------------------+
 # |  Licensed Materials - Property of IBM                                |
@@ -15,7 +13,10 @@ require 'down'
 
 TAR_LONGLINK = '././@LongLink'
 
-WIN = RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/
+unless RUBY_PLATFORM =~ /linux/
+  puts "This repository builds ibm_db on Linux x86 only. Current platform: #{RUBY_PLATFORM}\n"
+  exit 1
+end
 
 # use ENV['IBM_DB_HOME'] or latest db2 you can find
 IBM_DB_HOME = ENV['IBM_DB_HOME']
@@ -42,106 +43,79 @@ module Kernel
   end
 end
 
-DOWNLOADLINK = ''
-ZIP = false
+cli_archive_name = ''
 
-if(RUBY_PLATFORM =~ /aix/i)
-  #AIX
-  if(is64Bit)
-        puts "Detected platform - aix 64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/aix64_odbc_cli.tar.gz"
-  else
-        puts "Detected platform - aix 32"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/aix32_odbc_cli.tar.gz"
-  end
-elsif (RUBY_PLATFORM =~ /powerpc/ || RUBY_PLATFORM =~ /ppc/)
-  #PPC
-  if(is64Bit)
-        puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ppc64_odbc_cli.tar.gz"
-  else
-        puts "Detected platform - ppc linux 64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ppc32_odbc_cli.tar.gz"
-  end
-elsif (RUBY_PLATFORM =~ /linux/)
-  #x86
-  if(is64Bit)
-        puts "Detected platform - linux x86 64"
-	DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/linuxx64_odbc_cli.tar.gz"
-  else
-        puts "Detected platform - linux 32"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/linuxia32_odbc_cli.tar.gz"
-  end
-elsif (RUBY_PLATFORM =~ /sparc/i)
-  #Solaris
-  if(is64Bit)
-        puts "Detected platform - sun sparc64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sun64_odbc_cli.tar.gz"
-  else
-        puts "Detected platform - sun sparc32"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sun32_odbc_cli.tar.gz"
-  end
-elsif (RUBY_PLATFORM =~ /solaris/i)
-  if(is64Bit)
-        puts "Detected platform - sun amd64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sunamd64_odbc_cli.tar.gz"
-  else
-        puts "Detected platform - sun amd32"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/sunamd32_odbc_cli.tar.gz"
-  end
-elsif (RUBY_PLATFORM =~ /darwin/i)
-  if (RUBY_PLATFORM =~ /arm64/i)
-        puts "Detected platform - MacOS darwin arm64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/macarm64_odbc_cli.tar.gz"
-  elsif(RUBY_PLATFORM =~ /x86_64/i || is64Bit)
-        puts "Detected platform - MacOS darwin x86_64"
-        DOWNLOADLINK = "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/macos64_odbc_cli.tar.gz"			
-  else
-        puts "Mac OS 32 bit not supported. Please use an x64 architecture."
-  end
-elsif (RUBY_PLATFORM =~ /mswin/ || RUBY_PLATFORM =~ /mingw/)
-  ZIP = true
-  if(is64Bit)
-    puts "Detected platform - windows 64"
-    DOWNLOADLINK= "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/ntx64_odbc_cli.zip"
-  else
-    puts "Detected platform - windows 32"
-    DOWNLOADLINK= "https://github.com/etspring/ruby-ibmdb/blob/master/odbc_cli/nt32_odbc_cli.zip"
-  end
+if RUBY_PLATFORM =~ /x86_64/
+  puts 'Detected platform - linux x86_64'
+  cli_archive_name = 'linuxx64_odbc_cli.tar.gz'
+elsif RUBY_PLATFORM =~ /i686|i386|-linux$/
+  puts 'Detected platform - linux x86 32-bit'
+  cli_archive_name = 'linuxia32_odbc_cli.tar.gz'
+else
+  puts "Unsupported Linux CPU for bundled CLI: #{RUBY_PLATFORM}. Use IBM_DB_HOME with a matching client install.\n"
+  exit 1
 end
 
-def downloadCLIPackage(destination, link = nil)
-  if(link.nil?)
-    downloadLink = DOWNLOADLINK
-  else
-    downloadLink = link
+# Каталоги поиска локальных архивов IBM CLI (odbc_cli) при сборке из исходников репозитория.
+def local_odbc_cli_search_dirs
+  dirs = []
+  env_dir = ENV['IBM_DB_ODBC_CLI_DIR']
+  dirs << File.expand_path(env_dir) if env_dir && !env_dir.empty?
+  dirs << File.expand_path('../../odbc_cli', __FILE__)
+  dirs << File.expand_path('../../../odbc_cli', __FILE__)
+  dirs.uniq
+end
+
+# Ищет локальный архив clidriver для текущей платформы; возвращает путь или nil.
+def find_local_cli_archive(archive_name)
+  return nil if archive_name.nil? || archive_name.empty?
+
+  local_odbc_cli_search_dirs.each do |dir|
+    path = File.join(dir, archive_name)
+    return path if File.file?(path)
+  end
+  nil
+end
+
+# URL raw-файла на GitHub, если локальный архив недоступен.
+def cli_package_download_url(archive_name)
+  repo = ENV.fetch('IBM_DB_ODBC_CLI_REPO', 'etspring/ruby-ibmdb')
+  branch = ENV.fetch('IBM_DB_ODBC_CLI_BRANCH', 'master')
+  "https://raw.githubusercontent.com/#{repo}/#{branch}/odbc_cli/#{archive_name}"
+end
+
+# Копирует локальный архив или скачивает clidriver; возвращает путь к архиву в destination.
+def obtain_cli_package(destination, cli_archive_name)
+  if cli_archive_name.nil? || cli_archive_name.empty?
+    raise "CLI driver package is not defined for platform #{RUBY_PLATFORM}"
   end
 
-  if ZIP
-    filename = "#{destination}/clidriver.zip"
-  else
-    filename = "#{destination}/clidriver.tar.gz"
-  end
-  
-  Down.download(downloadLink, destination: filename, ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE)
+  filename = File.join(destination, 'clidriver.tar.gz')
 
+  local_archive = find_local_cli_archive(cli_archive_name)
+  if local_archive
+    puts "Using local CLI package from #{local_archive}\n"
+    FileUtils.cp(local_archive, filename)
+    return filename
+  end
+
+  puts "Local CLI package not found; downloading #{cli_archive_name}\n"
+  require 'down'
+  Down.download(cli_package_download_url(cli_archive_name), destination: filename, ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE)
   filename
 end
 
-def extract_zip(file, destination)
-  FileUtils.mkdir_p(destination)
+# Удаляет временный архив clidriver после успешной распаковки в lib/.
+def remove_cli_package_archive(archive_path)
+  return unless archive_path
+  return unless File.file?(archive_path)
 
-  Zip::File.open(file) do |zip_file|
-    zip_file.each do |f|
-      fpath = File.join(destination, f.name)
-      FileUtils.mkdir_p(File.dirname(fpath))
-      zip_file.extract(f, fpath) unless File.exist?(fpath)
-    end
-  end
+  FileUtils.rm_f(archive_path)
+  puts "Removed CLI package archive #{archive_path}\n"
 end
 
-def untarCLIPackage(archive,destination)
-  Gem::Package::TarReader.new( Zlib::GzipReader.open(archive) ) do |tar|
+def untarCLIPackage(archive, destination)
+  Gem::Package::TarReader.new(Zlib::GzipReader.open(archive)) do |tar|
     tar.each do |entry|
       file = nil
       if entry.full_name == $TAR_LONGLINK
@@ -154,17 +128,12 @@ def untarCLIPackage(archive,destination)
         FileUtils.mkdir_p file, :mode => entry.header.mode, :verbose => false
       elsif entry.file?
         FileUtils.rm_rf file if File.directory? file
-        if (RUBY_PLATFORM =~ /darwin/i) && (RUBY_PLATFORM =~ /arm64/i) && File.exist?(file)
-          FileUtils.chmod 755, file, :verbose => false
-        end
         File.open file, "wb" do |f|
           f.print entry.read
         end
         FileUtils.chmod entry.header.mode, file, :verbose => false
       elsif entry.header.typeflag == '2' #Symlink!
-        if (RUBY_PLATFORM =~ /darwin/i) && (RUBY_PLATFORM =~ /arm64/i) && File.exist?(file)
-           File.delete file if File.file? file
-        end
+        FileUtils.rm_f(file)
         File.symlink entry.header.linkname, file
       end
     end
@@ -178,16 +147,19 @@ if(IBM_DB_HOME == nil || IBM_DB_HOME == '')
   if( ( (IBM_DB_INCLUDE.nil?) || (IBM_DB_LIB.nil?) ) ||
       ( IBM_DB_INCLUDE == '' || IBM_DB_LIB == '' )
 	)
-	if(!DOWNLOADLINK.nil? && !DOWNLOADLINK.empty?)
-		puts "Environment variable IBM_DB_HOME is not set. Downloading and setting up the DB2 client driver\n"
-		destination = "#{File.expand_path(File.dirname(File.dirname(__FILE__)))}/../lib"
-	
-    archive = downloadCLIPackage(destination)
-    if (ZIP)
-      extract_zip(archive, destination)
-    else 
-      untarCLIPackage(archive,destination)
-    end
+	if(!cli_archive_name.nil? && !cli_archive_name.empty?)
+		puts "Environment variable IBM_DB_HOME is not set. Setting up the DB2 client driver from local archive or download\n"
+		destination = File.expand_path('lib', __dir__)
+		clidriver_path = File.join(destination, 'clidriver')
+		libdb2 = File.join(clidriver_path, 'lib', 'libdb2.so')
+
+		unless File.file?(libdb2) || File.symlink?(libdb2)
+    archive = obtain_cli_package(destination, cli_archive_name)
+    untarCLIPackage(archive, destination)
+    remove_cli_package_archive(archive)
+		else
+		  puts "CLI driver already present at #{clidriver_path}\n"
+		end
 	
 		IBM_DB_HOME="#{destination}/clidriver"
 	
@@ -245,7 +217,7 @@ if( RUBY_VERSION =~ /1.9/ || RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
   create_header('unicode_support_version.h')
 end
 
-unless (have_library(WIN ? 'db2cli' : 'db2','SQLConnect') or find_library(WIN ? 'db2cli' : 'db2','SQLConnect', IBM_DB_LIB))
+unless have_library('db2', 'SQLConnect') || find_library('db2', 'SQLConnect', IBM_DB_LIB)
   crash(<<EOL)
 Unable to locate libdb2.so/a under #{IBM_DB_LIB}
 
@@ -264,54 +236,14 @@ step 3: - Retry gem install
 EOL
 end
 
-if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)
-	require 'rbconfig'
+if RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./
+  require 'rbconfig'
 end
 
 alias :libpathflag0 :libpathflag
 def libpathflag(libpath)
-	if(RUBY_PLATFORM =~ /darwin/i)
-		if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)	
-			libpathflag0 + case RbConfig::CONFIG["arch"]	
-			when /solaris2/
-			  libpath[0..-2].map {|path| " -R#{path}"}.join
-			when /linux/
-			  libpath[0..-2].map {|path| " -R#{path} "}.join
-			else
-			  ""
-		    end
-		else
-			libpathflag0 + case Config::CONFIG["arch"]				
-			when /solaris2/
-			  libpath[0..-2].map {|path| " -R#{path}"}.join
-			when /linux/
-			  libpath[0..-2].map {|path| " -R#{path} "}.join
-			else
-			  ""
-			end
-		end  
-	else
-		if(RUBY_VERSION =~ /2./ || RUBY_VERSION =~ /3./)	
-			ldflags =  case RbConfig::CONFIG["arch"]	
-			when /solaris2/
-			  libpath[0..-2].map {|path| " -R#{path}"}.join
-			when /linux/
-			  libpath[0..-2].map {|path| " -R#{path} "}.join
-			else
-			  ""
-		  end
-		else
-			ldflags =  case Config::CONFIG["arch"]
-			when /solaris2/
-			  libpath[0..-2].map {|path| " -R#{path}"}.join
-			when /linux/
-			  libpath[0..-2].map {|path| " -R#{path} "}.join
-			else
-			  ""
-		    end
-		end			
-		libpathflag0 + " '-Wl,-R$$ORIGIN/clidriver/lib' "		
-	end
+  rpaths = libpath[0..-2].map { |path| " -Wl,-rpath,#{path}" }.join
+  libpathflag0 + rpaths + " '-Wl,-rpath,$$ORIGIN/clidriver/lib' "
 end
 
 have_header('gil_release_version.h')
